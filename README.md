@@ -1,6 +1,6 @@
 # totebag
 
-A tool for archiving files and directories.
+A tool for archiving files and directories and extracting several archive formats.
 
 ## Description
 
@@ -37,6 +37,15 @@ brew install tamada/tap/totebag
 ```
 
 ## About
+
+### Authors
+
+* Haruaki Tamada ([tamada](https://github.com/tamada/))
+
+### The Logo and the Origin of totebag
+
+The general word, totebag, is a bag for carrying things.
+From this, I chose the name of the tool, totebag, as a tool for packing files and directories carelessly.
 
 ![logo](site/assets/logo.jpeg)
 
