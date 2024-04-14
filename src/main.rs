@@ -1,6 +1,5 @@
-use std::path::PathBuf;
 use clap::Parser;
-use cli::{RunMode, CliOpts};
+use cli::CliOpts;
 
 mod cli;
 
@@ -10,6 +9,8 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
+    use cli::RunMode;
     use super::*;
 
     #[test]
