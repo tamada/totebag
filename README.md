@@ -1,5 +1,11 @@
 # totebag
 
+[![MIT License](https://shields.io/badge/License-MIT-green)](https://github.com/tamada/totebag/blob/main/LICENSE)
+
+[![build](https://github.com/tamada/totebag/actions/workflows/build.yaml/badge.svg)](https://github.com/tamada/totebag/actions/workflows/build.yaml)
+[![Rust Report Card](https://rust-reportcard.xuri.me/badge/github.com/tamada/totebag)](https://rust-reportcard.xuri.me/report/github.com/tamada/totebag)
+[![Coverage Status](https://coveralls.io/repos/github/tamada/totebag/badge.svg)](https://coveralls.io/github/tamada/totebag)
+
 A tool for archiving files and directories and extracting several archive formats.
 
 ## Description
