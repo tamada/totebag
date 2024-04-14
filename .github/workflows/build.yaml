@@ -1,0 +1,38 @@
+name: build
+on:
+  push:
+    branches:
+      - "**"
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
+    steps:
+      - name: Setup Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: Setup Rust LLVM coverage tools
+        run: |
+          rustup component add llvm-tools-preview
+          cargo install cargo-llvm-cov
+
+      - name: Checkout the project
+        uses: actions/checkout@v4
+
+      - name: Test & Build
+        run: |
+          cargo llvm-cov --lcov --output-path coverage.lcov
+          cargo build
+
+      - name: Send coverage to coveralls
+        uses: coverallsapp/github-action@master
+        if: matrix.os == 'ubuntu-latest'
+        with:
+          github-token: ${{ secrets.github_token }}
+          path-to-lcov: coverage.lcov
+  
