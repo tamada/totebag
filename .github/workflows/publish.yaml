@@ -110,4 +110,4 @@ jobs:
           asset_path: dist/${{ matrix.asset_name }}.tar.gz
           asset_name: ${{ matrix.asset_name }}.tar.gz
           asset_content_type: application/x-gzip
-          upload_url: ${{ needs.site.outputs.upload_url }}
+          upload_url: ${{ needs.setup.outputs.upload_url }}
