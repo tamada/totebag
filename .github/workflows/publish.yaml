@@ -78,20 +78,21 @@ jobs:
           path: ~/.cargo/registry
           key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}        
 
-      - name: Setup Rust (1/3) (toolchain)
-        uses: actions-rust-lang/setup-rust-toolchain@v1
-
-      - name: Setup Rust (2/3) (bininstall)
-        uses: cargo-bins/cargo-binstall@main
-
-      - name: Setup Rust (3/3)
+      - name: Setup
         run: |
-          cargo bininstall --no-confirm cross
+          sudo apt-get install --yes --no-install-recommends musl-tools gcc-mingw-w64-x86-64-win32
 
       - uses: mbround18/setup-osxcross@v1
         # This builds executables & sets env variables for rust to consume.
         with:
           osx-version: "12.3"
+  
+      - name: Setup Rust (1/2) (toolchain)
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: Setup Rust (2/2) (cross)
+        run: |
+          cargo install cross
 
       - name: Setup variables
         id: vars
