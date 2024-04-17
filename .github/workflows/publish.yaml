@@ -55,7 +55,7 @@ jobs:
             artifact_name: ${{ needs.setup.outputs.appname }}.exe
             asset_name: ${{ needs.setup.outputs.appname }}-${{ needs.setup.outputs.tag }}_windows_arm64
           - os: macos-latest
-            target: aaarch64-apple-darwin
+            target: aarch64-apple-darwin
             artifact_name: ${{ needs.setup.outputs.appname }}
             asset_name: ${{ needs.setup.outputs.appname }}-${{ needs.setup.outputs.tag }}_darwin_amd64
           - os: macos-latest
