@@ -46,14 +46,23 @@ jobs:
             target: x86_64-unknown-linux-musl
             artifact_name: ${{ needs.setup.outputs.appname }}
             asset_name: ${{ needs.setup.outputs.appname }}-${{ needs.setup.outputs.tag }}_linux_arm64
-          - os: ubuntu-latest
-            target: aarch64-pc-windows-gnullvm
-            artifact_name: ${{ needs.setup.outputs.appname }}.exe
-            asset_name: ${{ needs.setup.outputs.appname }}-${{ needs.setup.outputs.tag }}_windows_amd64
+          # - os: ubuntu-latest
+          #   target: aarch64-pc-windows-gnullvm
+          #   artifact_name: ${{ needs.setup.outputs.appname }}.exe
+          #   asset_name: ${{ needs.setup.outputs.appname }}-${{ needs.setup.outputs.tag }}_windows_amd64
           - os: ubuntu-latest
             target: x86_64-pc-windows-gnu
             artifact_name: ${{ needs.setup.outputs.appname }}.exe
             asset_name: ${{ needs.setup.outputs.appname }}-${{ needs.setup.outputs.tag }}_windows_arm64
+          - os: macos-latest
+            target: aaarch64-apple-darwin
+            artifact_name: ${{ needs.setup.outputs.appname }}
+            asset_name: ${{ needs.setup.outputs.appname }}-${{ needs.setup.outputs.tag }}_darwin_amd64
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            artifact_name: ${{ needs.setup.outputs.appname }}
+            asset_name: ${{ needs.setup.outputs.appname }}-${{ needs.setup.outputs.tag }}_darwin_arm64
+
           
     steps:
       # initialization
@@ -63,6 +72,13 @@ jobs:
           ref: main
           fetch-depth: 0 # Fetch all history for .GitInfo and .Lastmod
 
+      - name: Setup variables
+        id: vars
+        shell: bash
+        run: |
+          DIR=$(echo "${{ needs.setup.outputs.appname }}-${{ needs.setup.outputs.tag }}")
+          echo "dir=$DIR" >> $GITHUB_OUTPUT
+  
       - name: Cache cargo registry
         uses: actions/cache@v1
         with:
@@ -74,17 +90,17 @@ jobs:
 
       - name: Setup Rust (1/2) (toolchain)
         uses: taiki-e/setup-cross-toolchain-action@v1
+        if: matrix.os == 'ubuntu-latest'
         with:
           target: ${{ matrix.target }}
 
-      - name: Setup variables
-        id: vars
-        shell: bash
+      - name: Cross build (macOS)
+        if: matrix.os == 'macos-latest'
         run: |
-          DIR=$(echo "${{ needs.setup.outputs.appname }}-${{ needs.setup.outputs.tag }}")
-          echo "dir=$DIR" >> $GITHUB_OUTPUT
+          rustup target add ${{ matrix.target }}
+          cargo build --release --target ${{ matrix.target }}
 
-      - name: Cross build with all features
+      - name: Cross build (Linux and Windows)
         run: |
           cargo build --release --target ${{ matrix.target }}
                   
