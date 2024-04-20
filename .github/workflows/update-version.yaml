@@ -1,0 +1,26 @@
+name: update_version
+
+on:
+  push:
+    branches:
+      - release/v*
+
+jobs:
+  version-up:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Get tag
+        id: vars
+        run: |
+          echo "GITHUB_REF: $GITHUB_REF"
+          echo "tag=${GITHUB_REF##*/v}" >> $GITHUB_OUTPUT
+      - name: Update version
+        run: |
+          sed "s/^version = \".*\"/version = \"${{ steps.vars.outputs.tag }}\"/" Cargo.toml > a ; mv a Cargo.toml
+          sed "s/\$VERSION/${{ steps.vars.outputs.tag }}/g" templates/README.md > a ; mv a README.md
+
+      - name: Commit version
+        run: |
+          git config --global user.email "
