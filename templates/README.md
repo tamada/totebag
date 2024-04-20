@@ -1,6 +1,6 @@
 # totebag
 
-[![Version](https://shields.io/badge/Version-0.1.18-blue)](https://github.com/tamada/totebag/releases/tag/v0.1.18)
+[![Version](https://shields.io/badge/Version-$VERSION-blue)](https://github.com/tamada/totebag/releases/tag/v$VERSION)
 [![MIT License](https://shields.io/badge/License-MIT-blue)](https://github.com/tamada/totebag/blob/main/LICENSE)
 
 [![build](https://github.com/tamada/totebag/actions/workflows/build.yaml/badge.svg)](https://github.com/tamada/totebag/actions/workflows/build.yaml)
