@@ -1,6 +1,7 @@
 # totebag
 
-[![MIT License](https://shields.io/badge/License-MIT-green)](https://github.com/tamada/totebag/blob/main/LICENSE)
+[![Version](https://shields.io/badge/Version-0.1.18-blue)](https://github.com/tamada/totebag/releases/tag/v0.1.18)
+[![MIT License](https://shields.io/badge/License-MIT-blue)](https://github.com/tamada/totebag/blob/main/LICENSE)
 
 [![build](https://github.com/tamada/totebag/actions/workflows/build.yaml/badge.svg)](https://github.com/tamada/totebag/actions/workflows/build.yaml)
 [![Rust Report Card](https://rust-reportcard.xuri.me/badge/github.com/tamada/totebag)](https://rust-reportcard.xuri.me/report/github.com/tamada/totebag)
