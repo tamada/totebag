@@ -8,13 +8,13 @@
 
 A tool for archiving files and directories and extracting several archive formats.
 
-## Description
+## :speaking_head: Description
 
 There are many archive formats and their tools. The one problem with using each tool is that its interfaces are slightly different.
 Then, The `totebag` treats the archive files as the same interface.
 The tool can extract archive files and archive files and directories.
 
-## Usage
+## :runner: Usage
 
 ```sh
 totebag [OPTIONS] <ARGUMENTS...>
@@ -36,7 +36,7 @@ ARGUMENTS
                 Otherwise, it will archive the files.
 ```
 
-## Install
+## :anchor: Install
 
 ```sh
 brew install tamada/tap/totebag
