@@ -1,10 +1,47 @@
 use clap::Parser;
-use cli::CliOpts;
+use cli::*;
+use cli::{ToatError, RunMode};
+use archiver::InOut;
 
 mod cli;
+mod archiver;
 
-fn main() {
-    let _opts = CliOpts::parse();
+fn perform(mut opts: CliOpts) -> Result<()> {
+    match opts.run_mode() {
+        Ok(RunMode::Archive) => {
+            return perform_archive(opts)
+        }
+        Ok(RunMode::Extract) => {
+            println!("Extracting...");
+            // archiver::extract(&opts);
+        }
+        Ok(RunMode::Auto) => {
+            return Err(ToatError::UnknownError("cannot distinguish archiving and extracting".to_string()))
+        }
+        Err(e) => {
+            return Err(e);
+        }
+    };
+    Ok(())
+}
+
+fn perform_archive(opts: CliOpts) -> Result<()> {
+    let archiver = archiver::create_archiver(opts.output.clone().unwrap()).unwrap();
+    let output = opts.output.unwrap();
+    let args = opts.args; // Clone the opts.args vector
+    let inout = InOut::new(output, args, opts.overwrite, !opts.no_recursive);
+    archiver.perform(inout)
+}
+
+fn main() -> Result<()> {
+    match perform(CliOpts::parse()) {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            eprintln!("Error: {:?}", e);
+            Err(e)
+        }
+    
+    }
 }
 
 #[cfg(test)]

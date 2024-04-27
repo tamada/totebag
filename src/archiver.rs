@@ -1,12 +1,16 @@
 use std::{ffi::OsStr, path::PathBuf};
+use std::fs::File;
+
+use crate::cli::{ToatError, Result};
+use crate::archiver::zip::ZipArchiver;
+
+mod zip;
 
 pub trait Archiver {
-    fn perform(&self, inout: InOut) -> Result<(), String>;
+    fn perform(&self, inout: InOut) -> Result<()>;
     fn format(&self) -> Format;
 }
 
-struct ZipArchiver {
-}
 struct TarArchiver {
 }
 struct TarGzArchiver {
@@ -16,48 +20,41 @@ struct TarBz2Archiver {
 struct RarArchiver {
 }
 
-impl Archiver for  ZipArchiver {
-    fn perform(&self, inout: InOut) -> Result<(), String> {
-        Err("not implement yet".to_string())
-    }
-    fn format(&self) -> Format {
-        Format::Zip
-    }
-}
+
 impl Archiver for  TarArchiver {
-    fn perform(&self, inout: InOut) -> Result<(), String> {
-        Err("not implement yet".to_string())
+    fn perform(&self, inout: InOut) -> Result<()> {
+        Err(ToatError::UnknownError("not implement yet".to_string()))
     }
     fn format(&self) -> Format {
         Format::Tar
     }
 }
 impl Archiver for TarGzArchiver{
-    fn perform(&self, inout: InOut) -> Result<(), String> {
-        Err("not implement yet".to_string())
+    fn perform(&self, inout: InOut) -> Result<()> {
+        Err(ToatError::UnknownError("not implement yet".to_string()))
     }
     fn format(&self) -> Format {
         Format::TarGz
     }
 }
 impl Archiver for  TarBz2Archiver {
-    fn perform(&self, inout: InOut) -> Result<(), String> {
-        Err("not implement yet".to_string())
+    fn perform(&self, inout: InOut) -> Result<()> {
+        Err(ToatError::UnknownError("not implement yet".to_string()))
     }
     fn format(&self) -> Format {
         Format::TarBz2
     }
 }
 impl Archiver for  RarArchiver {
-    fn perform(&self, inout: InOut) -> Result<(), String> {
-        Err("not implement yet".to_string())
+    fn perform(&self, inout: InOut) -> Result<()> {
+        Err(ToatError::UnknownError("not implement yet".to_string()))
     }
     fn format(&self) -> Format {
         Format::Rar
     }
 }
 
-pub fn create_archiver(dest: PathBuf) -> Result<Box<dyn Archiver>, String> {
+pub fn create_archiver(dest: PathBuf) -> Result<Box<dyn Archiver>> {
     let format = find_format(dest.file_name());
     match format {
         Ok(format) => {
@@ -67,7 +64,7 @@ pub fn create_archiver(dest: PathBuf) -> Result<Box<dyn Archiver>, String> {
                 Format::TarGz => Ok(Box::new(TarGzArchiver{})),
                 Format::TarBz2 => Ok(Box::new(TarBz2Archiver{})),
                 Format::Rar => Ok(Box::new(RarArchiver{})),
-                _ => Err("unsupported format".to_string()),
+                _ => Err(ToatError::UnsupportedFormat("unsupported format".to_string())),
             }
         }
         Err(msg) => Err(msg),
@@ -88,21 +85,30 @@ pub fn archiver_info(archiver: Box<dyn Archiver>, inout: InOut) -> String {
 pub struct InOut {
     dest: PathBuf,
     targets: Vec<PathBuf>,
+    overwrite: bool,
+    recursive: bool,
 }
 
 impl InOut {
-    pub fn new(dest: PathBuf, targets: Vec<PathBuf>) -> Self {
-        InOut { dest, targets }
+    pub fn new(dest: PathBuf, targets: Vec<PathBuf>, overwrite: bool, recursive: bool) -> Self {
+        InOut { dest, targets, overwrite, recursive }
     }
     pub fn targets(&self) -> Vec<PathBuf> {
         self.targets.clone()
     }
-    pub fn destination(&self) -> &PathBuf {
-        &self.dest
+    pub fn destination(&self) -> Result<File> {
+        let p = self.dest.as_path();
+        if p.is_file() && p.exists() && !self.overwrite {
+            return Err(ToatError::FileExists(self.dest.clone()))
+        }
+        match File::create(self.dest.as_path()) {
+            Err(e) => Err(ToatError::IOError(e)),
+            Ok(f) => Ok(f),
+        }
     }
 }
 
-fn find_format(file_name: Option<&OsStr>) -> Result<Format, String> {
+fn find_format(file_name: Option<&OsStr>) -> Result<Format> {
     match file_name {
         Some(file_name) => {
             let name = file_name.to_str().unwrap().to_lowercase();
@@ -120,9 +126,10 @@ fn find_format(file_name: Option<&OsStr>) -> Result<Format, String> {
                 return Ok(Format::Unknown);
             }
         }
-        None => Err("no file name provided".to_string()),
+        None => Err(ToatError::UnsupportedFormat("no file name provided".to_string())),
     }
 }
+
 
 #[derive(Debug, PartialEq)]
 pub enum Format {
@@ -141,11 +148,23 @@ mod tests {
     #[test]
     fn test_format() {
         assert!(find_format(None).is_err());
-        assert_eq!(find_format(Some(OsStr::new("hoge.zip"))), Ok(Format::Zip));
-        assert_eq!(find_format(Some(OsStr::new("hoge.unknown"))), Ok(Format::Unknown));
-        assert_eq!(find_format(Some(OsStr::new("hoge.tar"))), Ok(Format::Tar));
-        assert_eq!(find_format(Some(OsStr::new("hoge.rar"))), Ok(Format::Rar));
-        assert_eq!(find_format(Some(OsStr::new("hoge.tar.gz"))), Ok(Format::TarGz));
-        assert_eq!(find_format(Some(OsStr::new("hoge.tar.bz2"))), Ok(Format::TarBz2));
+        if let Ok(f) = find_format(Some(OsStr::new("hoge.zip"))) {
+            assert_eq!(f, Format::Zip);
+        }
+        if let Ok(f) = find_format(Some(OsStr::new("hoge.unknown"))) {
+            assert_eq!(f, Format::Unknown);
+        }
+        if let Ok(f) = find_format(Some(OsStr::new("hoge.tar"))) {
+            assert_eq!(f, Format::Tar);
+        }
+        if let Ok(f) = find_format(Some(OsStr::new("hoge.rar"))) {
+            assert_eq!(f, Format::Rar);
+        }
+        if let Ok(f) = find_format(Some(OsStr::new("hoge.tar.gz"))) {
+            assert_eq!(f, Format::TarGz);
+        }
+        if let Ok(f) = find_format(Some(OsStr::new("hoge.tar.bz2"))) {
+            assert_eq!(f, Format::TarBz2);
+        }
     }
 }
