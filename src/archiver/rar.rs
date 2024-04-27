@@ -5,8 +5,8 @@ pub struct RarArchiver {
 }
 
 impl Archiver for  RarArchiver {
-    fn perform(&self, inout: InOut) -> Result<()> {
-        Err(ToatError::UnknownError("not implement yet".to_string()))
+    fn perform(&self, _: InOut) -> Result<()> {
+        Err(ToatError::UnsupportedFormat("only extraction support for rar".to_string()))
     }
     fn format(&self) -> Format {
         Format::Rar

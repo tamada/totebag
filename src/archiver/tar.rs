@@ -1,5 +1,7 @@
-use std::fs::File;
+use std::io::Write;
 use std::path::PathBuf;
+use flate2::write::GzEncoder;
+use bzip2::write::BzEncoder;
 use tar::Builder;
 
 use crate::archiver::{Archiver, InOut, Format};
@@ -27,7 +29,13 @@ impl Archiver for  TarArchiver {
 }
 impl Archiver for TarGzArchiver{
     fn perform(&self, inout: InOut) -> Result<()> {
-        Err(ToatError::UnknownError("not implement yet".to_string()))
+        match inout.destination() {
+            Err(e) =>  Err(e),
+            Ok(file) => {
+                let enc = GzEncoder::new(file, flate2::Compression::default());
+                write_to_tar(enc, inout.targets(), inout.recursive)
+            }
+        }
     }
     fn format(&self) -> Format {
         Format::TarGz
@@ -35,14 +43,20 @@ impl Archiver for TarGzArchiver{
 }
 impl Archiver for  TarBz2Archiver {
     fn perform(&self, inout: InOut) -> Result<()> {
-        Err(ToatError::UnknownError("not implement yet".to_string()))
+        match inout.destination() {
+            Err(e) =>  Err(e),
+            Ok(file) => {
+                let enc = BzEncoder::new(file, bzip2::Compression::best());
+                write_to_tar(enc, inout.targets(), inout.recursive)
+            }
+        }
     }
     fn format(&self) -> Format {
         Format::TarBz2
     }
 }
 
-fn process_dir(builder: &mut Builder<File>, target: PathBuf, recursive: bool) -> Result<()> {
+fn process_dir<W: Write>(builder: &mut Builder<W>, target: PathBuf, recursive: bool) -> Result<()> {
     if let Err(e) = builder.append_dir(&target, &target) {
         return Err(ToatError::ArchiverError(e.to_string()))
     }
@@ -59,7 +73,7 @@ fn process_dir(builder: &mut Builder<File>, target: PathBuf, recursive: bool) ->
     Ok(())
 }
 
-fn process_file(builder: &mut Builder<File>, target: PathBuf) -> Result<()> {
+fn process_file<W: Write>(builder: &mut Builder<W>, target: PathBuf) -> Result<()> {
     if let Err(e) = builder.append_path(target) {
         Err(ToatError::ArchiverError(e.to_string()))
     } else {
@@ -67,7 +81,7 @@ fn process_file(builder: &mut Builder<File>, target: PathBuf) -> Result<()> {
     }
 }
 
-fn write_to_tar(file: File, targets: Vec<PathBuf>, recursive: bool) -> Result<()> {
+fn write_to_tar<W: Write>(file: W, targets: Vec<PathBuf>, recursive: bool) -> Result<()> {
     let mut builder = tar::Builder::new(file);
     for target in targets {
         let path = target.as_path();
