@@ -3,55 +3,16 @@ use std::fs::File;
 
 use crate::cli::{ToatError, Result};
 use crate::archiver::zip::ZipArchiver;
+use crate::archiver::rar::RarArchiver;
+use crate::archiver::tar::{TarArchiver, TarGzArchiver, TarBz2Archiver};
 
 mod zip;
+mod rar;
+mod tar;
 
 pub trait Archiver {
     fn perform(&self, inout: InOut) -> Result<()>;
     fn format(&self) -> Format;
-}
-
-struct TarArchiver {
-}
-struct TarGzArchiver {
-}
-struct TarBz2Archiver {
-}
-struct RarArchiver {
-}
-
-
-impl Archiver for  TarArchiver {
-    fn perform(&self, inout: InOut) -> Result<()> {
-        Err(ToatError::UnknownError("not implement yet".to_string()))
-    }
-    fn format(&self) -> Format {
-        Format::Tar
-    }
-}
-impl Archiver for TarGzArchiver{
-    fn perform(&self, inout: InOut) -> Result<()> {
-        Err(ToatError::UnknownError("not implement yet".to_string()))
-    }
-    fn format(&self) -> Format {
-        Format::TarGz
-    }
-}
-impl Archiver for  TarBz2Archiver {
-    fn perform(&self, inout: InOut) -> Result<()> {
-        Err(ToatError::UnknownError("not implement yet".to_string()))
-    }
-    fn format(&self) -> Format {
-        Format::TarBz2
-    }
-}
-impl Archiver for  RarArchiver {
-    fn perform(&self, inout: InOut) -> Result<()> {
-        Err(ToatError::UnknownError("not implement yet".to_string()))
-    }
-    fn format(&self) -> Format {
-        Format::Rar
-    }
 }
 
 pub fn create_archiver(dest: PathBuf) -> Result<Box<dyn Archiver>> {
