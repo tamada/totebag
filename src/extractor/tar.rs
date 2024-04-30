@@ -1,4 +1,4 @@
-use std::fs::{copy, create_dir_all};
+use std::fs::create_dir_all;
 use std::io::Read;
 use std::{fs::File, path::PathBuf};
 

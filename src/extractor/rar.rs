@@ -1,9 +1,8 @@
-use std::fmt::Debug;
 use std::fs::create_dir_all;
 use std::path::PathBuf;
 
 use crate::format::Format;
-use crate::cli::{Result, ToatError};
+use crate::cli::Result;
 use crate::extractor::{ExtractorOpts, Extractor};
 
 pub(super) struct RarExtractor {

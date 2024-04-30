@@ -93,10 +93,12 @@ mod tests {
 
         let mut cli3 = CliOpts::parse_from(&["totebag_test", "src.zip", "LICENSE.tar", "README.tar.bz2", "hoge.rar"]);
         let r3 = cli3.run_mode();
+        assert!(r3.is_ok());
         assert_eq!(cli3.run_mode().unwrap(), RunMode::Extract);
 
         let mut cli4 = CliOpts::parse_from(&["totebag_test", "src.zip", "LICENSE.tar", "README.tar.bz2", "hoge.rar", "--mode", "list"]);
         let r4 = cli3.run_mode();
+        assert!(r4.is_ok());
         assert_eq!(cli4.run_mode().unwrap(), RunMode::List);
     }
 
