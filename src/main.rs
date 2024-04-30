@@ -1,10 +1,14 @@
 use clap::Parser;
 use cli::*;
 use cli::{ToatError, RunMode};
-use archiver::InOut;
+use archiver::{archiver_info, ArchiverOpts};
+use extractor::{create_extract_opts, extractor_info};
 
 mod cli;
+mod format;
 mod archiver;
+mod extractor;
+mod verboser;
 
 fn perform(mut opts: CliOpts) -> Result<()> {
     match opts.run_mode() {
@@ -12,8 +16,10 @@ fn perform(mut opts: CliOpts) -> Result<()> {
             return perform_archive(opts)
         }
         Ok(RunMode::Extract) => {
-            println!("Extracting...");
-            // archiver::extract(&opts);
+            return perform_extract(opts)
+        }
+        Ok(RunMode::List) => {
+            return perform_list(opts)
         }
         Ok(RunMode::Auto) => {
             return Err(ToatError::UnknownError("cannot distinguish archiving and extracting".to_string()))
@@ -22,14 +28,43 @@ fn perform(mut opts: CliOpts) -> Result<()> {
             return Err(e);
         }
     };
+}
+
+fn perform_extract(opts: CliOpts) -> Result<()> {
+    let args = opts.args.clone();
+    let extract_opts = create_extract_opts(opts);
+    for arg in args.iter() {
+        let extractor = extractor::create_extractor(arg).unwrap();
+        let target = arg.to_path_buf();
+        extract_opts.v.verbose(extractor_info(&extractor, &target, &extract_opts));
+        extractor.perform(target, &extract_opts)?;
+    };
     Ok(())
+}
+
+fn perform_list(opts: CliOpts) -> Result<()> {
+    let args = opts.args.clone();
+    for arg in args.iter() {
+        if !arg.exists() {
+            return Err(ToatError::FileNotFound(arg.to_path_buf()))
+        }
+        let extractor = extractor::create_extractor(arg).unwrap();
+        if args.len() > 1 {
+            println!("========== {:?} ========== \n", arg);
+        }
+        let files = extractor.list_archives(arg.to_path_buf()).unwrap();
+        for file in files.iter() {
+            println!("{}", file);
+        }
+    }
+    Ok(())
+
 }
 
 fn perform_archive(opts: CliOpts) -> Result<()> {
     let archiver = archiver::create_archiver(opts.output.clone().unwrap()).unwrap();
-    let output = opts.output.unwrap();
-    let args = opts.args; // Clone the opts.args vector
-    let inout = InOut::new(output, args, opts.overwrite, !opts.no_recursive);
+    let inout = ArchiverOpts::new(&opts);
+    inout.v.verbose(archiver_info(&archiver, &inout));
     archiver.perform(inout)
 }
 

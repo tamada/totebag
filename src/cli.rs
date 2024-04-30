@@ -11,11 +11,13 @@ pub type Result<T> = std::result::Result<T, ToatError>;
 pub struct CliOpts {
     #[clap(short = 'm', long = "mode", default_value_t = RunMode::Auto, value_name = "MODE", required = false, ignore_case = true, value_enum, help = "Mode of operation.")]
     pub mode: RunMode,
-    #[clap(short = 'd', long = "dest", default_value = ".", value_name = "DEST", required = false, help = "Destination of the extraction results.")]
+    #[clap(short = 'd', long = "dest", default_value = ".", value_name = "DEST", required = false, help = "Destination of the extraction results (extract mode).")]
     pub dest: Option<PathBuf>,
-    #[clap(short = 'o', long = "output", default_value = "totebag.zip", value_name = "OUTPUT", required = false, help = "Output file for the archive.")]
+    #[clap(short = 'o', long = "output", default_value = "totebag.zip", value_name = "OUTPUT", required = false, help = "Output file (archive mode).")]
     pub output: Option<PathBuf>,
-    #[clap(short = 'n', long = "no-recursive", help = "No recursive mode.", default_value_t = false)]
+    #[clap(long = "to-archive-name-dir", help = "extract files to DEST/ARCHIVE_NAME directory (extract mode).", default_value_t = false)]
+    pub to_archive_name_dir: bool,
+    #[clap(short = 'n', long = "no-recursive", help = "No recursive directory (archive mode).", default_value_t = false)]
     pub no_recursive: bool,
     #[clap(short = 'v', long = "verbose", help = "Display verbose output.", default_value_t = false)]
     pub verbose: bool,
@@ -56,12 +58,13 @@ pub enum RunMode {
     Auto,
     Archive,
     Extract,
+    List,
 }
 
 #[derive(Debug)]
 pub enum ToatError {
     NoArgumentsGiven,
-    FileNotFound,
+    FileNotFound(PathBuf),
     FileExists(PathBuf),
     IOError(std::io::Error),
     ArchiverError(String),
@@ -91,6 +94,10 @@ mod tests {
         let mut cli3 = CliOpts::parse_from(&["totebag_test", "src.zip", "LICENSE.tar", "README.tar.bz2", "hoge.rar"]);
         let r3 = cli3.run_mode();
         assert_eq!(cli3.run_mode().unwrap(), RunMode::Extract);
+
+        let mut cli4 = CliOpts::parse_from(&["totebag_test", "src.zip", "LICENSE.tar", "README.tar.bz2", "hoge.rar", "--mode", "list"]);
+        let r4 = cli3.run_mode();
+        assert_eq!(cli4.run_mode().unwrap(), RunMode::List);
     }
 
     #[test]

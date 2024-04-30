@@ -4,18 +4,18 @@ use flate2::write::GzEncoder;
 use bzip2::write::BzEncoder;
 use tar::Builder;
 
-use crate::archiver::{Archiver, InOut, Format};
+use crate::archiver::{Archiver, Format, ArchiverOpts};
 use crate::cli::{ToatError, Result};
 
-pub struct TarArchiver {
+pub(super) struct TarArchiver {
 }
-pub struct TarGzArchiver {
+pub(super) struct TarGzArchiver {
 }
-pub struct TarBz2Archiver {
+pub(super) struct TarBz2Archiver {
 }
 
 impl Archiver for  TarArchiver {
-    fn perform(&self, inout: InOut) -> Result<()> {
+    fn perform(&self, inout: ArchiverOpts) -> Result<()> {
         match inout.destination() {
             Err(e) =>  Err(e),
             Ok(file) => {
@@ -28,7 +28,7 @@ impl Archiver for  TarArchiver {
     }
 }
 impl Archiver for TarGzArchiver{
-    fn perform(&self, inout: InOut) -> Result<()> {
+    fn perform(&self, inout: ArchiverOpts) -> Result<()> {
         match inout.destination() {
             Err(e) =>  Err(e),
             Ok(file) => {
@@ -42,7 +42,7 @@ impl Archiver for TarGzArchiver{
     }
 }
 impl Archiver for  TarBz2Archiver {
-    fn perform(&self, inout: InOut) -> Result<()> {
+    fn perform(&self, inout: ArchiverOpts) -> Result<()> {
         match inout.destination() {
             Err(e) =>  Err(e),
             Ok(file) => {

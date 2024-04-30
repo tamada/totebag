@@ -1,17 +1,20 @@
-use std::{ffi::OsStr, path::PathBuf};
 use std::fs::File;
+use std::path::PathBuf;
 
 use crate::cli::{ToatError, Result};
+use crate::format::{find_format, Format};
 use crate::archiver::zip::ZipArchiver;
 use crate::archiver::rar::RarArchiver;
 use crate::archiver::tar::{TarArchiver, TarGzArchiver, TarBz2Archiver};
+use crate::verboser::{create_verboser, Verboser};
+use crate::CliOpts;
 
 mod zip;
 mod rar;
 mod tar;
 
 pub trait Archiver {
-    fn perform(&self, inout: InOut) -> Result<()>;
+    fn perform(&self, inout: ArchiverOpts) -> Result<()>;
     fn format(&self) -> Format;
 }
 
@@ -32,28 +35,45 @@ pub fn create_archiver(dest: PathBuf) -> Result<Box<dyn Archiver>> {
     }
 }
 
-pub fn archiver_info(archiver: Box<dyn Archiver>, inout: InOut) -> String {
+pub fn archiver_info(archiver: &Box<dyn Archiver>, opts: &ArchiverOpts) -> String {
     format!(
         "Format: {:?}\nDestination: {:?}\nTargets: {:?}",
         archiver.format(),
-        inout.destination(),
-        inout.targets().iter()
+        opts.destination(),
+        opts.targets().iter()
             .map(|item| item.to_str().unwrap())
             .collect::<Vec<_>>().join(", ")
     )
 }
 
-pub struct InOut {
-    dest: PathBuf,
-    targets: Vec<PathBuf>,
-    overwrite: bool,
-    recursive: bool,
+pub struct ArchiverOpts {
+    pub dest: PathBuf,
+    pub targets: Vec<PathBuf>,
+    pub overwrite: bool,
+    pub recursive: bool,
+    pub v: Box<dyn Verboser>,
 }
 
-impl InOut {
-    pub fn new(dest: PathBuf, targets: Vec<PathBuf>, overwrite: bool, recursive: bool) -> Self {
-        InOut { dest, targets, overwrite, recursive }
+impl ArchiverOpts {
+    pub fn new(opts: &CliOpts) -> Self {
+        let args = opts.args.clone();
+        let dest = opts.dest.clone().unwrap_or_else(|| {
+            PathBuf::from(".")
+        });
+        ArchiverOpts {
+            dest: dest,
+            targets: args,
+            overwrite: opts.overwrite,
+            recursive: !opts.no_recursive,
+            v: create_verboser(opts.verbose),
+        }
     }
+
+    #[cfg(test)]
+    pub fn create(dest: PathBuf, targets: Vec<PathBuf>, overwrite: bool, recursive: bool, verbose: bool) -> Self {
+        ArchiverOpts { dest, targets, overwrite, recursive, v: create_verboser(verbose) }
+    }
+
     pub fn targets(&self) -> Vec<PathBuf> {
         self.targets.clone()
     }
@@ -65,67 +85,6 @@ impl InOut {
         match File::create(self.dest.as_path()) {
             Err(e) => Err(ToatError::IOError(e)),
             Ok(f) => Ok(f),
-        }
-    }
-}
-
-fn find_format(file_name: Option<&OsStr>) -> Result<Format> {
-    match file_name {
-        Some(file_name) => {
-            let name = file_name.to_str().unwrap().to_lowercase();
-            if name.ends_with(".tar.gz") || name.ends_with(".tgz") {
-                return Ok(Format::TarGz);
-            } else if name.ends_with(".tar.bz2") || name.ends_with(".tbz2") {
-                return Ok(Format::TarBz2);
-            } else if name.ends_with(".tar") {
-                return Ok(Format::Tar);
-            } else if name.ends_with(".rar") {
-                return Ok(Format::Rar);
-            } else if name.ends_with(".zip") {
-                return Ok(Format::Zip);
-            } else {
-                return Ok(Format::Unknown);
-            }
-        }
-        None => Err(ToatError::UnsupportedFormat("no file name provided".to_string())),
-    }
-}
-
-
-#[derive(Debug, PartialEq)]
-pub enum Format {
-    Zip,
-    Tar,
-    TarGz,
-    TarBz2,
-    Rar,
-    Unknown,
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_format() {
-        assert!(find_format(None).is_err());
-        if let Ok(f) = find_format(Some(OsStr::new("hoge.zip"))) {
-            assert_eq!(f, Format::Zip);
-        }
-        if let Ok(f) = find_format(Some(OsStr::new("hoge.unknown"))) {
-            assert_eq!(f, Format::Unknown);
-        }
-        if let Ok(f) = find_format(Some(OsStr::new("hoge.tar"))) {
-            assert_eq!(f, Format::Tar);
-        }
-        if let Ok(f) = find_format(Some(OsStr::new("hoge.rar"))) {
-            assert_eq!(f, Format::Rar);
-        }
-        if let Ok(f) = find_format(Some(OsStr::new("hoge.tar.gz"))) {
-            assert_eq!(f, Format::TarGz);
-        }
-        if let Ok(f) = find_format(Some(OsStr::new("hoge.tar.bz2"))) {
-            assert_eq!(f, Format::TarBz2);
         }
     }
 }

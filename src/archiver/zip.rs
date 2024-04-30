@@ -5,14 +5,15 @@ use std::io::{BufReader, Write, Seek};
 use time::OffsetDateTime;
 use zip::write::SimpleFileOptions;
 use zip::{ZipWriter, DateTime};
-use crate::archiver::{Archiver, InOut, Format};
+
+use crate::archiver::{Archiver, Format, ArchiverOpts};
 use crate::cli::{ToatError, Result};
 
-pub struct ZipArchiver {
+pub(super) struct ZipArchiver {
 }
 
 impl Archiver for  ZipArchiver {
-    fn perform(&self, inout: InOut) -> Result<()> {
+    fn perform(&self, inout: ArchiverOpts) -> Result<()> {
         match inout.destination() {
             Err(e) =>  Err(e),
             Ok(file) => {
@@ -96,7 +97,7 @@ mod tests {
     fn test_zip() {
         run_test(|| {
             let archiver = ZipArchiver{};
-            let inout = InOut::new(PathBuf::from("test.zip"), vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")], true, true);
+            let inout = ArchiverOpts::create(PathBuf::from("test.zip"), vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")], true, true, false);
             let result = archiver.perform(inout);
             assert!(result.is_ok());
             assert_eq!(archiver.format(), Format::Zip);
