@@ -9,6 +9,7 @@ use crate::archiver::tar::{TarArchiver, TarGzArchiver, TarBz2Archiver};
 use crate::verboser::{create_verboser, Verboser};
 use crate::CliOpts;
 
+mod optscreator;
 mod zip;
 mod rar;
 mod tar;

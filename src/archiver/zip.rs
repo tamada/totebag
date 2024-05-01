@@ -1,12 +1,16 @@
-use std::os::unix::fs::PermissionsExt;
-use std::path::PathBuf;
+#[cfg(target_os = "windows")]
+use optscreator::windows::*;
+
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+use optscreator::linux::*;
+
 use std::fs::File;
+use std::path::PathBuf;
 use std::io::{BufReader, Write, Seek};
-use time::OffsetDateTime;
-use zip::write::SimpleFileOptions;
-use zip::{ZipWriter, DateTime};
+use zip::ZipWriter;
 
 use crate::archiver::{Archiver, Format, ArchiverOpts};
+use crate::archiver::optscreator;
 use crate::cli::{ToatError, Result};
 
 pub(super) struct ZipArchiver {
@@ -43,13 +47,7 @@ fn process_dir<W:Write+Seek> (zw: &mut ZipWriter<W>, target: PathBuf) -> Result<
 
 fn process_file<W:Write+Seek> (zw: &mut ZipWriter<W>, target: PathBuf) -> Result<()> {
     let name = target.to_str().unwrap();
-    let metadata = std::fs::metadata(&target).unwrap();
-    let mod_time = DateTime::try_from(
-        OffsetDateTime::from(metadata.modified().unwrap()));
-    let opts = SimpleFileOptions::default()
-        .last_modified_time(mod_time.unwrap())
-        .compression_method(zip::CompressionMethod::Stored)
-        .unix_permissions(metadata.permissions().mode());
+    let opts = create(&target);
     if let Err(e) = zw.start_file(name, opts) {
         return Err(ToatError::ArchiverError(e.to_string()));
     }
