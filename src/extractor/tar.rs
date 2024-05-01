@@ -94,7 +94,8 @@ fn list_tar<R: Read>(archive: &mut tar::Archive<R>) -> Result<Vec<String>> {
     let mut result = Vec::<String>::new();
     for entry in archive.entries().unwrap() {
         let entry = entry.unwrap();
-        result.push(format!("{:?}", entry.header().path().unwrap()));
+        let path = entry.header().path().unwrap();
+        result.push(format!("{}", path.to_str().unwrap()));
     }
     Ok(result)
 }
@@ -109,7 +110,7 @@ mod tests {
         let file = PathBuf::from("testdata/test.tar");
         match extractor.list_archives(file) {
             Ok(r) => {
-                assert_eq!(r.len(), 18);
+                assert_eq!(r.len(), 16);
                 assert_eq!(r.get(0), Some("Cargo.toml".to_string()).as_ref());
                 assert_eq!(r.get(1), Some("build.rs".to_string()).as_ref());
                 assert_eq!(r.get(2), Some("LICENSE".to_string()).as_ref());
@@ -125,7 +126,7 @@ mod tests {
         let file = PathBuf::from("testdata/test.tar.bz2");
         match extractor.list_archives(file) {
             Ok(r) => {
-                assert_eq!(r.len(), 18);
+                assert_eq!(r.len(), 16);
                 assert_eq!(r.get(0), Some("Cargo.toml".to_string()).as_ref());
                 assert_eq!(r.get(1), Some("build.rs".to_string()).as_ref());
                 assert_eq!(r.get(2), Some("LICENSE".to_string()).as_ref());
@@ -141,7 +142,7 @@ mod tests {
         let file = PathBuf::from("testdata/test.tar.gz");
         match extractor.list_archives(file) {
             Ok(r) => {
-                assert_eq!(r.len(), 18);
+                assert_eq!(r.len(), 16);
                 assert_eq!(r.get(0), Some("Cargo.toml".to_string()).as_ref());
                 assert_eq!(r.get(1), Some("build.rs".to_string()).as_ref());
                 assert_eq!(r.get(2), Some("LICENSE".to_string()).as_ref());

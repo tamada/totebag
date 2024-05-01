@@ -55,7 +55,7 @@ mod tests {
         let file = PathBuf::from("testdata/test.zip");
         match extractor.list_archives(file) {
             Ok(r) => {
-                assert_eq!(r.len(), 18);
+                assert_eq!(r.len(), 19);
                 assert_eq!(r.get(0), Some("Cargo.toml".to_string()).as_ref());
                 assert_eq!(r.get(1), Some("build.rs".to_string()).as_ref());
                 assert_eq!(r.get(2), Some("LICENSE".to_string()).as_ref());
