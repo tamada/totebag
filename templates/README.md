@@ -1,6 +1,6 @@
 # totebag
 
-[![Version](https://shields.io/badge/Version-0.1.18-blue)](https://github.com/tamada/totebag/releases/tag/v0.1.18)
+[![Version](https://shields.io/badge/Version-$VERSION-blue)](https://github.com/tamada/totebag/releases/tag/v$VERSION)
 [![MIT License](https://shields.io/badge/License-MIT-blue)](https://github.com/tamada/totebag/blob/main/LICENSE)
 
 [![build](https://github.com/tamada/totebag/actions/workflows/build.yaml/badge.svg)](https://github.com/tamada/totebag/actions/workflows/build.yaml)
@@ -9,13 +9,13 @@
 
 A tool for archiving files and directories and extracting several archive formats.
 
-## :speaking_head: Description
+## Description
 
 There are many archive formats and their tools. The one problem with using each tool is that its interfaces are slightly different.
 Then, The `totebag` treats the archive files as the same interface.
 The tool can extract archive files and archive files and directories.
 
-## :runner: Usage
+## Usage
 
 ```sh
 totebag [OPTIONS] <ARGUMENTS...>
@@ -37,7 +37,7 @@ ARGUMENTS
                 Otherwise, it will archive the files.
 ```
 
-## :anchor: Install
+## Install
 
 ```sh
 brew install tamada/tap/totebag
