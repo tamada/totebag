@@ -13,7 +13,7 @@ pub fn find_format(file_name: Option<&OsStr>) -> Result<Format> {
                 return Ok(Format::Tar);
             } else if name.ends_with(".rar") {
                 return Ok(Format::Rar);
-            } else if name.ends_with(".zip") {
+            } else if name.ends_with(".zip") || name.ends_with(".jar") || name.ends_with(".war") || name.ends_with(".ear") {
                 return Ok(Format::Zip);
             } else {
                 return Ok(Format::Unknown);

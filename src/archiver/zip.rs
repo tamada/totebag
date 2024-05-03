@@ -1,8 +1,8 @@
 #[cfg(target_os = "windows")]
-use optscreator::windows::*;
+use os::windows::*;
 
 #[cfg(any(target_os = "linux", target_os = "macos"))]
-use optscreator::linux::*;
+use os::linux::*;
 
 use std::fs::File;
 use std::path::PathBuf;
@@ -10,7 +10,7 @@ use std::io::{BufReader, Write, Seek};
 use zip::ZipWriter;
 
 use crate::archiver::{Archiver, Format, ArchiverOpts};
-use crate::archiver::optscreator;
+use crate::archiver::os;
 use crate::cli::{ToatError, Result};
 
 pub(super) struct ZipArchiver {
@@ -95,7 +95,7 @@ mod tests {
     fn test_zip() {
         run_test(|| {
             let archiver = ZipArchiver{};
-            let inout = ArchiverOpts::create(PathBuf::from("test.zip"), vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")], true, true, false);
+            let inout = ArchiverOpts::create(PathBuf::from("results/test.zip"), vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")], true, true, false);
             let result = archiver.perform(inout);
             assert!(result.is_ok());
             assert_eq!(archiver.format(), Format::Zip);
@@ -103,6 +103,6 @@ mod tests {
     }
 
     fn teardown() {
-        let _ = std::fs::remove_file("test.zip");
+        let _ = std::fs::remove_file("results/test.zip");
     }
 }

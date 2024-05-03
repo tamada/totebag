@@ -32,7 +32,7 @@ fn perform(mut opts: CliOpts) -> Result<()> {
 
 fn perform_extract(opts: CliOpts) -> Result<()> {
     let args = opts.args.clone();
-    let extract_opts = create_extract_opts(opts);
+    let extract_opts = create_extract_opts(&opts);
     for arg in args.iter() {
         let extractor = extractor::create_extractor(arg).unwrap();
         let target = arg.to_path_buf();
@@ -48,7 +48,7 @@ fn perform_list(opts: CliOpts) -> Result<()> {
         if !arg.exists() {
             return Err(ToatError::FileNotFound(arg.to_path_buf()))
         }
-        let extractor = extractor::create_extractor(arg).unwrap();
+        let extractor = extractor::create_extractor(&arg).unwrap();
         if args.len() > 1 {
             println!("========== {:?} ========== \n", arg);
         }
@@ -62,8 +62,8 @@ fn perform_list(opts: CliOpts) -> Result<()> {
 }
 
 fn perform_archive(opts: CliOpts) -> Result<()> {
-    let archiver = archiver::create_archiver(opts.output.clone().unwrap()).unwrap();
     let inout = ArchiverOpts::new(&opts);
+    let archiver = archiver::create_archiver(&opts.output.unwrap()).unwrap();
     inout.v.verbose(archiver_info(&archiver, &inout));
     archiver.perform(inout)
 }

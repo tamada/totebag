@@ -5,7 +5,7 @@ description = "A tool for archiving files and directories and extracting several
 repository = "https://github.com/tamada/totebag"
 readme = "README.md"
 authors = [
-    "Haruaki Tamada <tamada_f@ke_cafebabe.jp"
+    "Haruaki Tamada <tamada_f@ke_cafebabe.jp>"
 ]
 license = "MIT"
 categories = ["command-line-utilities", "compression"]

@@ -1,3 +1,4 @@
+
 pub trait Verboser {
     fn verbose(&self, message: String);
 }
@@ -26,3 +27,4 @@ impl Verboser for SimpleVerboser {
         println!("{}", message);
     }
 }
+
