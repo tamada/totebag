@@ -48,6 +48,7 @@ impl Extractor for  ZipExtractor {
 mod tests {
     use super::*;
     use std::path::PathBuf;
+    use crate::verboser::create_verboser;
 
     #[test]
     fn test_list_archives() {
@@ -64,4 +65,31 @@ mod tests {
             Err(_) => assert!(false),
         }
     }
+
+    #[test]
+    fn test_extract_archive() {
+        let e = ZipExtractor{};
+        let file = PathBuf::from("testdata/test.zip");
+        let opts = ExtractorOpts {
+            dest: PathBuf::from("results/zip"),
+            use_archive_name_dir: false,
+            overwrite: true,
+            v: create_verboser(false),
+        };
+        match e.perform(file, &opts) {
+            Ok(_) => {
+                assert!(true);
+                assert!(PathBuf::from("results/zip/Cargo.toml").exists());
+                std::fs::remove_dir_all(PathBuf::from("results/zip")).unwrap();
+            },
+            Err(_) => assert!(false),
+        };
+    }
+
+    #[test]
+    fn test_format() {
+        let e = ZipExtractor{};
+        assert_eq!(e.format(), Format::Zip);
+    }
+    
 }

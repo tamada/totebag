@@ -44,6 +44,7 @@ impl Extractor for RarExtractor {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::verboser::create_verboser;
 
     #[test]
     fn test_list_archives() {
@@ -59,5 +60,31 @@ mod tests {
             },
             Err(_) => assert!(false),
         }
+    }
+
+    #[test]
+    fn test_extract_archive() {
+        let e = RarExtractor{};
+        let file = PathBuf::from("testdata/test.rar");
+        let opts = ExtractorOpts {
+            dest: PathBuf::from("results/rar"),
+            use_archive_name_dir: true,
+            overwrite: true,
+            v: create_verboser(false),
+        };
+        match e.perform(file, &opts) {
+            Ok(_) => {
+                assert!(true);
+                assert!(PathBuf::from("results/rar/test/Cargo.toml").exists());
+                std::fs::remove_dir_all(PathBuf::from("results/rar")).unwrap();
+            },
+            Err(_) => assert!(false),
+        };
+    }
+
+    #[test]
+    fn test_format() {
+        let extractor = RarExtractor{};
+        assert_eq!(extractor.format(), Format::Rar);
     }
 }

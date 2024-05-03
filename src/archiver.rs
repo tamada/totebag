@@ -9,7 +9,7 @@ use crate::archiver::tar::{TarArchiver, TarGzArchiver, TarBz2Archiver};
 use crate::verboser::{create_verboser, Verboser};
 use crate::CliOpts;
 
-mod optscreator;
+mod os;
 mod zip;
 mod rar;
 mod tar;
@@ -19,7 +19,7 @@ pub trait Archiver {
     fn format(&self) -> Format;
 }
 
-pub fn create_archiver(dest: PathBuf) -> Result<Box<dyn Archiver>> {
+pub fn create_archiver(dest: &PathBuf) -> Result<Box<dyn Archiver>> {
     let format = find_format(dest.file_name());
     match format {
         Ok(format) => {
@@ -87,5 +87,33 @@ impl ArchiverOpts {
             Err(e) => Err(ToatError::IOError(e)),
             Ok(f) => Ok(f),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_archiver() {
+        let a1 = create_archiver(&PathBuf::from("results/test.tar"));
+        assert!(a1.is_ok());
+        assert_eq!(a1.unwrap().format(), Format::Tar);
+
+        let a2 = create_archiver(&PathBuf::from("results/test.tar.gz"));
+        assert!(a2.is_ok());
+        assert_eq!(a2.unwrap().format(), Format::TarGz);
+
+        let a3 = create_archiver(&PathBuf::from("results/test.tar.bz2"));
+        assert!(a3.is_ok());
+        assert_eq!(a3.unwrap().format(), Format::TarBz2);
+
+        let a4 = create_archiver(&PathBuf::from("results/test.zip"));
+        assert!(a4.is_ok());
+        assert_eq!(a4.unwrap().format(), Format::Zip);
+
+        let a5 = create_archiver(&PathBuf::from("results/test.rar"));
+        assert!(a5.is_ok());
+        assert_eq!(a5.unwrap().format(), Format::Rar);
     }
 }

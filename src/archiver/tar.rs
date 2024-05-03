@@ -96,3 +96,72 @@ fn write_to_tar<W: Write>(file: W, targets: Vec<PathBuf>, recursive: bool) -> Re
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use crate::archiver::Archiver;
+    use crate::archiver::tar::{TarArchiver, TarGzArchiver, TarBz2Archiver};
+    use crate::archiver::ArchiverOpts;
+    use crate::format::Format;
+
+    fn run_test<F>(f: F)
+    where
+        F: FnOnce() -> PathBuf,
+    {
+        // setup(); // 予めやりたい処理
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(f));
+        match result {
+            Ok(path) => teardown(path),
+            Err(err) => std::panic::resume_unwind(err),
+        }
+    }
+    
+    #[test]
+    fn test_tar() {
+        run_test(|| {
+            let archiver = TarArchiver{};
+            let inout = ArchiverOpts::create(PathBuf::from("results/test.tar"), vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")], true, true, false);
+            let result = archiver.perform(inout);
+            let path = PathBuf::from("results/test.tar");
+            assert!(result.is_ok());
+            assert!(path.exists());
+            assert_eq!(archiver.format(), Format::Tar);
+            path
+        });
+    }
+
+    
+    #[test]
+    fn test_targz() {
+        run_test(|| {
+            let archiver = TarGzArchiver{};
+            let inout = ArchiverOpts::create(PathBuf::from("results/test.tar.gz"), vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")], true, true, false);
+            let result = archiver.perform(inout);
+            let path = PathBuf::from("results/test.tar.gz");
+            assert!(result.is_ok());
+            assert!(path.exists());
+            assert_eq!(archiver.format(), Format::TarGz);
+            path
+        });
+    }
+
+    #[test]
+    fn test_tarbz2() {
+        run_test(|| {
+            let archiver = TarBz2Archiver{};
+            let inout = ArchiverOpts::create(PathBuf::from("results/test.tar.bz2"), vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")], true, true, false);
+            let result = archiver.perform(inout);
+            let path = PathBuf::from("results/test.tar.bz2");
+            assert!(result.is_ok());
+            assert!(path.exists());
+            assert_eq!(archiver.format(), Format::TarBz2);
+            path
+        });
+    }
+
+    fn teardown(path: PathBuf) {
+        let _ = std::fs::remove_file(path);
+    }
+}

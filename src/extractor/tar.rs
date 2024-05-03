@@ -103,6 +103,7 @@ fn list_tar<R: Read>(archive: &mut tar::Archive<R>) -> Result<Vec<String>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::verboser::create_verboser;
 
     #[test]
     fn test_list_tar_file() {
@@ -119,6 +120,27 @@ mod tests {
             Err(_) => assert!(false),
         }
     }
+
+    #[test]
+    fn test_extract_archive() {
+        let e = TarExtractor{};
+        let file = PathBuf::from("testdata/test.tar");
+        let opts = ExtractorOpts {
+            dest: PathBuf::from("results/tar"),
+            use_archive_name_dir: false,
+            overwrite: true,
+            v: create_verboser(false),
+        };
+        match e.perform(file, &opts) {
+            Ok(_) =>  {
+                assert!(true);
+                assert!(PathBuf::from("results/tar/Cargo.toml").exists());
+                std::fs::remove_dir_all(PathBuf::from("results/tar")).unwrap();
+            },
+            Err(_) => assert!(false),
+        };
+    }
+
 
     #[test]
     fn test_list_tarbz2_file() {
@@ -150,5 +172,17 @@ mod tests {
             },
             Err(_) => assert!(false),
         }
+    }
+
+    #[test]
+    fn test_format() {
+        let e1 = TarExtractor{};
+        assert_eq!(e1.format(), Format::Tar);
+
+        let e2 = TarGzExtractor{};
+        assert_eq!(e2.format(), Format::TarGz);
+
+        let e3 = TarBz2Extractor{};
+        assert_eq!(e3.format(), Format::TarBz2);
     }
 }

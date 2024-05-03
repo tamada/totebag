@@ -36,9 +36,10 @@ pub trait Extractor {
     fn format(&self) -> Format;
 }
 
-pub fn create_extract_opts(opts: CliOpts) -> ExtractorOpts {
+pub fn create_extract_opts(opts: &CliOpts) -> ExtractorOpts {
+    let d = opts.dest.clone();
     ExtractorOpts {
-        dest: opts.dest.unwrap_or_else(|| {
+        dest: d.unwrap_or_else(|| {
             PathBuf::from(".")
         }),
         use_archive_name_dir: opts.to_archive_name_dir,
@@ -96,5 +97,28 @@ mod tests {
         };
         let target = PathBuf::from("/tmp/archive.zip");
         assert_eq!(opts2.destination(&target), PathBuf::from("."));
+    }
+
+    #[test]
+    fn test_create_extractor() {
+        let e1 = create_extractor(&PathBuf::from("results/test.zip"));
+        assert!(e1.is_ok());
+        assert_eq!(e1.unwrap().format(), Format::Zip);
+
+        let e2 = create_extractor(&PathBuf::from("results/test.tar"));
+        assert!(e2.is_ok());
+        assert_eq!(e2.unwrap().format(), Format::Tar);
+
+        let e3 = create_extractor(&PathBuf::from("results/test.tgz"));
+        assert!(e3.is_ok());
+        assert_eq!(e3.unwrap().format(), Format::TarGz);
+
+        let e4 = create_extractor(&PathBuf::from("results/test.tbz2"));
+        assert!(e4.is_ok());
+        assert_eq!(e4.unwrap().format(), Format::TarBz2);
+
+        let e5 = create_extractor(&PathBuf::from("results/test.rar"));
+        assert!(e5.is_ok());
+        assert_eq!(e5.unwrap().format(), Format::Rar);
     }
 }
