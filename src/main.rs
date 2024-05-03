@@ -2,7 +2,7 @@ use clap::Parser;
 use cli::*;
 use cli::{ToatError, RunMode};
 use archiver::{archiver_info, ArchiverOpts};
-use extractor::{create_extract_opts, extractor_info};
+use extractor::{extractor_info, ExtractorOpts};
 
 mod cli;
 mod format;
@@ -32,7 +32,7 @@ fn perform(mut opts: CliOpts) -> Result<()> {
 
 fn perform_extract(opts: CliOpts) -> Result<()> {
     let args = opts.args.clone();
-    let extract_opts = create_extract_opts(&opts);
+    let extract_opts = ExtractorOpts::new(&opts);
     for arg in args.iter() {
         let extractor = extractor::create_extractor(arg).unwrap();
         let target = arg.to_path_buf();

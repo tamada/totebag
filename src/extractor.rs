@@ -17,6 +17,18 @@ pub struct ExtractorOpts {
 }
 
 impl ExtractorOpts {
+    pub fn new(opts: &CliOpts) -> ExtractorOpts {
+        let d = opts.output.clone();
+        ExtractorOpts {
+            dest: d.unwrap_or_else(|| {
+                PathBuf::from(".")
+            }),
+            use_archive_name_dir: opts.to_archive_name_dir,
+            overwrite: opts.overwrite,
+            v: create_verboser(opts.verbose),
+        }
+    }
+    
     pub fn destination(&self, target: &PathBuf) -> PathBuf {
         if self.use_archive_name_dir {
             let file_name = target.file_name().unwrap().to_str().unwrap();
@@ -34,18 +46,6 @@ pub trait Extractor {
     fn list_archives(&self, archive_file: PathBuf) -> Result<Vec<String>>;
     fn perform(&self, archive_file: PathBuf, opts: &ExtractorOpts) -> Result<()>;
     fn format(&self) -> Format;
-}
-
-pub fn create_extract_opts(opts: &CliOpts) -> ExtractorOpts {
-    let d = opts.output.clone();
-    ExtractorOpts {
-        dest: d.unwrap_or_else(|| {
-            PathBuf::from(".")
-        }),
-        use_archive_name_dir: opts.to_archive_name_dir,
-        overwrite: opts.overwrite,
-        v: create_verboser(opts.verbose),
-    }
 }
 
 pub fn create_extractor(file: &PathBuf) -> Result<Box<dyn Extractor>> {
