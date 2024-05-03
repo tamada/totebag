@@ -1,4 +1,4 @@
-use std::fs::File;
+use std::fs::{create_dir_all, File};
 use std::path::PathBuf;
 
 use crate::cli::{ToatError, Result};
@@ -58,7 +58,7 @@ pub struct ArchiverOpts {
 impl ArchiverOpts {
     pub fn new(opts: &CliOpts) -> Self {
         let args = opts.args.clone();
-        let dest = opts.dest.clone().unwrap_or_else(|| {
+        let dest = opts.output.clone().unwrap_or_else(|| {
             PathBuf::from(".")
         });
         ArchiverOpts {
@@ -82,6 +82,11 @@ impl ArchiverOpts {
         let p = self.dest.as_path();
         if p.is_file() && p.exists() && !self.overwrite {
             return Err(ToatError::FileExists(self.dest.clone()))
+        }
+        if let Some(parent) = p.parent() {
+            if !parent.exists() {
+                let _ = create_dir_all(parent);
+            }
         }
         match File::create(self.dest.as_path()) {
             Err(e) => Err(ToatError::IOError(e)),

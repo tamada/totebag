@@ -72,10 +72,17 @@ fn main() -> Result<()> {
     match perform(CliOpts::parse()) {
         Ok(_) => Ok(()),
         Err(e) => {
-            eprintln!("Error: {:?}", e);
-            Err(e)
+            match e {
+                ToatError::NoArgumentsGiven => println!("No arguments given. Use --help for usage."),
+                ToatError::FileNotFound(p) => println!("{}: file not found", p.to_str().unwrap()),
+                ToatError::FileExists(p) => println!("{}: file already exists", p.to_str().unwrap()),
+                ToatError::IOError(e) => println!("IO error: {}", e),
+                ToatError::ArchiverError(s) => println!("Archive error: {}", s),
+                ToatError::UnsupportedFormat(f) => println!("{}: unsupported format", f),
+                ToatError::UnknownError(s) => println!("Unknown error: {}", s),
+            }
+            std::process::exit(1);
         }
-    
     }
 }
 

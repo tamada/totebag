@@ -11,9 +11,7 @@ pub type Result<T> = std::result::Result<T, ToatError>;
 pub struct CliOpts {
     #[clap(short = 'm', long = "mode", default_value_t = RunMode::Auto, value_name = "MODE", required = false, ignore_case = true, value_enum, help = "Mode of operation.")]
     pub mode: RunMode,
-    #[clap(short = 'd', long = "dest", default_value = ".", value_name = "DEST", required = false, help = "Destination of the extraction results (extract mode).")]
-    pub dest: Option<PathBuf>,
-    #[clap(short = 'o', long = "output", default_value = "totebag.zip", value_name = "OUTPUT", required = false, help = "Output file (archive mode).")]
+    #[clap(short = 'o', short_alias = 'd', long = "output", alias = "dest", value_name = "DEST", required = false, help = "Output file in archive mode, or output directory in extraction mode")]
     pub output: Option<PathBuf>,
     #[clap(long = "to-archive-name-dir", help = "extract files to DEST/ARCHIVE_NAME directory (extract mode).", default_value_t = false)]
     pub to_archive_name_dir: bool,
@@ -49,7 +47,13 @@ impl CliOpts {
 fn is_all_args_archives(args: &[PathBuf]) -> bool {
     args.iter().all(|arg| {
         let name = arg.to_str().unwrap().to_lowercase();
-        name.ends_with(".zip") || name.ends_with(".tar") || name.ends_with(".tar.gz") || name.ends_with(".tgz") || name.ends_with(".tar.bz2") || name.ends_with(".tbz2") || name.ends_with(".rar")
+        let exts = vec![".zip", ".tar", ".tar.gz", ".tgz", ".tar.bz2", ".tbz2", ".rar", ".jar", ".war", ".ear", ];
+        for ext in exts.iter() {
+            if name.ends_with(ext) {
+                return true
+            }
+        }
+        return false
     })
 }
 
