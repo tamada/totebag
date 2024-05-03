@@ -37,7 +37,7 @@ pub trait Extractor {
 }
 
 pub fn create_extract_opts(opts: &CliOpts) -> ExtractorOpts {
-    let d = opts.dest.clone();
+    let d = opts.output.clone();
     ExtractorOpts {
         dest: d.unwrap_or_else(|| {
             PathBuf::from(".")
