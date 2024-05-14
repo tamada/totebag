@@ -18,24 +18,33 @@ The tool can extract archive files and archive files and directories.
 ## Usage
 
 ```sh
-totebag [OPTIONS] <ARGUMENTS...>
-OPTIONS
-  -m, --mode <MODE>     Mode of operation. available: extract, archive, and auto.
-                        Default is auto.
-  -d, --dest <DEST>     Destination of the extraction results.
-                        Default is the current directory.
-  -o, --output <FILE>   Output file for the archive.
-                        Default is the totebag.zip.
-                        The archive formats are guessed form extension of the file name.
-      --overwrite       Overwrite the output file if it exists.
-  -v, --verbose         Display verbose output.
-  -h, --help            Display this help message.
-ARGUMENTS
-  extract mode: archive files to be extracted.
-  archive mode: files to be archived.
-  auto mode:    if the arguments have archive files, it will extract them.
-                Otherwise, it will archive the files.
+A tool for archiving files and directories and extracting several archive formats.
+
+Usage: totebag [OPTIONS] [ARGUMENTS]...
+
+Arguments:
+  [ARGUMENTS]...  List of files or directories to be processed.
+
+Options:
+  -m, --mode <MODE>          Mode of operation. [default: auto] [possible values: auto, archive, extract, list]
+  -o, --output <DEST>        Output file in archive mode, or output directory in extraction mode
+      --to-archive-name-dir  extract files to DEST/ARCHIVE_NAME directory (extract mode).
+  -n, --no-recursive         No recursive directory (archive mode).
+  -v, --verbose              Display verbose output.
+      --overwrite            Overwrite existing files.
+  -h, --help                 Print help
+  -V, --version              Print version
 ```
+
+Supported archive formats:
+
+- Tar
+- Tar+Gzip
+- Tar+Bzip2
+- Tar+Xz
+- Zip
+- 7z
+- Rar (extraction only)
 
 ## Install
 

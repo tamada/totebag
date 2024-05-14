@@ -21,7 +21,7 @@ pub fn find_format(file_name: Option<&OsStr>) -> Result<Format> {
             } else if name.ends_with(".zip") || name.ends_with(".jar") || name.ends_with(".war") || name.ends_with(".ear") {
                 return Ok(Format::Zip);
             } else {
-                return Err(ToteError::UnknownFormat(name.to_string()));
+                return Ok(Format::Unknown(file_name.to_str().unwrap().to_string()));
             }
         }
         None => Err(ToteError::NoArgumentsGiven),

@@ -63,7 +63,7 @@ pub fn create_extractor(file: &PathBuf) -> Result<Box<dyn Extractor>> {
                 Format::TarBz2 => Ok(Box::new(tar::TarBz2Extractor{})),
                 Format::TarXz => Ok(Box::new(tar::TarXzExtractor{})),
                 Format::SevenZ => Ok(Box::new(sevenz::SevenZExtractor{})),
-                Format::Unknown(s) => Err(ToteError::UnsupportedFormat(format!("{}: unsupported format", s))),
+                Format::Unknown(s) => Err(ToteError::UnknownFormat(format!("{}: unsupported format", s))),
             }
         }
         Err(msg) => Err(msg),

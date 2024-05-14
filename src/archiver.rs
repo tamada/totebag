@@ -33,7 +33,7 @@ pub fn create_archiver(dest: &PathBuf) -> Result<Box<dyn Archiver>> {
                 Format::TarXz => Ok(Box::new(TarXzArchiver {})),
                 Format::Rar => Ok(Box::new(RarArchiver {})),
                 Format::SevenZ => Ok(Box::new(SevenZArchiver {})),
-                _ => Err(ToteError::UnsupportedFormat(format.to_string())),
+                _ => Err(ToteError::UnknownFormat(format.to_string())),
             }
         }
         Err(msg) => Err(msg),
