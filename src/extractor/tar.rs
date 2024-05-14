@@ -2,9 +2,10 @@ use std::fs::create_dir_all;
 use std::io::Read;
 use std::{fs::File, path::PathBuf};
 
+use tar::Archive;
 use xz2::read::XzDecoder;
 
-use crate::cli::Result;
+use crate::cli::{ToteError, Result};
 use crate::extractor::{Extractor, ExtractorOpts};
 use crate::format::Format;
 
@@ -19,14 +20,16 @@ pub(super) struct TarXzExtractor {
 
 impl Extractor for TarExtractor {
     fn list_archives(&self, archive_file: PathBuf) -> Result<Vec<String>> {
-        let file = File::open(archive_file).unwrap();
-        let mut archive = tar::Archive::new(file);
-        list_tar(&mut archive)
+        match open_tar_file(&archive_file, |f| f) {
+            Ok(archive) => list_tar(archive),
+            Err(e) => Err(e),
+        }
     }
     fn perform(&self, archive_file: PathBuf, opts: &ExtractorOpts) -> Result<()> {
-        let file = File::open(&archive_file).unwrap();
-        let mut archive = tar::Archive::new(file);
-        extract_tar(&mut archive, archive_file, opts)
+        match open_tar_file(&archive_file, |f| f) {
+            Err(e) => Err(e),
+            Ok(archive) => extract_tar(archive, archive_file, opts),
+        }
     }
     fn format(&self) -> Format {
         Format::Tar
@@ -35,16 +38,16 @@ impl Extractor for TarExtractor {
 
 impl Extractor for TarGzExtractor {
     fn list_archives(&self, archive_file: PathBuf) -> Result<Vec<String>> {
-        let file = File::open(archive_file).unwrap();
-        let targz = flate2::read::GzDecoder::new(file);
-        let mut archive = tar::Archive::new(targz);
-        list_tar(&mut archive)
+        match open_tar_file(&archive_file, |f| flate2::read::GzDecoder::new(f)) {
+            Ok(archive) => list_tar(archive),
+            Err(e) => Err(e),
+        }
     }
     fn perform(&self, archive_file: PathBuf, opts: &ExtractorOpts) -> Result<()> {
-        let file = File::open(&archive_file).unwrap();
-        let targz = flate2::read::GzDecoder::new(file);
-        let mut archive = tar::Archive::new(targz);
-        extract_tar(&mut archive, archive_file, opts)
+        match open_tar_file(&archive_file, |f| flate2::read::GzDecoder::new(f)) {
+            Ok(archive) => extract_tar(archive, archive_file, opts),
+            Err(e) => Err(e),
+        }
     }
     fn format(&self) -> Format {
         Format::TarGz
@@ -53,16 +56,16 @@ impl Extractor for TarGzExtractor {
 
 impl Extractor for TarBz2Extractor {
     fn list_archives(&self, archive_file: PathBuf) -> Result<Vec<String>> {
-        let file = File::open(archive_file).unwrap();
-        let tarbz2 = bzip2::read::BzDecoder::new(file);
-        let mut archive = tar::Archive::new(tarbz2);
-        list_tar(&mut archive)
+        match open_tar_file(&archive_file, |f| bzip2::read::BzDecoder::new(f)) {
+            Ok(archive) => list_tar(archive),
+            Err(e) => Err(e),
+        }
     }
     fn perform(&self, archive_file: PathBuf, opts: &ExtractorOpts) -> Result<()> {
-        let file = File::open(&archive_file).unwrap();
-        let tarbz2 = bzip2::read::BzDecoder::new(file);
-        let mut archive = tar::Archive::new(tarbz2);
-        extract_tar(&mut archive, archive_file, opts)
+        match open_tar_file(&archive_file, |f| bzip2::read::BzDecoder::new(f)) {
+            Err(e) => Err(e),
+            Ok(archive) => extract_tar(archive, archive_file, opts),
+        }
     }
     fn format(&self) -> Format {
         Format::TarBz2
@@ -71,23 +74,33 @@ impl Extractor for TarBz2Extractor {
 
 impl Extractor for TarXzExtractor {
     fn list_archives(&self, archive_file: PathBuf) -> Result<Vec<String>> {
-        let file = File::open(archive_file).unwrap();
-        let tarxz = XzDecoder::new(file);
-        let mut archive = tar::Archive::new(tarxz);
-        list_tar(&mut archive)
+        match open_tar_file(&archive_file, |f| XzDecoder::new(f)) {
+            Err(e) => Err(e),
+            Ok(archive) => list_tar(archive),
+        }
     }
     fn perform(&self, archive_file: PathBuf, opts: &ExtractorOpts) -> Result<()> {
-        let file = File::open(&archive_file).unwrap();
-        let tarxz = XzDecoder::new(file);
-        let mut archive = tar::Archive::new(tarxz);
-        extract_tar(&mut archive, archive_file, opts)
+        match open_tar_file(&archive_file, |f| XzDecoder::new(f)) {
+            Err(e) => Err(e),
+            Ok(archive) => extract_tar(archive, archive_file, opts),
+        }
     }
     fn format(&self) -> Format {
         Format::TarXz
     }
 }
 
-fn extract_tar<R: Read>(archive: &mut tar::Archive<R>, original: PathBuf, opts: &ExtractorOpts) -> Result<()> {
+fn open_tar_file<F, R: Read>(file: &PathBuf, opener: F) -> Result<Archive<R>> 
+        where F: FnOnce(File) -> R {
+    let file = match File::open(file) {
+        Ok(f) => f,
+        Err(e) => return Err(ToteError::IOError(e)),
+    };
+    let writer = opener(file);
+    Ok(Archive::new(writer))
+}
+
+fn extract_tar<R: Read>(mut archive: tar::Archive<R>, original: PathBuf, opts: &ExtractorOpts) -> Result<()> {
     for entry in archive.entries().unwrap() {
         let mut entry = entry.unwrap();
         let path = entry.header().path().unwrap();
@@ -112,7 +125,7 @@ fn is_filename_mac_finder_file(path: PathBuf) -> bool {
     filename == ".DS_Store" || filename.starts_with("._")
 }
 
-fn list_tar<R: Read>(archive: &mut tar::Archive<R>) -> Result<Vec<String>> {
+fn list_tar<R: Read>(mut archive: tar::Archive<R>) -> Result<Vec<String>> {
     let mut result = Vec::<String>::new();
     for entry in archive.entries().unwrap() {
         let entry = entry.unwrap();
