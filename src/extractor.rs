@@ -8,6 +8,7 @@ use crate::verboser::{create_verboser, Verboser};
 mod zip;
 mod rar;
 mod tar;
+mod sevenz;
 
 pub struct ExtractorOpts {
     pub dest: PathBuf,
@@ -29,6 +30,8 @@ impl ExtractorOpts {
         }
     }
     
+    /// Returns the base of the destination directory for the archive file.
+    /// The target is the archive file name of source.
     pub fn destination(&self, target: &PathBuf) -> PathBuf {
         if self.use_archive_name_dir {
             let file_name = target.file_name().unwrap().to_str().unwrap();
@@ -58,7 +61,9 @@ pub fn create_extractor(file: &PathBuf) -> Result<Box<dyn Extractor>> {
                 Format::Tar => Ok(Box::new(tar::TarExtractor{})),
                 Format::TarGz => Ok(Box::new(tar::TarGzExtractor{})),
                 Format::TarBz2 => Ok(Box::new(tar::TarBz2Extractor{})),
-                _ => Err(ToatError::UnsupportedFormat("unsupported format".to_string())),
+                Format::TarXz => Ok(Box::new(tar::TarXzExtractor{})),
+                Format::SevenZ => Ok(Box::new(sevenz::SevenZExtractor{})),
+                Format::Unknown(s) => Err(ToatError::UnsupportedFormat(format!("{}: unsupported format", s))),
             }
         }
         Err(msg) => Err(msg),

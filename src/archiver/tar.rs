@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use flate2::write::GzEncoder;
 use bzip2::write::BzEncoder;
 use tar::Builder;
+use xz2::write::XzEncoder;
 
 use crate::archiver::{Archiver, Format, ArchiverOpts};
 use crate::cli::{ToatError, Result};
@@ -14,8 +15,11 @@ pub(super) struct TarGzArchiver {
 pub(super) struct TarBz2Archiver {
 }
 
+pub(super) struct TarXzArchiver {
+}
+
 impl Archiver for  TarArchiver {
-    fn perform(&self, inout: ArchiverOpts) -> Result<()> {
+    fn perform(&self, inout: &ArchiverOpts) -> Result<()> {
         match inout.destination() {
             Err(e) =>  Err(e),
             Ok(file) => {
@@ -27,8 +31,9 @@ impl Archiver for  TarArchiver {
         Format::Tar
     }
 }
+
 impl Archiver for TarGzArchiver{
-    fn perform(&self, inout: ArchiverOpts) -> Result<()> {
+    fn perform(&self, inout: &ArchiverOpts) -> Result<()> {
         match inout.destination() {
             Err(e) =>  Err(e),
             Ok(file) => {
@@ -42,11 +47,26 @@ impl Archiver for TarGzArchiver{
     }
 }
 impl Archiver for  TarBz2Archiver {
-    fn perform(&self, inout: ArchiverOpts) -> Result<()> {
+    fn perform(&self, inout: &ArchiverOpts) -> Result<()> {
         match inout.destination() {
             Err(e) =>  Err(e),
             Ok(file) => {
                 let enc = BzEncoder::new(file, bzip2::Compression::best());
+                write_to_tar(enc, inout.targets(), inout.recursive)
+            }
+        }
+    }
+    fn format(&self) -> Format {
+        Format::TarBz2
+    }
+}
+
+impl Archiver for  TarXzArchiver {
+    fn perform(&self, inout: &ArchiverOpts) -> Result<()> {
+        match inout.destination() {
+            Err(e) =>  Err(e),
+            Ok(file) => {
+                let enc = XzEncoder::new(file, 9);
                 write_to_tar(enc, inout.targets(), inout.recursive)
             }
         }
@@ -123,7 +143,7 @@ mod tests {
         run_test(|| {
             let archiver = TarArchiver{};
             let inout = ArchiverOpts::create(PathBuf::from("results/test.tar"), vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")], true, true, false);
-            let result = archiver.perform(inout);
+            let result = archiver.perform(&inout);
             let path = PathBuf::from("results/test.tar");
             assert!(result.is_ok());
             assert!(path.exists());
@@ -138,7 +158,7 @@ mod tests {
         run_test(|| {
             let archiver = TarGzArchiver{};
             let inout = ArchiverOpts::create(PathBuf::from("results/test.tar.gz"), vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")], true, true, false);
-            let result = archiver.perform(inout);
+            let result = archiver.perform(&inout);
             let path = PathBuf::from("results/test.tar.gz");
             assert!(result.is_ok());
             assert!(path.exists());
@@ -152,7 +172,7 @@ mod tests {
         run_test(|| {
             let archiver = TarBz2Archiver{};
             let inout = ArchiverOpts::create(PathBuf::from("results/test.tar.bz2"), vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")], true, true, false);
-            let result = archiver.perform(inout);
+            let result = archiver.perform(&inout);
             let path = PathBuf::from("results/test.tar.bz2");
             assert!(result.is_ok());
             assert!(path.exists());

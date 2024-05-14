@@ -26,11 +26,12 @@ impl Extractor for  ZipExtractor {
     fn perform(&self, archive_file: PathBuf, opts: &ExtractorOpts) -> Result<()> {
         let zip_file = File::open(&archive_file).unwrap();
         let mut zip = zip::ZipArchive::new(zip_file).unwrap();
+        let dest_base = opts.destination(&archive_file);
         for i in 0..zip.len() {
             let mut file = zip.by_index(i).unwrap();
             if file.is_file() {
                 opts.v.verbose(format!("extracting {} ({} bytes)", file.name(), file.size()));
-                let dest = opts.destination(&archive_file).join(PathBuf::from(file.name().to_string()));
+                let dest = dest_base.join(PathBuf::from(file.name().to_string()));
                 create_dir_all(dest.parent().unwrap()).unwrap();
                 let mut out = File::create(dest).unwrap();
                 copy(&mut file, &mut out).unwrap();

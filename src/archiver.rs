@@ -1,21 +1,23 @@
 use std::fs::{create_dir_all, File};
 use std::path::PathBuf;
 
-use crate::cli::{ToatError, Result};
-use crate::format::{find_format, Format};
-use crate::archiver::zip::ZipArchiver;
 use crate::archiver::rar::RarArchiver;
-use crate::archiver::tar::{TarArchiver, TarGzArchiver, TarBz2Archiver};
+use crate::archiver::sevenz::SevenZArchiver;
+use crate::archiver::tar::{TarArchiver, TarBz2Archiver, TarGzArchiver, TarXzArchiver};
+use crate::archiver::zip::ZipArchiver;
+use crate::cli::{Result, ToatError};
+use crate::format::{find_format, Format};
 use crate::verboser::{create_verboser, Verboser};
 use crate::CliOpts;
 
 mod os;
-mod zip;
 mod rar;
+mod sevenz;
 mod tar;
+mod zip;
 
 pub trait Archiver {
-    fn perform(&self, inout: ArchiverOpts) -> Result<()>;
+    fn perform(&self, inout: &ArchiverOpts) -> Result<()>;
     fn format(&self) -> Format;
 }
 
@@ -24,12 +26,14 @@ pub fn create_archiver(dest: &PathBuf) -> Result<Box<dyn Archiver>> {
     match format {
         Ok(format) => {
             return match format {
-                Format::Zip => Ok(Box::new(ZipArchiver{})),
-                Format::Tar => Ok(Box::new(TarArchiver{})),
-                Format::TarGz => Ok(Box::new(TarGzArchiver{})),
-                Format::TarBz2 => Ok(Box::new(TarBz2Archiver{})),
-                Format::Rar => Ok(Box::new(RarArchiver{})),
-                _ => Err(ToatError::UnsupportedFormat("unsupported format".to_string())),
+                Format::Zip => Ok(Box::new(ZipArchiver {})),
+                Format::Tar => Ok(Box::new(TarArchiver {})),
+                Format::TarGz => Ok(Box::new(TarGzArchiver {})),
+                Format::TarBz2 => Ok(Box::new(TarBz2Archiver {})),
+                Format::TarXz => Ok(Box::new(TarXzArchiver {})),
+                Format::Rar => Ok(Box::new(RarArchiver {})),
+                Format::SevenZ => Ok(Box::new(SevenZArchiver {})),
+                _ => Err(ToatError::UnsupportedFormat(format.to_string())),
             }
         }
         Err(msg) => Err(msg),
@@ -40,10 +44,12 @@ pub fn archiver_info(archiver: &Box<dyn Archiver>, opts: &ArchiverOpts) -> Strin
     format!(
         "Format: {:?}\nDestination: {:?}\nTargets: {:?}",
         archiver.format(),
-        opts.destination(),
-        opts.targets().iter()
+        opts.dest_path(),
+        opts.targets()
+            .iter()
             .map(|item| item.to_str().unwrap())
-            .collect::<Vec<_>>().join(", ")
+            .collect::<Vec<_>>()
+            .join(", ")
     )
 }
 
@@ -58,9 +64,7 @@ pub struct ArchiverOpts {
 impl ArchiverOpts {
     pub fn new(opts: &CliOpts) -> Self {
         let args = opts.args.clone();
-        let dest = opts.output.clone().unwrap_or_else(|| {
-            PathBuf::from(".")
-        });
+        let dest = opts.output.clone().unwrap_or_else(|| PathBuf::from("."));
         ArchiverOpts {
             dest: dest,
             targets: args,
@@ -71,26 +75,50 @@ impl ArchiverOpts {
     }
 
     #[cfg(test)]
-    pub fn create(dest: PathBuf, targets: Vec<PathBuf>, overwrite: bool, recursive: bool, verbose: bool) -> Self {
-        ArchiverOpts { dest, targets, overwrite, recursive, v: create_verboser(verbose) }
+    pub fn create(
+        dest: PathBuf,
+        targets: Vec<PathBuf>,
+        overwrite: bool,
+        recursive: bool,
+        verbose: bool,
+    ) -> Self {
+        ArchiverOpts {
+            dest,
+            targets,
+            overwrite,
+            recursive,
+            v: create_verboser(verbose),
+        }
     }
 
     pub fn targets(&self) -> Vec<PathBuf> {
         self.targets.clone()
     }
+
+    /// Simply return the path for destination.
+    pub fn dest_path(&self) -> PathBuf {
+        self.dest.clone()
+    }
+
+    /// Returns the destination file for the archive with opening it and create the parent directories.
+    /// If the path for destination is a directory or exists and overwrite is false,
+    /// this function returns an error.
     pub fn destination(&self) -> Result<File> {
         let p = self.dest.as_path();
+        print!("{:?}: {}\n", p, p.exists());
         if p.is_file() && p.exists() && !self.overwrite {
-            return Err(ToatError::FileExists(self.dest.clone()))
+            return Err(ToatError::FileExists(self.dest.clone()));
         }
         if let Some(parent) = p.parent() {
             if !parent.exists() {
-                let _ = create_dir_all(parent);
+                if let Err(e) = create_dir_all(parent) {
+                    return Err(ToatError::IOError(e));
+                }
             }
         }
         match File::create(self.dest.as_path()) {
-            Err(e) => Err(ToatError::IOError(e)),
             Ok(f) => Ok(f),
+            Err(e) => Err(ToatError::IOError(e)),
         }
     }
 }

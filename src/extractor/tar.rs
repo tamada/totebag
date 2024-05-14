@@ -2,6 +2,8 @@ use std::fs::create_dir_all;
 use std::io::Read;
 use std::{fs::File, path::PathBuf};
 
+use xz2::read::XzDecoder;
+
 use crate::cli::Result;
 use crate::extractor::{Extractor, ExtractorOpts};
 use crate::format::Format;
@@ -11,6 +13,8 @@ pub(super) struct TarExtractor {
 pub(super) struct TarGzExtractor {
 }
 pub(super) struct TarBz2Extractor {
+}
+pub(super) struct TarXzExtractor {
 }
 
 impl Extractor for TarExtractor {
@@ -62,6 +66,24 @@ impl Extractor for TarBz2Extractor {
     }
     fn format(&self) -> Format {
         Format::TarBz2
+    }
+}
+
+impl Extractor for TarXzExtractor {
+    fn list_archives(&self, archive_file: PathBuf) -> Result<Vec<String>> {
+        let file = File::open(archive_file).unwrap();
+        let tarxz = XzDecoder::new(file);
+        let mut archive = tar::Archive::new(tarxz);
+        list_tar(&mut archive)
+    }
+    fn perform(&self, archive_file: PathBuf, opts: &ExtractorOpts) -> Result<()> {
+        let file = File::open(&archive_file).unwrap();
+        let tarxz = XzDecoder::new(file);
+        let mut archive = tar::Archive::new(tarxz);
+        extract_tar(&mut archive, archive_file, opts)
+    }
+    fn format(&self) -> Format {
+        Format::TarXz
     }
 }
 

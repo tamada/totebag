@@ -17,7 +17,7 @@ pub(super) struct ZipArchiver {
 }
 
 impl Archiver for  ZipArchiver {
-    fn perform(&self, inout: ArchiverOpts) -> Result<()> {
+    fn perform(&self, inout: &ArchiverOpts) -> Result<()> {
         match inout.destination() {
             Err(e) =>  Err(e),
             Ok(file) => {
@@ -96,7 +96,7 @@ mod tests {
         run_test(|| {
             let archiver = ZipArchiver{};
             let inout = ArchiverOpts::create(PathBuf::from("results/test.zip"), vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")], true, true, false);
-            let result = archiver.perform(inout);
+            let result = archiver.perform(&inout);
             assert!(result.is_ok());
             assert_eq!(archiver.format(), Format::Zip);
         });
