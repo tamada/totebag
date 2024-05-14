@@ -11,13 +11,13 @@ use zip::ZipWriter;
 
 use crate::archiver::{Archiver, Format, ArchiverOpts};
 use crate::archiver::os;
-use crate::cli::{ToatError, Result};
+use crate::cli::{ToteError, Result};
 
 pub(super) struct ZipArchiver {
 }
 
 impl Archiver for  ZipArchiver {
-    fn perform(&self, inout: ArchiverOpts) -> Result<()> {
+    fn perform(&self, inout: &ArchiverOpts) -> Result<()> {
         match inout.destination() {
             Err(e) =>  Err(e),
             Ok(file) => {
@@ -49,11 +49,11 @@ fn process_file<W:Write+Seek> (zw: &mut ZipWriter<W>, target: PathBuf) -> Result
     let name = target.to_str().unwrap();
     let opts = create(&target);
     if let Err(e) = zw.start_file(name, opts) {
-        return Err(ToatError::ArchiverError(e.to_string()));
+        return Err(ToteError::ArchiverError(e.to_string()));
     }
     let mut file = BufReader::new(File::open(target).unwrap());
     if let Err(e) = std::io::copy(&mut file, zw) {
-        return Err(ToatError::IOError(e))
+        return Err(ToteError::IOError(e))
     }
     Ok(())
 }
@@ -69,7 +69,7 @@ fn write_to_zip(dest: File, targets: Vec<PathBuf>, recursive: bool) -> Result<()
         }
     }
     if let Err(e) = zw.finish() {
-        return Err(ToatError::ArchiverError(e.to_string()));
+        return Err(ToteError::ArchiverError(e.to_string()));
     }
     Ok(())
 }
@@ -96,7 +96,7 @@ mod tests {
         run_test(|| {
             let archiver = ZipArchiver{};
             let inout = ArchiverOpts::create(PathBuf::from("results/test.zip"), vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")], true, true, false);
-            let result = archiver.perform(inout);
+            let result = archiver.perform(&inout);
             assert!(result.is_ok());
             assert_eq!(archiver.format(), Format::Zip);
         });

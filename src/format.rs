@@ -1,5 +1,6 @@
 use std::ffi::OsStr;
-use crate::cli::{ToatError, Result};
+use std::fmt::Display;
+use crate::cli::{ToteError, Result};
 
 pub fn find_format(file_name: Option<&OsStr>) -> Result<Format> {
     match file_name {
@@ -9,6 +10,10 @@ pub fn find_format(file_name: Option<&OsStr>) -> Result<Format> {
                 return Ok(Format::TarGz);
             } else if name.ends_with(".tar.bz2") || name.ends_with(".tbz2") {
                 return Ok(Format::TarBz2);
+            } else if name.ends_with(".tar.xz") || name.ends_with(".txz") {
+                return Ok(Format::TarXz);
+            } else if name.ends_with(".7z") {
+                return Ok(Format::SevenZ);
             } else if name.ends_with(".tar") {
                 return Ok(Format::Tar);
             } else if name.ends_with(".rar") {
@@ -16,10 +21,10 @@ pub fn find_format(file_name: Option<&OsStr>) -> Result<Format> {
             } else if name.ends_with(".zip") || name.ends_with(".jar") || name.ends_with(".war") || name.ends_with(".ear") {
                 return Ok(Format::Zip);
             } else {
-                return Ok(Format::Unknown);
+                return Ok(Format::Unknown(file_name.to_str().unwrap().to_string()));
             }
         }
-        None => Err(ToatError::UnsupportedFormat("no file name provided".to_string())),
+        None => Err(ToteError::NoArgumentsGiven),
     }
 }
 
@@ -30,8 +35,25 @@ pub enum Format {
     Tar,
     TarGz,
     TarBz2,
+    TarXz,
+    SevenZ,
     Rar,
-    Unknown,
+    Unknown(String),
+}
+
+impl Display for Format {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Format::Zip => write!(f, "Zip"),
+            Format::Tar => write!(f, "Tar"),
+            Format::TarGz => write!(f, "TarGz"),
+            Format::TarBz2 => write!(f, "TarBz2"),
+            Format::TarXz => write!(f, "TarXz"),
+            Format::SevenZ => write!(f, "SevenZ"),
+            Format::Rar => write!(f, "Rar"),
+            Format::Unknown(s) => write!(f, "{}: unknown format", s),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -45,7 +67,7 @@ mod tests {
             assert_eq!(f, Format::Zip);
         }
         if let Ok(f) = find_format(Some(OsStr::new("hoge.unknown"))) {
-            assert_eq!(f, Format::Unknown);
+            assert_eq!(f.to_string(), "hoge.unknown: unknown format".to_string());
         }
         if let Ok(f) = find_format(Some(OsStr::new("hoge.tar"))) {
             assert_eq!(f, Format::Tar);
@@ -58,6 +80,12 @@ mod tests {
         }
         if let Ok(f) = find_format(Some(OsStr::new("hoge.tar.bz2"))) {
             assert_eq!(f, Format::TarBz2);
+        }
+        if let Ok(f) = find_format(Some(OsStr::new("hoge.tar.xz"))) {
+            assert_eq!(f, Format::TarXz);
+        }
+        if let Ok(f) = find_format(Some(OsStr::new("hoge.7z"))) {
+            assert_eq!(f, Format::SevenZ);
         }
     }
 }

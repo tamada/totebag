@@ -1,13 +1,14 @@
 use std::path::PathBuf;
 
 use crate::format::{find_format, Format};
-use crate::cli::{Result, ToatError};
+use crate::cli::{Result, ToteError};
 use crate::CliOpts;
 use crate::verboser::{create_verboser, Verboser};
 
 mod zip;
 mod rar;
 mod tar;
+mod sevenz;
 
 pub struct ExtractorOpts {
     pub dest: PathBuf,
@@ -17,6 +18,20 @@ pub struct ExtractorOpts {
 }
 
 impl ExtractorOpts {
+    pub fn new(opts: &CliOpts) -> ExtractorOpts {
+        let d = opts.output.clone();
+        ExtractorOpts {
+            dest: d.unwrap_or_else(|| {
+                PathBuf::from(".")
+            }),
+            use_archive_name_dir: opts.to_archive_name_dir,
+            overwrite: opts.overwrite,
+            v: create_verboser(opts.verbose),
+        }
+    }
+    
+    /// Returns the base of the destination directory for the archive file.
+    /// The target is the archive file name of source.
     pub fn destination(&self, target: &PathBuf) -> PathBuf {
         if self.use_archive_name_dir {
             let file_name = target.file_name().unwrap().to_str().unwrap();
@@ -36,18 +51,6 @@ pub trait Extractor {
     fn format(&self) -> Format;
 }
 
-pub fn create_extract_opts(opts: &CliOpts) -> ExtractorOpts {
-    let d = opts.output.clone();
-    ExtractorOpts {
-        dest: d.unwrap_or_else(|| {
-            PathBuf::from(".")
-        }),
-        use_archive_name_dir: opts.to_archive_name_dir,
-        overwrite: opts.overwrite,
-        v: create_verboser(opts.verbose),
-    }
-}
-
 pub fn create_extractor(file: &PathBuf) -> Result<Box<dyn Extractor>> {
     let format = find_format(file.file_name());
     match format {
@@ -58,7 +61,9 @@ pub fn create_extractor(file: &PathBuf) -> Result<Box<dyn Extractor>> {
                 Format::Tar => Ok(Box::new(tar::TarExtractor{})),
                 Format::TarGz => Ok(Box::new(tar::TarGzExtractor{})),
                 Format::TarBz2 => Ok(Box::new(tar::TarBz2Extractor{})),
-                _ => Err(ToatError::UnsupportedFormat("unsupported format".to_string())),
+                Format::TarXz => Ok(Box::new(tar::TarXzExtractor{})),
+                Format::SevenZ => Ok(Box::new(sevenz::SevenZExtractor{})),
+                Format::Unknown(s) => Err(ToteError::UnknownFormat(format!("{}: unsupported format", s))),
             }
         }
         Err(msg) => Err(msg),

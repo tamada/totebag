@@ -1,6 +1,6 @@
 [package]
 name = "totebag"
-version = "0.2.1"
+version = "0.3.0"
 description = "A tool for archiving files and directories and extracting several archive formats."
 repository = "https://github.com/tamada/totebag"
 readme = "README.md"
@@ -17,12 +17,15 @@ edition = "2021"
 bzip2 = "0.4.4"
 clap = { version = "4.5.4", features = ["derive"] }
 flate2 = "1.0.29"
+sevenz-rust = "0.6.0"
 tar = "0.4.40"
 time = "0.3.36"
 unrar = "0.5.3"
+xz2 = "0.1.7"
 zip = "1.1.1"
 
 [build-dependencies]
 clap = { version = "4.5.4", features = ["derive"] }
 clap_complete = "4.5.2"
+toml = "0.8.12"
 

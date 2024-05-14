@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use clap::{Parser, ValueEnum};
 
-pub type Result<T> = std::result::Result<T, ToatError>;
+pub type Result<T> = std::result::Result<T, ToteError>;
 
 #[derive(Parser, Debug)]
 #[clap(
@@ -28,7 +28,7 @@ pub struct CliOpts {
 impl CliOpts {
     pub fn run_mode(&mut self) -> Result<RunMode> {
         if self.args.len() == 0 {
-            return Err(ToatError::NoArgumentsGiven)
+            return Err(ToteError::NoArgumentsGiven)
         }
         if self.mode == RunMode::Auto {
             if is_all_args_archives(&self.args) {
@@ -47,7 +47,7 @@ impl CliOpts {
 fn is_all_args_archives(args: &[PathBuf]) -> bool {
     args.iter().all(|arg| {
         let name = arg.to_str().unwrap().to_lowercase();
-        let exts = vec![".zip", ".tar", ".tar.gz", ".tgz", ".tar.bz2", ".tbz2", ".rar", ".jar", ".war", ".ear", ];
+        let exts = vec![".zip", ".tar", ".tar.gz", ".tgz", ".tar.bz2", ".tbz2", ".rar", ".jar", ".war", ".ear", "7z", ];
         for ext in exts.iter() {
             if name.ends_with(ext) {
                 return true
@@ -66,14 +66,16 @@ pub enum RunMode {
 }
 
 #[derive(Debug)]
-pub enum ToatError {
+pub enum ToteError {
     NoArgumentsGiven,
     FileNotFound(PathBuf),
     FileExists(PathBuf),
     IOError(std::io::Error),
     ArchiverError(String),
     UnsupportedFormat(String),
+    UnknownFormat(String),
     UnknownError(String),
+    SomeError(Box<dyn std::error::Error>)
 }
 
 #[cfg(test)]

@@ -1,12 +1,12 @@
 use crate::archiver::{Archiver, Format, ArchiverOpts};
-use crate::cli::{ToatError, Result};
+use crate::cli::{ToteError, Result};
 
 pub(super) struct RarArchiver {
 }
 
 impl Archiver for  RarArchiver {
-    fn perform(&self, _: ArchiverOpts) -> Result<()> {
-        Err(ToatError::UnsupportedFormat("only extraction support for rar".to_string()))
+    fn perform(&self, _: &ArchiverOpts) -> Result<()> {
+        Err(ToteError::UnsupportedFormat("only extraction support for rar".to_string()))
     }
     fn format(&self) -> Format {
         Format::Rar
@@ -36,7 +36,7 @@ mod tests {
             recursive: false,
             v: create_verboser(false),
         };
-        let r = archiver.perform(opts);
+        let r = archiver.perform(&opts);
         assert!(r.is_err());
     }
 }
