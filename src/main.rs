@@ -1,7 +1,7 @@
 use archiver::{archiver_info, ArchiverOpts};
 use clap::Parser;
 use cli::*;
-use cli::{RunMode, ToatError};
+use cli::{RunMode, ToteError};
 use extractor::{extractor_info, ExtractorOpts};
 
 mod archiver;
@@ -16,7 +16,7 @@ fn perform(mut opts: CliOpts) -> Result<()> {
         Ok(RunMode::Extract) => return perform_extract(opts),
         Ok(RunMode::List) => return perform_list(opts),
         Ok(RunMode::Auto) => {
-            return Err(ToatError::UnknownError(
+            return Err(ToteError::UnknownError(
                 "cannot distinguish archiving and extracting".to_string(),
             ))
         }
@@ -44,7 +44,7 @@ fn perform_list(opts: CliOpts) -> Result<()> {
     let args = opts.args.clone();
     for arg in args.iter() {
         if !arg.exists() {
-            return Err(ToatError::FileNotFound(arg.to_path_buf()));
+            return Err(ToteError::FileNotFound(arg.to_path_buf()));
         }
         let extractor = extractor::create_extractor(&arg).unwrap();
         if args.len() > 1 {
@@ -74,19 +74,19 @@ fn main() -> Result<()> {
         Ok(_) => Ok(()),
         Err(e) => {
             match e {
-                ToatError::NoArgumentsGiven => {
+                ToteError::NoArgumentsGiven => {
                     println!("No arguments given. Use --help for usage.")
                 }
-                ToatError::FileNotFound(p) => println!("{}: file not found", p.to_str().unwrap()),
-                ToatError::FileExists(p) => {
+                ToteError::FileNotFound(p) => println!("{}: file not found", p.to_str().unwrap()),
+                ToteError::FileExists(p) => {
                     println!("{}: file already exists", p.to_str().unwrap())
                 }
-                ToatError::IOError(e) => println!("IO error: {}", e),
-                ToatError::ArchiverError(s) => println!("Archive error: {}", s),
-                ToatError::UnknownFormat(f) => println!("{}: unknown format", f),
-                ToatError::UnsupportedFormat(f) => println!("{}: unsupported format", f),
-                ToatError::SomeError(e) => println!("Error: {}", e),
-                ToatError::UnknownError(s) => println!("Unknown error: {}", s),
+                ToteError::IOError(e) => println!("IO error: {}", e),
+                ToteError::ArchiverError(s) => println!("Archive error: {}", s),
+                ToteError::UnknownFormat(f) => println!("{}: unknown format", f),
+                ToteError::UnsupportedFormat(f) => println!("{}: unsupported format", f),
+                ToteError::SomeError(e) => println!("Error: {}", e),
+                ToteError::UnknownError(s) => println!("Unknown error: {}", s),
             }
             std::process::exit(1);
         }

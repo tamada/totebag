@@ -1,6 +1,6 @@
 use std::ffi::OsStr;
 use std::fmt::Display;
-use crate::cli::{ToatError, Result};
+use crate::cli::{ToteError, Result};
 
 pub fn find_format(file_name: Option<&OsStr>) -> Result<Format> {
     match file_name {
@@ -21,10 +21,10 @@ pub fn find_format(file_name: Option<&OsStr>) -> Result<Format> {
             } else if name.ends_with(".zip") || name.ends_with(".jar") || name.ends_with(".war") || name.ends_with(".ear") {
                 return Ok(Format::Zip);
             } else {
-                return Err(ToatError::UnknownFormat(name.to_string()));
+                return Err(ToteError::UnknownFormat(name.to_string()));
             }
         }
-        None => Err(ToatError::NoArgumentsGiven),
+        None => Err(ToteError::NoArgumentsGiven),
     }
 }
 

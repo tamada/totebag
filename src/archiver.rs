@@ -5,7 +5,7 @@ use crate::archiver::rar::RarArchiver;
 use crate::archiver::sevenz::SevenZArchiver;
 use crate::archiver::tar::{TarArchiver, TarBz2Archiver, TarGzArchiver, TarXzArchiver};
 use crate::archiver::zip::ZipArchiver;
-use crate::cli::{Result, ToatError};
+use crate::cli::{Result, ToteError};
 use crate::format::{find_format, Format};
 use crate::verboser::{create_verboser, Verboser};
 use crate::CliOpts;
@@ -33,7 +33,7 @@ pub fn create_archiver(dest: &PathBuf) -> Result<Box<dyn Archiver>> {
                 Format::TarXz => Ok(Box::new(TarXzArchiver {})),
                 Format::Rar => Ok(Box::new(RarArchiver {})),
                 Format::SevenZ => Ok(Box::new(SevenZArchiver {})),
-                _ => Err(ToatError::UnsupportedFormat(format.to_string())),
+                _ => Err(ToteError::UnsupportedFormat(format.to_string())),
             }
         }
         Err(msg) => Err(msg),
@@ -107,18 +107,18 @@ impl ArchiverOpts {
         let p = self.dest.as_path();
         print!("{:?}: {}\n", p, p.exists());
         if p.is_file() && p.exists() && !self.overwrite {
-            return Err(ToatError::FileExists(self.dest.clone()));
+            return Err(ToteError::FileExists(self.dest.clone()));
         }
         if let Some(parent) = p.parent() {
             if !parent.exists() {
                 if let Err(e) = create_dir_all(parent) {
-                    return Err(ToatError::IOError(e));
+                    return Err(ToteError::IOError(e));
                 }
             }
         }
         match File::create(self.dest.as_path()) {
             Ok(f) => Ok(f),
-            Err(e) => Err(ToatError::IOError(e)),
+            Err(e) => Err(ToteError::IOError(e)),
         }
     }
 }

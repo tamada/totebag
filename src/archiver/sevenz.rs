@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use sevenz_rust::{SevenZArchiveEntry, SevenZWriter};
 
 use crate::archiver::{Archiver, ArchiverOpts};
-use crate::cli::{Result, ToatError};
+use crate::cli::{Result, ToteError};
 use crate::format::Format;
 
 pub(super) struct SevenZArchiver {}
@@ -28,7 +28,7 @@ fn process_file(szw: &mut SevenZWriter<File>, target: PathBuf) -> Result<()> {
         SevenZArchiveEntry::from_path(&target, name.to_string()),
         Some(File::open(target).unwrap()),
     ) {
-        return Err(ToatError::ArchiverError(e.to_string()));
+        return Err(ToteError::ArchiverError(e.to_string()));
     }
     Ok(())
 }
@@ -61,7 +61,7 @@ fn write_sevenz_impl(
         }
     }
     if let Err(e) = szw.finish() {
-        return Err(ToatError::ArchiverError(e.to_string()));
+        return Err(ToteError::ArchiverError(e.to_string()));
     }
     Ok(())
 }
@@ -69,7 +69,7 @@ fn write_sevenz_impl(
 fn write_sevenz(dest: File, targets: Vec<PathBuf>, recursive: bool) -> Result<()> {
     match SevenZWriter::new(dest) {
         Ok(write) => write_sevenz_impl(write, targets, recursive),
-        Err(e) => Err(ToatError::ArchiverError(e.to_string())),
+        Err(e) => Err(ToteError::ArchiverError(e.to_string())),
     }
 }
 

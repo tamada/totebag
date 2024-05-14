@@ -6,7 +6,7 @@ use tar::Builder;
 use xz2::write::XzEncoder;
 
 use crate::archiver::{Archiver, Format, ArchiverOpts};
-use crate::cli::{ToatError, Result};
+use crate::cli::{ToteError, Result};
 
 pub(super) struct TarArchiver {
 }
@@ -78,7 +78,7 @@ impl Archiver for  TarXzArchiver {
 
 fn process_dir<W: Write>(builder: &mut Builder<W>, target: PathBuf, recursive: bool) -> Result<()> {
     if let Err(e) = builder.append_dir(&target, &target) {
-        return Err(ToatError::ArchiverError(e.to_string()))
+        return Err(ToteError::ArchiverError(e.to_string()))
     }
     for entry in target.read_dir().unwrap() {
         if let Ok(e) = entry {
@@ -95,7 +95,7 @@ fn process_dir<W: Write>(builder: &mut Builder<W>, target: PathBuf, recursive: b
 
 fn process_file<W: Write>(builder: &mut Builder<W>, target: PathBuf) -> Result<()> {
     if let Err(e) = builder.append_path(target) {
-        Err(ToatError::ArchiverError(e.to_string()))
+        Err(ToteError::ArchiverError(e.to_string()))
     } else {
         Ok(())
     }
@@ -112,7 +112,7 @@ fn write_to_tar<W: Write>(file: W, targets: Vec<PathBuf>, recursive: bool) -> Re
         }
     }
     if let Err(e) = builder.finish() {
-        return Err(ToatError::ArchiverError(e.to_string()))
+        return Err(ToteError::ArchiverError(e.to_string()))
     }
     Ok(())
 }

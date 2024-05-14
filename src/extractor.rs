@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use crate::format::{find_format, Format};
-use crate::cli::{Result, ToatError};
+use crate::cli::{Result, ToteError};
 use crate::CliOpts;
 use crate::verboser::{create_verboser, Verboser};
 
@@ -63,7 +63,7 @@ pub fn create_extractor(file: &PathBuf) -> Result<Box<dyn Extractor>> {
                 Format::TarBz2 => Ok(Box::new(tar::TarBz2Extractor{})),
                 Format::TarXz => Ok(Box::new(tar::TarXzExtractor{})),
                 Format::SevenZ => Ok(Box::new(sevenz::SevenZExtractor{})),
-                Format::Unknown(s) => Err(ToatError::UnsupportedFormat(format!("{}: unsupported format", s))),
+                Format::Unknown(s) => Err(ToteError::UnsupportedFormat(format!("{}: unsupported format", s))),
             }
         }
         Err(msg) => Err(msg),
