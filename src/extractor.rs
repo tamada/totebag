@@ -125,5 +125,21 @@ mod tests {
         let e5 = create_extractor(&PathBuf::from("results/test.rar"));
         assert!(e5.is_ok());
         assert_eq!(e5.unwrap().format(), Format::Rar);
+
+        let e6 = create_extractor(&PathBuf::from("results/test.tar.xz"));
+        assert!(e6.is_ok());
+        assert_eq!(e6.unwrap().format(), Format::TarXz);
+
+        let e7 = create_extractor(&PathBuf::from("results/test.7z"));
+        assert!(e7.is_ok());
+        assert_eq!(e7.unwrap().format(), Format::SevenZ);
+
+        let e8 = create_extractor(&PathBuf::from("results/test.unknown"));
+        assert!(e8.is_err());
+        if let Err(ToteError::UnknownFormat(msg)) = e8 {
+            assert_eq!(msg, "test.unknown: unsupported format".to_string());
+        } else {
+            assert!(false);
+        }
     }
 }

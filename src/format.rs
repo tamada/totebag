@@ -65,27 +65,41 @@ mod tests {
         assert!(find_format(None).is_err());
         if let Ok(f) = find_format(Some(OsStr::new("hoge.zip"))) {
             assert_eq!(f, Format::Zip);
+            assert_eq!(f.to_string(), "Zip".to_string());
         }
         if let Ok(f) = find_format(Some(OsStr::new("hoge.unknown"))) {
             assert_eq!(f.to_string(), "hoge.unknown: unknown format".to_string());
         }
         if let Ok(f) = find_format(Some(OsStr::new("hoge.tar"))) {
             assert_eq!(f, Format::Tar);
+            assert_eq!(f.to_string(), "Tar".to_string());
         }
         if let Ok(f) = find_format(Some(OsStr::new("hoge.rar"))) {
             assert_eq!(f, Format::Rar);
+            assert_eq!(f.to_string(), "Rar".to_string());
         }
         if let Ok(f) = find_format(Some(OsStr::new("hoge.tar.gz"))) {
             assert_eq!(f, Format::TarGz);
+            assert_eq!(f.to_string(), "TarGz".to_string());
         }
         if let Ok(f) = find_format(Some(OsStr::new("hoge.tar.bz2"))) {
             assert_eq!(f, Format::TarBz2);
+            assert_eq!(f.to_string(), "TarBz2".to_string());
         }
         if let Ok(f) = find_format(Some(OsStr::new("hoge.tar.xz"))) {
             assert_eq!(f, Format::TarXz);
+            assert_eq!(f.to_string(), "TarXz".to_string());
         }
         if let Ok(f) = find_format(Some(OsStr::new("hoge.7z"))) {
             assert_eq!(f, Format::SevenZ);
+            assert_eq!(f.to_string(), "SevenZ".to_string());
+        }
+        if let Err(e) = find_format(None) {
+            if let ToteError::NoArgumentsGiven = e {
+                assert!(true);
+            } else {
+                assert!(false);
+            }
         }
     }
 }

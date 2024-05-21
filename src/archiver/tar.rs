@@ -50,7 +50,7 @@ impl Archiver for  TarXzArchiver {
         write_tar(inout, |file| XzEncoder::new(file, 9))
     }
     fn format(&self) -> Format {
-        Format::TarBz2
+        Format::TarXz
     }
 }
 

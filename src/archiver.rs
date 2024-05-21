@@ -130,8 +130,11 @@ mod tests {
     #[test]
     fn test_archiver() {
         let a1 = create_archiver(&PathBuf::from("results/test.tar"));
-        assert!(a1.is_ok());
-        assert_eq!(a1.unwrap().format(), Format::Tar);
+        if let Ok(f) = a1 {
+            assert_eq!(f.format(), Format::Tar);
+        } else {
+            assert!(false);
+        }
 
         let a2 = create_archiver(&PathBuf::from("results/test.tar.gz"));
         assert!(a2.is_ok());
@@ -148,5 +151,23 @@ mod tests {
         let a5 = create_archiver(&PathBuf::from("results/test.rar"));
         assert!(a5.is_ok());
         assert_eq!(a5.unwrap().format(), Format::Rar);
+
+        let a6 = create_archiver(&PathBuf::from("results/test.tar.xz"));
+        assert!(a6.is_ok());
+        assert_eq!(a6.unwrap().format(), Format::TarXz);
+
+        let a7 = create_archiver(&PathBuf::from("results/test.7z"));
+        assert!(a7.is_ok());
+        assert_eq!(a7.unwrap().format(), Format::SevenZ);
+
+        let a8 = create_archiver(&PathBuf::from("results/test.unknown"));
+        assert!(a8.is_err());
+        if let Err(e) = a8 {
+            if let ToteError::UnknownFormat(msg) = e {
+                assert_eq!(msg, "test.unknown: unknown format".to_string());
+            } else {
+                assert!(false);
+            }
+        }
     }
 }
