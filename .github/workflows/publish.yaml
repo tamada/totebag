@@ -132,10 +132,11 @@ jobs:
   docker:
     needs: publish
     runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
     steps:
       - name: Set up QEMU
-        # Add support for more platforms with QEMU (optional)
-        # https://github.com/docker/setup-qemu-action
         uses: docker/setup-qemu-action@v3
 
       - name: Docker buildx
