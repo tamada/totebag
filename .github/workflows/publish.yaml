@@ -158,6 +158,9 @@ jobs:
             type=sha,prefix=,suffix=,format=short
             type=raw,value=${{ needs.publish.outputs.tag }}
 
+      - name: Checkout the project
+        uses: actions/checkout@v4
+
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
