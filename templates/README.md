@@ -8,7 +8,7 @@
 [![Rust Report Card](https://rust-reportcard.xuri.me/badge/github.com/tamada/totebag)](https://rust-reportcard.xuri.me/report/github.com/tamada/totebag)
 [![Coverage Status](https://coveralls.io/repos/github/tamada/totebag/badge.svg)](https://coveralls.io/github/tamada/totebag)
 
-A tool for archiving files and directories and extracting several archive formats.
+A tool for extracting/archiving files and directories in multiple formats.
 
 ## Description
 
@@ -19,7 +19,7 @@ The tool can extract archive files and archive files and directories.
 ## Usage
 
 ```sh
-A tool for archiving files and directories and extracting several archive formats.
+A tool for extracting/archiving files and directories in multiple formats.
 
 Usage: totebag [OPTIONS] [ARGUMENTS]...
 
@@ -43,8 +43,10 @@ Supported archive formats:
 - Tar+Gzip
 - Tar+Bzip2
 - Tar+Xz
+- Tar+Zstd
 - Zip
 - 7z
+- Lha, Lzh (extraction only)
 - Rar (extraction only)
 
 ## Install
