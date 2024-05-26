@@ -13,6 +13,8 @@ pub fn find_format(file_name: Option<&OsStr>) -> Result<Format> {
                 return Ok(Format::TarBz2);
             } else if name.ends_with(".tar.xz") || name.ends_with(".txz") {
                 return Ok(Format::TarXz);
+            } else if name.ends_with(".tar.zst") || name.ends_with(".tzst") {
+                return Ok(Format::TarZstd);
             } else if name.ends_with(".7z") {
                 return Ok(Format::SevenZ);
             } else if name.ends_with(".tar") {
@@ -38,6 +40,7 @@ pub enum Format {
     TarGz,
     TarBz2,
     TarXz,
+    TarZstd,
     SevenZ,
     LHA,
     Rar,
@@ -52,6 +55,7 @@ impl Display for Format {
             Format::TarGz => write!(f, "TarGz"),
             Format::TarBz2 => write!(f, "TarBz2"),
             Format::TarXz => write!(f, "TarXz"),
+            Format::TarZstd => write!(f, "TarZstd"),
             Format::SevenZ => write!(f, "SevenZ"),
             Format::LHA => write!(f, "LHA"),
             Format::Rar => write!(f, "Rar"),

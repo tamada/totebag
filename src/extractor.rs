@@ -63,6 +63,7 @@ pub fn create_extractor(file: &PathBuf) -> Result<Box<dyn Extractor>> {
                 Format::TarGz => Ok(Box::new(tar::TarGzExtractor {})),
                 Format::TarBz2 => Ok(Box::new(tar::TarBz2Extractor {})),
                 Format::TarXz => Ok(Box::new(tar::TarXzExtractor {})),
+                Format::TarZstd => Ok(Box::new(tar::TarZstdExtractor {})),
                 Format::LHA => Ok(Box::new(lha::LhaExtractor {})),
                 Format::SevenZ => Ok(Box::new(sevenz::SevenZExtractor {})),
                 Format::Unknown(s) => Err(ToteError::UnknownFormat(format!(

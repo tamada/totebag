@@ -15,8 +15,9 @@ pub(super) struct TarGzArchiver {
 }
 pub(super) struct TarBz2Archiver {
 }
-
 pub(super) struct TarXzArchiver {
+}
+pub(super) struct TarZstdArchiver {
 }
 
 impl Archiver for  TarArchiver {
@@ -36,6 +37,7 @@ impl Archiver for TarGzArchiver{
         Format::TarGz
     }
 }
+
 impl Archiver for  TarBz2Archiver {
     fn perform(&self, opts: &ArchiverOpts) -> Result<()> {
         write_tar(opts, |file| BzEncoder::new(file, bzip2::Compression::best()))
@@ -49,8 +51,20 @@ impl Archiver for  TarXzArchiver {
     fn perform(&self, inout: &ArchiverOpts) -> Result<()> {
         write_tar(inout, |file| XzEncoder::new(file, 9))
     }
+
     fn format(&self) -> Format {
         Format::TarXz
+    }
+}
+
+impl Archiver for  TarZstdArchiver {
+    fn perform(&self, inout: &ArchiverOpts) -> Result<()> {
+        write_tar(inout, |file| 
+            zstd::Encoder::new(file, 9).unwrap())
+    }
+
+    fn format(&self) -> Format {
+        Format::TarZstd
     }
 }
 
@@ -110,8 +124,8 @@ fn process_file<W: Write>(builder: &mut Builder<W>, target: PathBuf) -> Result<(
 mod tests {
     use std::path::PathBuf;
 
+    use super::*;
     use crate::archiver::Archiver;
-    use crate::archiver::tar::{TarArchiver, TarGzArchiver, TarBz2Archiver};
     use crate::archiver::ArchiverOpts;
     use crate::format::Format;
 
@@ -119,7 +133,7 @@ mod tests {
     where
         F: FnOnce() -> PathBuf,
     {
-        // setup(); // 予めやりたい処理
+        // setup(); // preprocessing process
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(f));
         match result {
             Ok(path) => teardown(path),
@@ -166,6 +180,34 @@ mod tests {
             assert!(result.is_ok());
             assert!(path.exists());
             assert_eq!(archiver.format(), Format::TarBz2);
+            path
+        });
+    }
+
+    #[test]
+    fn test_tarxz() {
+        run_test(|| {
+            let archiver = TarXzArchiver{};
+            let inout = ArchiverOpts::create(PathBuf::from("results/test.tar.xz"), vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")], true, true, false);
+            let result = archiver.perform(&inout);
+            let path = PathBuf::from("results/test.tar.xz");
+            assert!(result.is_ok());
+            assert!(path.exists());
+            assert_eq!(archiver.format(), Format::TarXz);
+            path
+        });
+    }
+
+    #[test]
+    fn test_tarzstd() {
+        run_test(|| {
+            let archiver = TarZstdArchiver{};
+            let inout = ArchiverOpts::create(PathBuf::from("results/test.tar.zst"), vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")], true, true, false);
+            let result = archiver.perform(&inout);
+            let path = PathBuf::from("results/test.tar.zst");
+            assert!(result.is_ok());
+            assert!(path.exists());
+            assert_eq!(archiver.format(), Format::TarZstd);
             path
         });
     }
