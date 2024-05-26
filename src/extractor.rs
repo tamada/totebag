@@ -1,14 +1,15 @@
 use std::path::PathBuf;
 
-use crate::format::{find_format, Format};
 use crate::cli::{Result, ToteError};
-use crate::CliOpts;
+use crate::format::{find_format, Format};
 use crate::verboser::{create_verboser, Verboser};
+use crate::CliOpts;
 
-mod zip;
+mod lha;
 mod rar;
-mod tar;
 mod sevenz;
+mod tar;
+mod zip;
 
 pub struct ExtractorOpts {
     pub dest: PathBuf,
@@ -21,23 +22,23 @@ impl ExtractorOpts {
     pub fn new(opts: &CliOpts) -> ExtractorOpts {
         let d = opts.output.clone();
         ExtractorOpts {
-            dest: d.unwrap_or_else(|| {
-                PathBuf::from(".")
-            }),
+            dest: d.unwrap_or_else(|| PathBuf::from(".")),
             use_archive_name_dir: opts.to_archive_name_dir,
             overwrite: opts.overwrite,
             v: create_verboser(opts.verbose),
         }
     }
-    
+
     /// Returns the base of the destination directory for the archive file.
     /// The target is the archive file name of source.
     pub fn destination(&self, target: &PathBuf) -> PathBuf {
         if self.use_archive_name_dir {
             let file_name = target.file_name().unwrap().to_str().unwrap();
             let ext = target.extension().unwrap().to_str().unwrap();
-            let dir_name = file_name.trim_end_matches(ext)
-                .trim_end_matches(".").to_string();
+            let dir_name = file_name
+                .trim_end_matches(ext)
+                .trim_end_matches(".")
+                .to_string();
             self.dest.join(dir_name)
         } else {
             self.dest.clone()
@@ -56,21 +57,29 @@ pub fn create_extractor(file: &PathBuf) -> Result<Box<dyn Extractor>> {
     match format {
         Ok(format) => {
             return match format {
-                Format::Zip => Ok(Box::new(zip::ZipExtractor{})),
-                Format::Rar => Ok(Box::new(rar::RarExtractor{})),
-                Format::Tar => Ok(Box::new(tar::TarExtractor{})),
-                Format::TarGz => Ok(Box::new(tar::TarGzExtractor{})),
-                Format::TarBz2 => Ok(Box::new(tar::TarBz2Extractor{})),
-                Format::TarXz => Ok(Box::new(tar::TarXzExtractor{})),
-                Format::SevenZ => Ok(Box::new(sevenz::SevenZExtractor{})),
-                Format::Unknown(s) => Err(ToteError::UnknownFormat(format!("{}: unsupported format", s))),
+                Format::Zip => Ok(Box::new(zip::ZipExtractor {})),
+                Format::Rar => Ok(Box::new(rar::RarExtractor {})),
+                Format::Tar => Ok(Box::new(tar::TarExtractor {})),
+                Format::TarGz => Ok(Box::new(tar::TarGzExtractor {})),
+                Format::TarBz2 => Ok(Box::new(tar::TarBz2Extractor {})),
+                Format::TarXz => Ok(Box::new(tar::TarXzExtractor {})),
+                Format::LHA => Ok(Box::new(lha::LhaExtractor {})),
+                Format::SevenZ => Ok(Box::new(sevenz::SevenZExtractor {})),
+                Format::Unknown(s) => Err(ToteError::UnknownFormat(format!(
+                    "{}: unsupported format",
+                    s
+                ))),
             }
         }
         Err(msg) => Err(msg),
     }
 }
 
-pub fn extractor_info(extractor: &Box<dyn Extractor>, target: &PathBuf, opts: &ExtractorOpts) -> String {
+pub fn extractor_info(
+    extractor: &Box<dyn Extractor>,
+    target: &PathBuf,
+    opts: &ExtractorOpts,
+) -> String {
     format!(
         "Format: {:?}\nFile: {:?}\nDestination: {:?}",
         extractor.format(),

@@ -1,6 +1,7 @@
 use std::fs::{create_dir_all, File};
 use std::path::PathBuf;
 
+use crate::archiver::lha::LhaArchiver;
 use crate::archiver::rar::RarArchiver;
 use crate::archiver::sevenz::SevenZArchiver;
 use crate::archiver::tar::{TarArchiver, TarBz2Archiver, TarGzArchiver, TarXzArchiver};
@@ -10,6 +11,7 @@ use crate::format::{find_format, Format};
 use crate::verboser::{create_verboser, Verboser};
 use crate::CliOpts;
 
+mod lha;
 mod os;
 mod rar;
 mod sevenz;
@@ -31,6 +33,7 @@ pub fn create_archiver(dest: &PathBuf) -> Result<Box<dyn Archiver>> {
                 Format::TarGz => Ok(Box::new(TarGzArchiver {})),
                 Format::TarBz2 => Ok(Box::new(TarBz2Archiver {})),
                 Format::TarXz => Ok(Box::new(TarXzArchiver {})),
+                Format::LHA => Ok(Box::new(LhaArchiver {})),
                 Format::Rar => Ok(Box::new(RarArchiver {})),
                 Format::SevenZ => Ok(Box::new(SevenZArchiver {})),
                 _ => Err(ToteError::UnknownFormat(format.to_string())),

@@ -1,6 +1,7 @@
 use std::ffi::OsStr;
 use std::fmt::Display;
-use crate::cli::{ToteError, Result};
+
+use crate::cli::{Result, ToteError};
 
 pub fn find_format(file_name: Option<&OsStr>) -> Result<Format> {
     match file_name {
@@ -16,6 +17,8 @@ pub fn find_format(file_name: Option<&OsStr>) -> Result<Format> {
                 return Ok(Format::SevenZ);
             } else if name.ends_with(".tar") {
                 return Ok(Format::Tar);
+            } else if name.ends_with(".lha") || name.ends_with(".lzh") {
+                return Ok(Format::LHA);
             } else if name.ends_with(".rar") {
                 return Ok(Format::Rar);
             } else if name.ends_with(".zip") || name.ends_with(".jar") || name.ends_with(".war") || name.ends_with(".ear") {
@@ -28,7 +31,6 @@ pub fn find_format(file_name: Option<&OsStr>) -> Result<Format> {
     }
 }
 
-
 #[derive(Debug, PartialEq)]
 pub enum Format {
     Zip,
@@ -37,6 +39,7 @@ pub enum Format {
     TarBz2,
     TarXz,
     SevenZ,
+    LHA,
     Rar,
     Unknown(String),
 }
@@ -50,6 +53,7 @@ impl Display for Format {
             Format::TarBz2 => write!(f, "TarBz2"),
             Format::TarXz => write!(f, "TarXz"),
             Format::SevenZ => write!(f, "SevenZ"),
+            Format::LHA => write!(f, "LHA"),
             Format::Rar => write!(f, "Rar"),
             Format::Unknown(s) => write!(f, "{}: unknown format", s),
         }

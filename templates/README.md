@@ -45,6 +45,7 @@ Supported archive formats:
 - Tar+Xz
 - Zip
 - 7z
+- Lha, Lzh (extraction only)
 - Rar (extraction only)
 
 ## Install
