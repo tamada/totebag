@@ -1,0 +1,20 @@
+# config/_default/languages.en.toml
+languageCode = "en"
+languageName = "English"
+
+title = "totebag"
+copyright = "(C) Copyright, 2024, Haruaki Tamada"
+
+[params]
+dateFormat = "2006-01-02"
+description = "A tool for archiving files and directories and extracting several archive formats."
+
+[params.author]
+name = "Haruaki Tamada"
+image = "assets/authors/harry.png"
+headline = "Resercher/Developer"
+bio = "Ph.D (Engineering), The main research area: software engineering, and software protection."
+links = [
+    { github = "https://github.com/tamada" },
+    { twitter = "https://twitter.com/tama5" }
+]

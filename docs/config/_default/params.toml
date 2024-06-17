@@ -1,0 +1,10 @@
+enableCodeCopy = true
+
+[header]
+logo = "logo.jpeg"
+
+[article]
+invertPagination = true
+
+[list]
+groupByYear = false

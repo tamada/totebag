@@ -1,0 +1,5 @@
+# The URL the site will be built for
+name = "totebag"
+license = "MIT"
+base_url = "https://tamada.github.io/totebag"
+
