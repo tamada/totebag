@@ -11,7 +11,7 @@ impl Extractor for LhaExtractor {
     fn list_archives(&self, archive_file: PathBuf) -> Result<Vec<String>> {
         let mut result = Vec::<String>::new();
         let mut reader = match delharc::parse_file(&archive_file) {
-            Err(e) => return Err(ToteError::IOError(e)),
+            Err(e) => return Err(ToteError::IO(e)),
             Ok(h) => h,
         };
         loop {
@@ -26,7 +26,7 @@ impl Extractor for LhaExtractor {
                         break;
                     }
                 }
-                Err(e) => return Err(ToteError::SomeError(Box::new(e))),
+                Err(e) => return Err(ToteError::Fatal(Box::new(e))),
             }
         }
         Ok(result)
@@ -34,7 +34,7 @@ impl Extractor for LhaExtractor {
 
     fn perform(&self, archive_file: PathBuf, opts: &ExtractorOpts) -> Result<()> {
         let mut reader = match delharc::parse_file(&archive_file) {
-            Err(e) => return Err(ToteError::IOError(e)),
+            Err(e) => return Err(ToteError::IO(e)),
             Ok(h) => h,
         };
         loop {
@@ -50,14 +50,14 @@ impl Extractor for LhaExtractor {
                 create_dir_all(dest.parent().unwrap()).unwrap();
                 let mut dest = match File::create(dest) {
                     Ok(f) => f,
-                    Err(e) => return Err(ToteError::IOError(e)),
+                    Err(e) => return Err(ToteError::IO(e)),
                 };
                 match copy(&mut reader, &mut dest) {
                     Ok(_) => {}
-                    Err(e) => return Err(ToteError::IOError(e)),
+                    Err(e) => return Err(ToteError::IO(e)),
                 }
                 if let Err(e) = reader.crc_check() {
-                    return Err(ToteError::SomeError(Box::new(e)));
+                    return Err(ToteError::Fatal(Box::new(e)));
                 };
             } else if !header.is_directory() {
                 opts.v.verbose(format!(
@@ -71,7 +71,7 @@ impl Extractor for LhaExtractor {
                         break;
                     }
                 }
-                Err(e) => return Err(ToteError::SomeError(Box::new(e))),
+                Err(e) => return Err(ToteError::Fatal(Box::new(e))),
             }
         }
         Ok(())

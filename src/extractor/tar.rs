@@ -112,7 +112,7 @@ where
 {
     let file = match File::open(file) {
         Ok(f) => f,
-        Err(e) => return Err(ToteError::IOError(e)),
+        Err(e) => return Err(ToteError::IO(e)),
     };
     let writer = opener(file);
     Ok(Archive::new(writer))

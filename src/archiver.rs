@@ -116,13 +116,13 @@ impl ArchiverOpts {
         if let Some(parent) = p.parent() {
             if !parent.exists() {
                 if let Err(e) = create_dir_all(parent) {
-                    return Err(ToteError::IOError(e));
+                    return Err(ToteError::IO(e));
                 }
             }
         }
         match File::create(self.dest.as_path()) {
             Ok(f) => Ok(f),
-            Err(e) => Err(ToteError::IOError(e)),
+            Err(e) => Err(ToteError::IO(e)),
         }
     }
 }

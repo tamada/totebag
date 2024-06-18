@@ -24,7 +24,7 @@ impl Extractor for SevenZExtractor {
                 }
                 Ok(r)
             },
-            Err(e) => Err(ToteError::SomeError(Box::new(e))),
+            Err(e) => Err(ToteError::Fatal(Box::new(e))),
         }
     }
     fn perform(&self, archive_file: PathBuf, opts: &ExtractorOpts) -> Result<()> {
@@ -32,7 +32,7 @@ impl Extractor for SevenZExtractor {
             Ok(file) => {
                 file
             },
-            Err(e) => return Err(ToteError::IOError(e)),
+            Err(e) => return Err(ToteError::IO(e)),
         };
         extract(&mut file, archive_file, opts)
     }
@@ -48,7 +48,7 @@ fn extract(mut file: &File, path: PathBuf, opts: &ExtractorOpts) -> Result<()> {
         Ok(reader) => {
             reader
         },
-        Err(e) => return Err(ToteError::SomeError(Box::new(e))),
+        Err(e) => return Err(ToteError::Fatal(Box::new(e))),
     };
     let folder_count = archive.folders.len();
     for findex in 0..folder_count {
@@ -57,7 +57,7 @@ fn extract(mut file: &File, path: PathBuf, opts: &ExtractorOpts) -> Result<()> {
             let dest = opts.destination(&path).join(entry.name.clone());
             sevenz_rust::default_entry_extract_fn(entry, reader, &dest)
         }) {
-            return Err(ToteError::SomeError(Box::new(e)))
+            return Err(ToteError::Fatal(Box::new(e)))
         }
     }
     Ok(())

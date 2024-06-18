@@ -49,11 +49,11 @@ fn process_file<W:Write+Seek> (zw: &mut ZipWriter<W>, target: PathBuf) -> Result
     let name = target.to_str().unwrap();
     let opts = create(&target);
     if let Err(e) = zw.start_file(name, opts) {
-        return Err(ToteError::ArchiverError(e.to_string()));
+        return Err(ToteError::Archiver(e.to_string()));
     }
     let mut file = BufReader::new(File::open(target).unwrap());
     if let Err(e) = std::io::copy(&mut file, zw) {
-        return Err(ToteError::IOError(e))
+        return Err(ToteError::IO(e))
     }
     Ok(())
 }
@@ -69,7 +69,7 @@ fn write_to_zip(dest: File, targets: Vec<PathBuf>, recursive: bool) -> Result<()
         }
     }
     if let Err(e) = zw.finish() {
-        return Err(ToteError::ArchiverError(e.to_string()));
+        return Err(ToteError::Archiver(e.to_string()));
     }
     Ok(())
 }
