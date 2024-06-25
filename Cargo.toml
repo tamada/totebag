@@ -1,6 +1,6 @@
 [package]
 name = "totebag"
-version = "0.4.6"
+version = "0.5.0"
 description = "A tool for extracting/archiving files and directories in multiple formats."
 repository = "https://github.com/tamada/totebag"
 readme = "README.md"
