@@ -70,12 +70,12 @@ pub enum ToteError {
     NoArgumentsGiven,
     FileNotFound(PathBuf),
     FileExists(PathBuf),
-    IOError(std::io::Error),
-    ArchiverError(String),
+    IO(std::io::Error),
+    Archiver(String),
     UnsupportedFormat(String),
     UnknownFormat(String),
-    UnknownError(String),
-    SomeError(Box<dyn std::error::Error>)
+    Unknown(String),
+    Fatal(Box<dyn std::error::Error>)
 }
 
 #[cfg(test)]

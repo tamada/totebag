@@ -16,7 +16,7 @@ fn perform(mut opts: CliOpts) -> Result<()> {
         Ok(RunMode::Extract) => return perform_extract(opts),
         Ok(RunMode::List) => return perform_list(opts),
         Ok(RunMode::Auto) => {
-            return Err(ToteError::UnknownError(
+            return Err(ToteError::Unknown(
                 "cannot distinguish archiving and extracting".to_string(),
             ))
         }
@@ -81,12 +81,12 @@ fn main() -> Result<()> {
                 ToteError::FileExists(p) => {
                     println!("{}: file already exists", p.to_str().unwrap())
                 }
-                ToteError::IOError(e) => println!("IO error: {}", e),
-                ToteError::ArchiverError(s) => println!("Archive error: {}", s),
+                ToteError::IO(e) => println!("IO error: {}", e),
+                ToteError::Archiver(s) => println!("Archive error: {}", s),
                 ToteError::UnknownFormat(f) => println!("{}: unknown format", f),
                 ToteError::UnsupportedFormat(f) => println!("{}: unsupported format", f),
-                ToteError::SomeError(e) => println!("Error: {}", e),
-                ToteError::UnknownError(s) => println!("Unknown error: {}", s),
+                ToteError::Fatal(e) => println!("Error: {}", e),
+                ToteError::Unknown(s) => println!("Unknown error: {}", s),
             }
             std::process::exit(1);
         }
