@@ -33,10 +33,11 @@ impl ExtractorOpts {
     /// The target is the archive file name of source.
     pub fn destination(&self, target: &PathBuf) -> Result<PathBuf> {
         let dest = self.destination_file(target);
-        if dest.exists() && self.overwrite {
-            Ok(dest)
-        } else {
+        println!("destination: {:?}", dest);
+        if dest.exists() && !self.overwrite {
             Err(ToteError::FileExists(dest.clone()))
+        } else {
+            Ok(dest)
         }
     }
 
