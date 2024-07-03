@@ -31,7 +31,16 @@ impl ExtractorOpts {
 
     /// Returns the base of the destination directory for the archive file.
     /// The target is the archive file name of source.
-    pub fn destination(&self, target: &PathBuf) -> PathBuf {
+    pub fn destination(&self, target: &PathBuf) -> Result<PathBuf> {
+        let dest = self.destination_file(target);
+        if dest.exists() && self.overwrite {
+            Ok(dest)
+        } else {
+            Err(ToteError::DestinationExists(dest.clone()))
+        }
+    }
+
+    fn destination_file(&self, target: &PathBuf) -> PathBuf {
         if self.use_archive_name_dir {
             let file_name = target.file_name().unwrap().to_str().unwrap();
             let ext = target.extension().unwrap().to_str().unwrap();
@@ -102,7 +111,10 @@ mod tests {
             v: create_verboser(false),
         };
         let target = PathBuf::from("/tmp/archive.zip");
-        assert_eq!(opts1.destination(&target), PathBuf::from("./archive"));
+
+        if let Ok(t) = opts1.destination(&target) {
+            assert_eq!(t, PathBuf::from("./archive"));
+        }
 
         let opts2 = ExtractorOpts {
             dest: PathBuf::from("."),
@@ -111,7 +123,9 @@ mod tests {
             v: create_verboser(false),
         };
         let target = PathBuf::from("/tmp/archive.zip");
-        assert_eq!(opts2.destination(&target), PathBuf::from("."));
+        if let Ok(t) = opts2.destination(&target) {
+            assert_eq!(t, PathBuf::from("."));
+        }
     }
 
     #[test]

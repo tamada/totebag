@@ -40,7 +40,7 @@ impl Extractor for LhaExtractor {
         loop {
             let header = reader.header();
             let name = header.parse_pathname();
-            let dest = opts.destination(&archive_file).join(&name);
+            let dest = opts.destination(&archive_file)?.join(&name);
             if reader.is_decoder_supported() {
                 opts.v.verbose(format!(
                     "extracting {} ({} bytes)",
