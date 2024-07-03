@@ -36,7 +36,7 @@ impl ExtractorOpts {
         if dest.exists() && self.overwrite {
             Ok(dest)
         } else {
-            Err(ToteError::DestinationExists(dest.clone()))
+            Err(ToteError::FileExists(dest.clone()))
         }
     }
 
