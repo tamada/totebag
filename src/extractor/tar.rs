@@ -134,7 +134,7 @@ fn extract_tar<R: Read>(
         opts.v
             .verbose(format!("extracting {:?} ({} bytes)", path, size));
 
-        let dest = opts.destination(&original).join(path);
+        let dest = opts.destination(&original)?.join(path);
         if entry.header().entry_type().is_file() {
             create_dir_all(dest.parent().unwrap()).unwrap();
             entry.unpack(dest).unwrap();
