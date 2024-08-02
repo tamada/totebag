@@ -16,7 +16,6 @@ There are many archive formats and their tools. The one problem with using each 
 Then, The `totebag` treats the archive files as the same interface.
 The tool can extract archive files and archive files and directories.
 
-
 ## Usage
 
 ```sh
