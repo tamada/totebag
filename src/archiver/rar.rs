@@ -32,6 +32,7 @@ mod tests {
         let opts = ArchiverOpts {
             dest: PathBuf::from("results/test.rar"),
             targets: vec![],
+            base_dir: PathBuf::from("."),
             overwrite: false,
             recursive: false,
             v: create_verboser(false),

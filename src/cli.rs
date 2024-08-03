@@ -15,6 +15,13 @@ pub struct CliOpts {
     pub output: Option<PathBuf>,
     #[clap(long = "to-archive-name-dir", help = "extract files to DEST/ARCHIVE_NAME directory (extract mode).", default_value_t = false)]
     pub to_archive_name_dir: bool,
+
+    #[clap(
+        short = 'C', long = "dir", value_name = "DIR", required = false,
+        default_value = ".", help = "Specify the base directory for archiving or extracting."
+    )]
+    pub base_dir: PathBuf,
+
     #[clap(short = 'n', long = "no-recursive", help = "No recursive directory (archive mode).", default_value_t = false)]
     pub no_recursive: bool,
     #[clap(short = 'v', long = "verbose", help = "Display verbose output.", default_value_t = false)]

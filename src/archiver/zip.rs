@@ -21,7 +21,7 @@ impl Archiver for  ZipArchiver {
         match inout.destination() {
             Err(e) =>  Err(e),
             Ok(file) => {
-                write_to_zip(file, inout.targets(), inout.recursive)
+                write_to_zip(file, inout.targets(), inout.recursive, inout.base_dir.clone())
             }
         }
     }
@@ -31,22 +31,26 @@ impl Archiver for  ZipArchiver {
     }
 }
 
-fn process_dir<W:Write+Seek> (zw: &mut ZipWriter<W>, target: PathBuf) -> Result<()> {
+fn process_dir<W:Write+Seek> (zw: &mut ZipWriter<W>, target: PathBuf, base_dir: &PathBuf) -> Result<()> {
     for entry in target.read_dir().unwrap() {
         if let Ok(e) = entry {
             let p = e.path();
             if p.is_dir() {
-                process_dir(zw, e.path())?
+                process_dir(zw, e.path(), &base_dir)?
             } else if p.is_file() {
-                process_file(zw, e.path())?
+                process_file(zw, e.path(), &base_dir)?
             }
         }
     }
     Ok(())
 }
 
-fn process_file<W:Write+Seek> (zw: &mut ZipWriter<W>, target: PathBuf) -> Result<()> {
-    let name = target.to_str().unwrap();
+fn process_file<W:Write+Seek> (zw: &mut ZipWriter<W>, target: PathBuf, base_dir: &PathBuf) -> Result<()> {
+    let target_path = match target.strip_prefix(base_dir) {
+        Ok(p) => p.to_path_buf(),
+        Err(_) => target.clone(),
+    };
+    let name = target_path.to_str().unwrap();
     let opts = create(&target);
     if let Err(e) = zw.start_file(name, opts) {
         return Err(ToteError::Archiver(e.to_string()));
@@ -58,14 +62,14 @@ fn process_file<W:Write+Seek> (zw: &mut ZipWriter<W>, target: PathBuf) -> Result
     Ok(())
 }
 
-fn write_to_zip(dest: File, targets: Vec<PathBuf>, recursive: bool) -> Result<()> {
+fn write_to_zip(dest: File, targets: Vec<PathBuf>, recursive: bool, base_dir: PathBuf) -> Result<()> {
     let mut zw = zip::ZipWriter::new(dest);
     for target in targets {
         let path = target.as_path();
         if path.is_dir() && recursive {
-            process_dir(&mut zw, path.to_path_buf())?
+            process_dir(&mut zw, path.to_path_buf(), &base_dir)?
         } else {
-            process_file(&mut zw, path.to_path_buf())?
+            process_file(&mut zw, path.to_path_buf(), &base_dir)?
         }
     }
     if let Err(e) = zw.finish() {
@@ -95,7 +99,7 @@ mod tests {
     fn test_zip() {
         run_test(|| {
             let archiver = ZipArchiver{};
-            let inout = ArchiverOpts::create(PathBuf::from("results/test.zip"), vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")], true, true, false);
+            let inout = ArchiverOpts::create(PathBuf::from("results/test.zip"), vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")], PathBuf::from("."), true, true, false);
             let result = archiver.perform(&inout);
             assert!(result.is_ok());
             assert_eq!(archiver.format(), Format::Zip);

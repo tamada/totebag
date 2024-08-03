@@ -60,6 +60,7 @@ pub fn archiver_info(archiver: &Box<dyn Archiver>, opts: &ArchiverOpts) -> Strin
 pub struct ArchiverOpts {
     pub dest: PathBuf,
     pub targets: Vec<PathBuf>,
+    pub base_dir: PathBuf,
     pub overwrite: bool,
     pub recursive: bool,
     pub v: Box<dyn Verboser>,
@@ -86,6 +87,7 @@ impl ArchiverOpts {
         ArchiverOpts {
             dest: dest,
             targets: args,
+            base_dir: opts.base_dir.clone(),
             overwrite: opts.overwrite,
             recursive: !opts.no_recursive,
             v: create_verboser(opts.verbose),
@@ -96,6 +98,7 @@ impl ArchiverOpts {
     pub fn create(
         dest: PathBuf,
         targets: Vec<PathBuf>,
+        base_dir: PathBuf,
         overwrite: bool,
         recursive: bool,
         verbose: bool,
@@ -103,6 +106,7 @@ impl ArchiverOpts {
         ArchiverOpts {
             dest,
             targets,
+            base_dir,
             overwrite,
             recursive,
             v: create_verboser(verbose),
