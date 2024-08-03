@@ -60,7 +60,7 @@ fn perform_list(opts: CliOpts) -> Result<()> {
 
 fn perform_archive(opts: CliOpts) -> Result<()> {
     let inout = ArchiverOpts::new(&opts);
-    match archiver::create_archiver(&opts.output.unwrap()) {
+    match archiver::create_archiver(&inout.dest) {
         Ok(archiver) => {
             inout.v.verbose(archiver_info(&archiver, &inout));
             archiver.perform(&inout)

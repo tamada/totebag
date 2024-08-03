@@ -6,7 +6,7 @@ use crate::archiver::rar::RarArchiver;
 use crate::archiver::sevenz::SevenZArchiver;
 use crate::archiver::tar::{TarArchiver, TarBz2Archiver, TarGzArchiver, TarXzArchiver, TarZstdArchiver};
 use crate::archiver::zip::ZipArchiver;
-use crate::cli::{Result, ToteError};
+use crate::cli::{Result, ToteError, is_archive_file};
 use crate::format::{find_format, Format};
 use crate::verboser::{create_verboser, Verboser};
 use crate::CliOpts;
@@ -65,10 +65,24 @@ pub struct ArchiverOpts {
     pub v: Box<dyn Verboser>,
 }
 
+fn find_dest_and_args(opts: &CliOpts) -> (PathBuf, Vec<PathBuf>) {
+    match &opts.output {
+        Some(o) => (o.clone(), opts.args.clone()),
+        None => {
+            if is_archive_file(&opts.args[0]) {
+                let file = opts.args[0].clone();
+                let args = opts.args[1..].to_vec();
+                (file, args)
+            } else {
+                (PathBuf::from("totebag.zip"), opts.args.clone())
+            }
+        }
+    }
+}
+
 impl ArchiverOpts {
     pub fn new(opts: &CliOpts) -> Self {
-        let args = opts.args.clone();
-        let dest = opts.output.clone().unwrap_or_else(|| PathBuf::from("."));
+        let (dest, args) = find_dest_and_args(&opts);
         ArchiverOpts {
             dest: dest,
             targets: args,

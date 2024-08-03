@@ -21,7 +21,10 @@ pub struct CliOpts {
     pub verbose: bool,
     #[clap(long, help = "Overwrite existing files.")]
     pub overwrite: bool,
-    #[clap(value_name = "ARGUMENTS", help = "List of files or directories to be processed.")]
+    #[clap(value_name = "ARGUMENTS", help = r###"List of files or directories to be processed.
+If archive mode, the archive file name can specify at the first argument.
+If the frist argument was not the archive name, the default archive name `totebag.zip` is applied.
+"###)]
     pub args: Vec<PathBuf>,
 }
 
@@ -42,19 +45,22 @@ impl CliOpts {
             Ok(self.mode)
         }
     }
+
 }
 
 fn is_all_args_archives(args: &[PathBuf]) -> bool {
-    args.iter().all(|arg| {
-        let name = arg.to_str().unwrap().to_lowercase();
-        let exts = vec![".zip", ".tar", ".tar.gz", ".tgz", ".tar.bz2", ".tbz2", ".rar", ".jar", ".war", ".ear", "7z", ];
-        for ext in exts.iter() {
-            if name.ends_with(ext) {
-                return true
-            }
+    args.iter().all(is_archive_file)
+}
+
+pub fn is_archive_file(arg: &PathBuf) -> bool {
+    let name = arg.to_str().unwrap().to_lowercase();
+    let exts = vec![".zip", ".tar", ".tar.gz", ".tgz", ".tar.bz2", ".tbz2", ".rar", ".jar", ".war", ".ear", "7z", ];
+    for ext in exts.iter() {
+        if name.ends_with(ext) {
+            return true
         }
-        return false
-    })
+    }
+    return false
 }
 
 #[derive(Debug, Clone, ValueEnum, PartialEq, Copy)]
