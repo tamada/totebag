@@ -3,12 +3,32 @@ use clap::Parser;
 use cli::*;
 use cli::{RunMode, ToteError};
 use extractor::{extractor_info, ExtractorOpts};
+use format::is_all_args_archives;
 
 mod archiver;
 mod cli;
 mod extractor;
 mod format;
 mod verboser;
+
+impl CliOpts {
+    pub fn run_mode(&mut self) -> Result<RunMode> {
+        if self.args.len() == 0 {
+            return Err(ToteError::NoArgumentsGiven)
+        }
+        if self.mode == RunMode::Auto {
+            if is_all_args_archives(&self.args) {
+                self.mode = RunMode::Extract;
+                Ok(RunMode::Extract)
+            } else {
+                self.mode = RunMode::Archive;
+                Ok(RunMode::Archive)
+            }
+        } else {
+            Ok(self.mode)
+        }
+    }
+}
 
 fn perform(mut opts: CliOpts) -> Result<()> {
     match opts.run_mode() {
