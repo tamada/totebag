@@ -58,7 +58,6 @@ pub enum ToteError {
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
     use clap::Parser;
 
     use super::*;

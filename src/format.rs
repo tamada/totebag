@@ -9,12 +9,7 @@ pub fn is_all_args_archives(args: &[PathBuf]) -> bool {
 
 pub fn is_archive_file(arg: &PathBuf) -> bool {
     let name = arg.to_str().unwrap().to_lowercase();
-    let exts = vec![
-        ".7z", ".cab", ".ear", ".lha", ".lzh", ".jar", ".rar", ".tar",
-        ".tar.bz2", ".tar.gz", ".tar.xz", ".tar.zst",
-        ".tbz2", ".tgz", ".txz", ".tzst", ".war", ".zip", 
-    ];
-    for ext in exts.iter() {
+    for (_, ext) in exts().iter() {
         if name.ends_with(ext) {
             return true
         }
@@ -26,35 +21,41 @@ pub fn find_format(file_name: Option<&OsStr>) -> Result<Format> {
     match file_name {
         Some(file_name) => {
             let name = file_name.to_str().unwrap().to_lowercase();
-            if name.ends_with(".7z") {
-                return Ok(Format::SevenZ);
-            } else if name.ends_with(".cab") {
-                return Ok(Format::Cab);
-            } else if name.ends_with(".lha") || name.ends_with(".lzh") {
-                return Ok(Format::LHA);
-            } else if name.ends_with(".rar") {
-                return Ok(Format::Rar);
-            } else if name.ends_with(".tar") {
-                return Ok(Format::Tar);
-            } else if name.ends_with(".tar.bz2") || name.ends_with(".tbz2") {
-                return Ok(Format::TarBz2);
-            } else if name.ends_with(".tar.gz") || name.ends_with(".tgz") {
-                return Ok(Format::TarGz);
-            } else if name.ends_with(".tar.xz") || name.ends_with(".txz") {
-                return Ok(Format::TarXz);
-            } else if name.ends_with(".tar.zst") || name.ends_with(".tzst") {
-                return Ok(Format::TarZstd);
-            } else if name.ends_with(".zip") || name.ends_with(".jar") || name.ends_with(".war") || name.ends_with(".ear") {
-                return Ok(Format::Zip);
-            } else {
-                return Ok(Format::Unknown(file_name.to_str().unwrap().to_string()));
+            for ext in exts().iter() {
+                if name.ends_with(&ext.1) {
+                    return Ok(ext.0.clone());
+                }
             }
+            return Ok(Format::Unknown(file_name.to_str().unwrap().to_string()));
         }
         None => Err(ToteError::NoArgumentsGiven),
     }
 }
 
-#[derive(Debug, PartialEq)]
+fn exts() -> Vec<(Format, String)> {
+    vec![
+        (Format::Cab, String::from(".cab")),
+        (Format::LHA, String::from(".lha")),
+        (Format::LHA, String::from(".lzh")),
+        (Format::SevenZ, String::from(".7z")),
+        (Format::Rar, String::from(".rar")),
+        (Format::Tar, String::from(".tar")),
+        (Format::TarGz, String::from(".tar.gz")),
+        (Format::TarGz, String::from(".tgz")),
+        (Format::TarBz2, String::from(".tar.bz2")),
+        (Format::TarBz2, String::from(".tbz2")),
+        (Format::TarXz, String::from(".tar.xz")),
+        (Format::TarXz, String::from(".txz")),
+        (Format::TarZstd, String::from(".tar.zst")),
+        (Format::TarZstd, String::from(".tzst")),
+        (Format::Zip, String::from(".zip")),
+        (Format::Zip, String::from(".jar")),
+        (Format::Zip, String::from(".war")),
+        (Format::Zip, String::from(".ear")),
+    ]
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub enum Format {
     Cab,
     LHA,
