@@ -13,7 +13,7 @@ impl Archiver for SevenZArchiver {
     fn perform(&self, opts: &ArchiverOpts) -> Result<()> {
         match opts.destination() {
             Err(e) => Err(e),
-            Ok(file) => write_sevenz(file, opts.targets(), opts.recursive),
+            Ok(file) => write_sevenz(file, opts.targets(), opts.recursive, &opts.base_dir),
         }
     }
 
@@ -22,8 +22,12 @@ impl Archiver for SevenZArchiver {
     }
 }
 
-fn process_file(szw: &mut SevenZWriter<File>, target: PathBuf) -> Result<()> {
-    let name = target.to_str().unwrap();
+fn process_file(szw: &mut SevenZWriter<File>, target: PathBuf, base_dir: &PathBuf) -> Result<()> {
+    let target_path = match target.strip_prefix(base_dir) {
+        Ok(p) => p.to_path_buf(),
+        Err(_) => target.clone(),
+    };
+    let name = target_path.to_str().unwrap();
     if let Err(e) = szw.push_archive_entry(
         SevenZArchiveEntry::from_path(&target, name.to_string()),
         Some(File::open(target).unwrap()),
@@ -33,14 +37,14 @@ fn process_file(szw: &mut SevenZWriter<File>, target: PathBuf) -> Result<()> {
     Ok(())
 }
 
-fn process_dir(szw: &mut SevenZWriter<File>, target: PathBuf) -> Result<()> {
+fn process_dir(szw: &mut SevenZWriter<File>, target: PathBuf, base_dir: &PathBuf) -> Result<()> {
     for entry in target.read_dir().unwrap() {
         if let Ok(e) = entry {
             let p = e.path();
             if p.is_dir() {
-                process_dir(szw, e.path())?
+                process_dir(szw, e.path(), base_dir)?
             } else if p.is_file() {
-                process_file(szw, e.path())?
+                process_file(szw, e.path(), base_dir)?
             }
         }
     }
@@ -51,13 +55,14 @@ fn write_sevenz_impl(
     mut szw: SevenZWriter<File>,
     targets: Vec<PathBuf>,
     recursive: bool,
+    base_dir: &PathBuf,
 ) -> Result<()> {
     for target in targets {
         let path = target.as_path();
         if path.is_dir() && recursive {
-            process_dir(&mut szw, path.to_path_buf())?
+            process_dir(&mut szw, path.to_path_buf(), base_dir)?
         } else {
-            process_file(&mut szw, path.to_path_buf())?
+            process_file(&mut szw, path.to_path_buf(), base_dir)?
         }
     }
     if let Err(e) = szw.finish() {
@@ -66,9 +71,9 @@ fn write_sevenz_impl(
     Ok(())
 }
 
-fn write_sevenz(dest: File, targets: Vec<PathBuf>, recursive: bool) -> Result<()> {
+fn write_sevenz(dest: File, targets: Vec<PathBuf>, recursive: bool, base_dir: &PathBuf) -> Result<()> {
     match SevenZWriter::new(dest) {
-        Ok(write) => write_sevenz_impl(write, targets, recursive),
+        Ok(write) => write_sevenz_impl(write, targets, recursive, base_dir),
         Err(e) => Err(ToteError::Archiver(e.to_string())),
     }
 }
@@ -105,6 +110,7 @@ mod tests {
             let inout = ArchiverOpts::create(
                 PathBuf::from("results/test.7z"),
                 vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")],
+                PathBuf::from("."),
                 true,
                 true,
                 false,

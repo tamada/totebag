@@ -74,19 +74,19 @@ fn write_tar<F, W: Write>(opts: &ArchiverOpts, f: F) -> Result<()>
         Err(e) => Err(e),
         Ok(file) => {
             let enc = f(file);
-            write_tar_impl(enc, opts.targets(), opts.recursive)
+            write_tar_impl(enc, opts.targets(), opts.recursive, opts.base_dir.clone())
         }
     }
 }
 
-fn write_tar_impl<W: Write>(file: W, targets: Vec<PathBuf>, recursive: bool) -> Result<()> {
+fn write_tar_impl<W: Write>(file: W, targets: Vec<PathBuf>, recursive: bool, base_dir: PathBuf) -> Result<()> {
     let mut builder = tar::Builder::new(file);
     for target in targets {
         let path = target.as_path();
         if path.is_dir() && recursive {
-            process_dir(&mut builder, path.to_path_buf(), recursive)?
+            process_dir(&mut builder, path.to_path_buf(), recursive, &base_dir)?
         } else {
-            process_file(&mut builder, path.to_path_buf())?
+            process_file(&mut builder, path.to_path_buf(), &base_dir)?
         }
     }
     if let Err(e) = builder.finish() {
@@ -95,25 +95,35 @@ fn write_tar_impl<W: Write>(file: W, targets: Vec<PathBuf>, recursive: bool) -> 
     Ok(())
 }
 
-fn process_dir<W: Write>(builder: &mut Builder<W>, target: PathBuf, recursive: bool) -> Result<()> {
-    if let Err(e) = builder.append_dir(&target, &target) {
-        return Err(ToteError::Archiver(e.to_string()))
+fn process_dir<W: Write>(builder: &mut Builder<W>, target: PathBuf, recursive: bool, base_dir: &PathBuf) -> Result<()> {
+    if &target != base_dir {
+        let target_path = match target.strip_prefix(base_dir) {
+            Ok(p) => p.to_path_buf(),
+            Err(_) => target.clone(),
+        };
+        if let Err(e) = builder.append_dir(&target_path, &target) {
+            return Err(ToteError::Archiver(e.to_string()))
+        }
     }
     for entry in target.read_dir().unwrap() {
         if let Ok(e) = entry {
             let p = e.path();
             if p.is_dir() && recursive {
-                process_dir(builder, e.path(), recursive)?
+                process_dir(builder, e.path(), recursive, base_dir)?
             } else if p.is_file() {
-                process_file(builder, e.path())?
+                process_file(builder, e.path(), base_dir)?
             }
         }
     }
     Ok(())
 }
 
-fn process_file<W: Write>(builder: &mut Builder<W>, target: PathBuf) -> Result<()> {
-    if let Err(e) = builder.append_path(target) {
+fn process_file<W: Write>(builder: &mut Builder<W>, target: PathBuf, base_dir: &PathBuf) -> Result<()> {
+    let target_path = match target.strip_prefix(base_dir) {
+        Ok(p) => p.to_path_buf(),
+        Err(_) => target.clone(),
+    };
+    if let Err(e) = builder.append_path_with_name(target, target_path) {
         Err(ToteError::Archiver(e.to_string()))
     } else {
         Ok(())
@@ -145,7 +155,7 @@ mod tests {
     fn test_tar() {
         run_test(|| {
             let archiver = TarArchiver{};
-            let inout = ArchiverOpts::create(PathBuf::from("results/test.tar"), vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")], true, true, false);
+            let inout = ArchiverOpts::create(PathBuf::from("results/test.tar"), vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")], PathBuf::from("."), true, true, false);
             let result = archiver.perform(&inout);
             let path = PathBuf::from("results/test.tar");
             assert!(result.is_ok());
@@ -160,7 +170,7 @@ mod tests {
     fn test_targz() {
         run_test(|| {
             let archiver = TarGzArchiver{};
-            let inout = ArchiverOpts::create(PathBuf::from("results/test.tar.gz"), vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")], true, true, false);
+            let inout = ArchiverOpts::create(PathBuf::from("results/test.tar.gz"), vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")], PathBuf::from("."), true, true, false);
             let result = archiver.perform(&inout);
             let path = PathBuf::from("results/test.tar.gz");
             assert!(result.is_ok());
@@ -174,7 +184,7 @@ mod tests {
     fn test_tarbz2() {
         run_test(|| {
             let archiver = TarBz2Archiver{};
-            let inout = ArchiverOpts::create(PathBuf::from("results/test.tar.bz2"), vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")], true, true, false);
+            let inout = ArchiverOpts::create(PathBuf::from("results/test.tar.bz2"), vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")], PathBuf::from("."), true, true, false);
             let result = archiver.perform(&inout);
             let path = PathBuf::from("results/test.tar.bz2");
             assert!(result.is_ok());
@@ -188,7 +198,7 @@ mod tests {
     fn test_tarxz() {
         run_test(|| {
             let archiver = TarXzArchiver{};
-            let inout = ArchiverOpts::create(PathBuf::from("results/test.tar.xz"), vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")], true, true, false);
+            let inout = ArchiverOpts::create(PathBuf::from("results/test.tar.xz"), vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")], PathBuf::from("."), true, true, false);
             let result = archiver.perform(&inout);
             let path = PathBuf::from("results/test.tar.xz");
             assert!(result.is_ok());
@@ -202,7 +212,7 @@ mod tests {
     fn test_tarzstd() {
         run_test(|| {
             let archiver = TarZstdArchiver{};
-            let inout = ArchiverOpts::create(PathBuf::from("results/test.tar.zst"), vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")], true, true, false);
+            let inout = ArchiverOpts::create(PathBuf::from("results/test.tar.zst"), vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")], PathBuf::from("."), true, true, false);
             let result = archiver.perform(&inout);
             let path = PathBuf::from("results/test.tar.zst");
             assert!(result.is_ok());

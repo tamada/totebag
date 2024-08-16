@@ -5,6 +5,7 @@ use crate::format::{find_format, Format};
 use crate::verboser::{create_verboser, Verboser};
 use crate::CliOpts;
 
+mod cab;
 mod lha;
 mod rar;
 mod sevenz;
@@ -33,7 +34,6 @@ impl ExtractorOpts {
     /// The target is the archive file name of source.
     pub fn destination(&self, target: &PathBuf) -> Result<PathBuf> {
         let dest = self.destination_file(target);
-        println!("destination: {:?}", dest);
         if dest.exists() && !self.overwrite {
             Err(ToteError::FileExists(dest.clone()))
         } else {
@@ -67,15 +67,16 @@ pub fn create_extractor(file: &PathBuf) -> Result<Box<dyn Extractor>> {
     match format {
         Ok(format) => {
             return match format {
-                Format::Zip => Ok(Box::new(zip::ZipExtractor {})),
+                Format::Cab => Ok(Box::new(cab::CabExtractor {})),
+                Format::LHA => Ok(Box::new(lha::LhaExtractor {})),
                 Format::Rar => Ok(Box::new(rar::RarExtractor {})),
+                Format::SevenZ => Ok(Box::new(sevenz::SevenZExtractor {})),
                 Format::Tar => Ok(Box::new(tar::TarExtractor {})),
-                Format::TarGz => Ok(Box::new(tar::TarGzExtractor {})),
                 Format::TarBz2 => Ok(Box::new(tar::TarBz2Extractor {})),
+                Format::TarGz => Ok(Box::new(tar::TarGzExtractor {})),
                 Format::TarXz => Ok(Box::new(tar::TarXzExtractor {})),
                 Format::TarZstd => Ok(Box::new(tar::TarZstdExtractor {})),
-                Format::LHA => Ok(Box::new(lha::LhaExtractor {})),
-                Format::SevenZ => Ok(Box::new(sevenz::SevenZExtractor {})),
+                Format::Zip => Ok(Box::new(zip::ZipExtractor {})),
                 Format::Unknown(s) => Err(ToteError::UnknownFormat(format!(
                     "{}: unsupported format",
                     s

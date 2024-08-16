@@ -15,46 +15,24 @@ pub struct CliOpts {
     pub output: Option<PathBuf>,
     #[clap(long = "to-archive-name-dir", help = "extract files to DEST/ARCHIVE_NAME directory (extract mode).", default_value_t = false)]
     pub to_archive_name_dir: bool,
+
+    #[clap(
+        short = 'C', long = "dir", value_name = "DIR", required = false,
+        default_value = ".", help = "Specify the base directory for archiving or extracting."
+    )]
+    pub base_dir: PathBuf,
+
     #[clap(short = 'n', long = "no-recursive", help = "No recursive directory (archive mode).", default_value_t = false)]
     pub no_recursive: bool,
     #[clap(short = 'v', long = "verbose", help = "Display verbose output.", default_value_t = false)]
     pub verbose: bool,
     #[clap(long, help = "Overwrite existing files.")]
     pub overwrite: bool,
-    #[clap(value_name = "ARGUMENTS", help = "List of files or directories to be processed.")]
+    #[clap(value_name = "ARGUMENTS", help = r###"List of files or directories to be processed.
+If archive mode, the archive file name can specify at the first argument.
+If the frist argument was not the archive name, the default archive name `totebag.zip` is applied.
+"###)]
     pub args: Vec<PathBuf>,
-}
-
-impl CliOpts {
-    pub fn run_mode(&mut self) -> Result<RunMode> {
-        if self.args.len() == 0 {
-            return Err(ToteError::NoArgumentsGiven)
-        }
-        if self.mode == RunMode::Auto {
-            if is_all_args_archives(&self.args) {
-                self.mode = RunMode::Extract;
-                Ok(RunMode::Extract)
-            } else {
-                self.mode = RunMode::Archive;
-                Ok(RunMode::Archive)
-            }
-        } else {
-            Ok(self.mode)
-        }
-    }
-}
-
-fn is_all_args_archives(args: &[PathBuf]) -> bool {
-    args.iter().all(|arg| {
-        let name = arg.to_str().unwrap().to_lowercase();
-        let exts = vec![".zip", ".tar", ".tar.gz", ".tgz", ".tar.bz2", ".tbz2", ".rar", ".jar", ".war", ".ear", "7z", ];
-        for ext in exts.iter() {
-            if name.ends_with(ext) {
-                return true
-            }
-        }
-        return false
-    })
 }
 
 #[derive(Debug, Clone, ValueEnum, PartialEq, Copy)]
@@ -80,7 +58,6 @@ pub enum ToteError {
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
     use clap::Parser;
 
     use super::*;
@@ -106,10 +83,5 @@ mod tests {
         let r4 = cli3.run_mode();
         assert!(r4.is_ok());
         assert_eq!(cli4.run_mode().unwrap(), RunMode::List);
-    }
-
-    #[test]
-    fn test_is_all_args_archives() {
-        assert!(is_all_args_archives(&[PathBuf::from("test.zip"), PathBuf::from("test.tar"), PathBuf::from("test.tar.gz"), PathBuf::from("test.tgz"), PathBuf::from("test.tar.bz2"), PathBuf::from("test.tbz2"), PathBuf::from("test.rar")]));
     }
 }

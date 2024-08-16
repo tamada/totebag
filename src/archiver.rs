@@ -7,10 +7,11 @@ use crate::archiver::sevenz::SevenZArchiver;
 use crate::archiver::tar::{TarArchiver, TarBz2Archiver, TarGzArchiver, TarXzArchiver, TarZstdArchiver};
 use crate::archiver::zip::ZipArchiver;
 use crate::cli::{Result, ToteError};
-use crate::format::{find_format, Format};
+use crate::format::{find_format, is_archive_file, Format};
 use crate::verboser::{create_verboser, Verboser};
 use crate::CliOpts;
 
+mod cab;
 mod lha;
 mod os;
 mod rar;
@@ -28,15 +29,16 @@ pub fn create_archiver(dest: &PathBuf) -> Result<Box<dyn Archiver>> {
     match format {
         Ok(format) => {
             return match format {
-                Format::Zip => Ok(Box::new(ZipArchiver {})),
-                Format::Tar => Ok(Box::new(TarArchiver {})),
-                Format::TarGz => Ok(Box::new(TarGzArchiver {})),
-                Format::TarBz2 => Ok(Box::new(TarBz2Archiver {})),
-                Format::TarXz => Ok(Box::new(TarXzArchiver {})),
-                Format::TarZstd => Ok(Box::new(TarZstdArchiver {})),
+                Format::Cab => Ok(Box::new(cab::CabArchiver {})),
                 Format::LHA => Ok(Box::new(LhaArchiver {})),
                 Format::Rar => Ok(Box::new(RarArchiver {})),
                 Format::SevenZ => Ok(Box::new(SevenZArchiver {})),
+                Format::Tar => Ok(Box::new(TarArchiver {})),
+                Format::TarBz2 => Ok(Box::new(TarBz2Archiver {})),
+                Format::TarGz => Ok(Box::new(TarGzArchiver {})),
+                Format::TarXz => Ok(Box::new(TarXzArchiver {})),
+                Format::TarZstd => Ok(Box::new(TarZstdArchiver {})),
+                Format::Zip => Ok(Box::new(ZipArchiver {})),
                 _ => Err(ToteError::UnknownFormat(format.to_string())),
             }
         }
@@ -60,18 +62,34 @@ pub fn archiver_info(archiver: &Box<dyn Archiver>, opts: &ArchiverOpts) -> Strin
 pub struct ArchiverOpts {
     pub dest: PathBuf,
     pub targets: Vec<PathBuf>,
+    pub base_dir: PathBuf,
     pub overwrite: bool,
     pub recursive: bool,
     pub v: Box<dyn Verboser>,
 }
 
+fn find_dest_and_args(opts: &CliOpts) -> (PathBuf, Vec<PathBuf>) {
+    match &opts.output {
+        Some(o) => (o.clone(), opts.args.clone()),
+        None => {
+            if is_archive_file(&opts.args[0]) {
+                let file = opts.args[0].clone();
+                let args = opts.args[1..].to_vec();
+                (file, args)
+            } else {
+                (PathBuf::from("totebag.zip"), opts.args.clone())
+            }
+        }
+    }
+}
+
 impl ArchiverOpts {
     pub fn new(opts: &CliOpts) -> Self {
-        let args = opts.args.clone();
-        let dest = opts.output.clone().unwrap_or_else(|| PathBuf::from("."));
+        let (dest, args) = find_dest_and_args(&opts);
         ArchiverOpts {
             dest: dest,
             targets: args,
+            base_dir: opts.base_dir.clone(),
             overwrite: opts.overwrite,
             recursive: !opts.no_recursive,
             v: create_verboser(opts.verbose),
@@ -82,6 +100,7 @@ impl ArchiverOpts {
     pub fn create(
         dest: PathBuf,
         targets: Vec<PathBuf>,
+        base_dir: PathBuf,
         overwrite: bool,
         recursive: bool,
         verbose: bool,
@@ -89,6 +108,7 @@ impl ArchiverOpts {
         ArchiverOpts {
             dest,
             targets,
+            base_dir,
             overwrite,
             recursive,
             v: create_verboser(verbose),
@@ -172,9 +192,13 @@ mod tests {
         assert!(a9.is_ok());
         assert_eq!(a9.unwrap().format(), Format::LHA);
 
-        let a10 = create_archiver(&PathBuf::from("results/test.unknown"));
-        assert!(a10.is_err());
-        if let Err(e) = a10 {
+        let a10 = create_archiver(&PathBuf::from("results/test.cab"));
+        assert!(a10.is_ok());
+        assert_eq!(a10.unwrap().format(), Format::Cab);
+
+        let ae = create_archiver(&PathBuf::from("results/test.unknown"));
+        assert!(ae.is_err());
+        if let Err(e) = ae {
             if let ToteError::UnknownFormat(msg) = e {
                 assert_eq!(msg, "test.unknown: unknown format".to_string());
             } else {

@@ -24,11 +24,10 @@ jobs:
 
       - name: Create release
         id: create_release
-        uses: marvinpinto/action-automatic-releases@latest
+        uses: softprops/action-gh-release@v2
         with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          automatic_release_tag: v${{ steps.vars.outputs.tag }}
-          title: Release v${{ steps.vars.outputs.tag }}
+          tag_name: v${{ steps.vars.outputs.tag }}
+          name: Release v${{ steps.vars.outputs.tag }}
           draft: false
           prerelease: false
 
