@@ -55,7 +55,7 @@ fn correct_targets(targets: Vec<PathBuf>, recursive: bool, base_dir: PathBuf) ->
         let path = target.as_path();
         if path.is_dir() && recursive {
             process_dir(&mut result, path.to_path_buf(), &base_dir);
-        } else {
+        } else if path.is_file(){
             process_file(&mut result, path.to_path_buf(), &base_dir);
         }
     }
@@ -82,4 +82,52 @@ fn process_file(result: &mut Vec<(PathBuf, String)>, target: PathBuf, base_dir: 
     };
     let name = target_path.to_str().unwrap();
     result.push((target, name.to_string()));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use std::path::PathBuf;
+    use crate::verboser::create_verboser;
+
+    fn run_test<F>(f: F)
+    where
+        F: FnOnce(),
+    {
+        // setup(); // 予めやりたい処理
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(f));
+        teardown(); // 後片付け処理
+
+        if let Err(err) = result {
+            std::panic::resume_unwind(err);
+        }
+    }
+
+    #[test]
+    fn test_format() {
+        let archiver = CabArchiver{};
+        assert_eq!(archiver.format(), Format::Cab);
+    }
+
+    #[test]
+    fn test_archive() {
+        run_test(|| {
+            let archiver = CabArchiver{};
+            let opts = ArchiverOpts {
+                dest: PathBuf::from("results/test.cab"),
+                targets: vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")],
+                base_dir: PathBuf::from("."),
+                overwrite: false,
+                recursive: false,
+                v: create_verboser(false),
+            };
+            let r = archiver.perform(&opts);
+            assert!(r.is_ok());
+        });
+    }
+
+    fn teardown() {
+        let _ = std::fs::remove_file("results/test.cab");
+    }
 }
