@@ -26,6 +26,7 @@ fn perform(mut opts: cli::CliOpts) -> Result<()> {
 fn perform_extract(opts: cli::CliOpts) -> Result<()> {
     let args = opts.args.iter()
         .map(PathBuf::from).collect::<Vec<PathBuf>>();
+    println!("args: {:?}", args);
     let extractor_opts = ExtractorOpts::new_with_opts(opts.output, opts.extractors.to_archive_name_dir, opts.overwrite);
     let mut errs = vec![];
     for arg in args.iter() {

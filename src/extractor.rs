@@ -61,16 +61,16 @@ impl ExtractorOpts {
 
 
 pub struct Extractor<'a> {
-    from: PathBuf,
+    archive_file: PathBuf,
     opts: &'a ExtractorOpts,
     extractor: Box<dyn ToteExtractor>,
 }
 
 impl<'a> Extractor<'a> {
-    pub fn new(from: PathBuf, opts: &'a ExtractorOpts) -> Result<Self> {
-        match create_extractor(&from) {
+    pub fn new(archive_file: PathBuf, opts: &'a ExtractorOpts) -> Result<Self> {
+        match create_extractor(&archive_file) {
             Ok(extractor) => Ok(Self {
-                from,
+                archive_file,
                 opts,
                 extractor,
             }),
@@ -83,7 +83,7 @@ impl<'a> Extractor<'a> {
     }
 
     pub fn perform(&self) -> Result<()> {
-        self.extractor.perform(&self.target_dir(), &self.opts)
+        self.extractor.perform(&self.archive_file, &self.opts)
     }
 
     pub fn can_extract(&self) -> Result<()> {
@@ -102,14 +102,14 @@ impl<'a> Extractor<'a> {
     }
 
     pub fn list(&self) -> Result<Vec<String>> {
-        self.extractor.list_archives(&self.from)
+        self.extractor.list_archives(&self.archive_file)
     }
 
     pub fn info(&self) -> String {
         format!(
             "Format: {:?}\nFile: {:?}\nDestination: {:?}",
             self.extractor.format(),
-            self.from,
+            self.archive_file,
             self.opts.dest,
         )
     }
@@ -117,7 +117,7 @@ impl<'a> Extractor<'a> {
     pub fn target_dir(&self) -> PathBuf {
         if self.opts.use_archive_name_dir {
             let base = self.opts.dest.clone();
-            if let Some(file_name) = self.from.file_stem() {
+            if let Some(file_name) = self.archive_file.file_stem() {
                 let dir_name = file_name.to_str().unwrap();
                 self.opts.dest.join(dir_name)
             } else {
