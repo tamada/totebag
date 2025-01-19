@@ -1,6 +1,6 @@
 [package]
 name = "totebag"
-version = "0.6.0"
+version = "0.7.0"
 description = "A tool for extracting/archiving files and directories in multiple formats."
 repository = "https://github.com/tamada/totebag"
 readme = "README.md"
@@ -16,19 +16,21 @@ edition = "2021"
 [dependencies]
 bzip2 = "0.4.4"
 cab = "0.6.0"
-clap = { version = "4.5.4", features = ["derive"] }
+clap = { version = "4.5.26", features = ["derive"] }
 delharc = "0.6.1"
-flate2 = "1.0.29"
+flate2 = "1.0.35"
+ignore = "0.4.23"
+log = "0.4.25"
 sevenz-rust = "0.6.0"
-tar = "0.4.40"
-time = "0.3.36"
-unrar = "0.5.3"
+tar = "0.4.43"
+time = "0.3.37"
+unrar = "0.5.7"
 xz2 = "0.1.7"
 zip = "2.1.0"
-zstd = "0.13.1"
+zstd = "0.13.2"
 
 [build-dependencies]
 clap = { version = "4.5.4", features = ["derive"] }
-clap_complete = "4.5.2"
+clap_complete = "4.5.42"
 toml = "0.8.12"
 

@@ -1,14 +1,22 @@
-use crate::archiver::{Archiver, ArchiverOpts, Format};
-use crate::cli::{Result, ToteError};
+use std::fs::File;
+
+use crate::archiver::{ToteArchiver, ArchiverOpts, Format};
+use crate::{Result, ToteError};
+
+use super::TargetPath;
 
 pub(super) struct RarArchiver {}
 
-impl Archiver for RarArchiver {
-    fn perform(&self, _: &ArchiverOpts) -> Result<()> {
+impl ToteArchiver for RarArchiver {
+    fn perform(&self, _: File, _: Vec<TargetPath>, _: &ArchiverOpts) -> Result<()> {
         Err(ToteError::UnsupportedFormat(
             "only extraction support for rar".to_string(),
         ))
     }
+    fn enable(&self) -> bool {
+        false
+    }
+    
     fn format(&self) -> Format {
         Format::Rar
     }
@@ -16,9 +24,10 @@ impl Archiver for RarArchiver {
 
 #[cfg(test)]
 mod tests {
+    use crate::archiver::Archiver;
+
     use super::*;
 
-    use crate::verboser::create_verboser;
     use std::path::PathBuf;
 
     #[test]
@@ -29,16 +38,14 @@ mod tests {
 
     #[test]
     fn test_archive() {
-        let archiver = RarArchiver {};
-        let opts = ArchiverOpts {
-            dest: PathBuf::from("results/test.rar"),
-            targets: vec![],
-            base_dir: PathBuf::from("."),
-            overwrite: false,
-            recursive: false,
-            v: create_verboser(false),
-        };
-        let r = archiver.perform(&opts);
+        let opts = ArchiverOpts::create(
+            None, false, false, vec![]);
+        let archiver = Archiver::new(
+            PathBuf::from("results/test.rar"),
+            vec![],
+            opts).unwrap();
+
+        let r = archiver.perform();
         assert!(r.is_err());
     }
 }

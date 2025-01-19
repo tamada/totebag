@@ -3,8 +3,9 @@ use std::fs::{create_dir_all, File};
 
 use cab::Cabinet;
 
-use crate::cli::{Result, ToteError};
-use crate::extractor::{Extractor, ExtractorOpts};
+use crate::{Result, ToteError};
+use crate::extractor::ToteExtractor as Extractor;
+use crate::extractor::ExtractorOpts;
 
 pub(super) struct CabExtractor {}
 
@@ -21,11 +22,11 @@ fn list_impl<F, T>(archive_file: &PathBuf, mapper: F) -> Result<Vec<T>>
 }
 
 impl Extractor for CabExtractor {
-    fn list_archives(&self, archive_file: PathBuf) -> Result<Vec<String>> {
+    fn list_archives(&self, archive_file: &PathBuf) -> Result<Vec<String>> {
         list_impl(&archive_file, |file| file.name().to_string())
     }
 
-    fn perform(&self, archive_file: PathBuf, opts: &ExtractorOpts) -> Result<()> {
+    fn perform(&self, archive_file: &PathBuf, opts: &ExtractorOpts) -> Result<()> {
         let list = match list_impl(&archive_file, 
                 |file| (file.name().to_string(), file.uncompressed_size())) {
             Ok(l) => l,
@@ -35,7 +36,7 @@ impl Extractor for CabExtractor {
         for file in list {
             let file_name = file.0.clone();
             let dest_file = opts.destination(&archive_file)?.join(&file_name);
-            opts.v.verbose(format!("extracting {} ({} bytes)", &file_name, file.1));
+            log::info!("extracting {} ({} bytes)", &file_name, file.1);
             create_dir_all(dest_file.parent().unwrap()).unwrap();
             let mut dest = match File::create(dest_file) {
                 Ok(f) => f,
@@ -68,13 +69,13 @@ fn open_cabinet(archive_file: &PathBuf) -> Result<Cabinet<File>> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{format::Format, verboser::create_verboser};
+    use crate::format::Format;
     use super::*;
     #[test]
     fn test_list_archives() {
         let extractor = CabExtractor{};
         let file = PathBuf::from("testdata/test.cab");
-        match extractor.list_archives(file) {
+        match extractor.list_archives(&file) {
             Ok(r) => {
                 assert_eq!(r.len(), 16);
                 assert_eq!(r.get(0), Some("Cargo.toml".to_string()).as_ref());
@@ -94,9 +95,8 @@ mod tests {
             dest: PathBuf::from("results/cab"),
             use_archive_name_dir: true,
             overwrite: true,
-            v: create_verboser(false),
         };
-        match e.perform(file, &opts) {
+        match e.perform(&file, &opts) {
             Ok(_) => {
                 assert!(true);
                 assert!(PathBuf::from("results/cab/test/Cargo.toml").exists());

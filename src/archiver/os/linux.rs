@@ -5,7 +5,7 @@ use time::OffsetDateTime;
 use zip::write::SimpleFileOptions;
 use zip::DateTime;
 
-pub fn create(target: &PathBuf) -> SimpleFileOptions {
+pub fn create_file_opts(target: &PathBuf) -> SimpleFileOptions {
     let metadata = std::fs::metadata(&target).unwrap();
     let mod_time = DateTime::try_from(
         OffsetDateTime::from(metadata.modified().unwrap()));
