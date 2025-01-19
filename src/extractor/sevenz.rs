@@ -3,10 +3,10 @@ use std::io::Read;
 use std::path::PathBuf;
 
 use sevenz_rust::{Archive, BlockDecoder, Password, SevenZArchiveEntry};
+use crate::{Result, ToteError};
 
-use crate::extractor::Extractor;
+use crate::extractor::ToteExtractor as Extractor;
 use crate::format::Format;
-use crate::cli::{Result, ToteError};
 
 use super::ExtractorOpts;
 
@@ -14,7 +14,7 @@ pub(super) struct SevenZExtractor {
 }
 
 impl Extractor for SevenZExtractor {
-    fn list_archives(&self, archive_file: PathBuf) -> Result<Vec<String>> {
+    fn list_archives(&self, archive_file: &PathBuf) -> Result<Vec<String>> {
         let mut reader = File::open(archive_file).unwrap();
         let len = reader.metadata().unwrap().len();
         match Archive::read(&mut reader,len, Password::empty().as_ref()) {
@@ -28,21 +28,21 @@ impl Extractor for SevenZExtractor {
             Err(e) => Err(ToteError::Fatal(Box::new(e))),
         }
     }
-    fn perform(&self, archive_file: PathBuf, opts: &ExtractorOpts) -> Result<()> {
+    fn perform(&self, archive_file: &PathBuf, opts: &ExtractorOpts) -> Result<()> {
         let mut file = match File::open(&archive_file) {
             Ok(file) => {
                 file
             },
             Err(e) => return Err(ToteError::IO(e)),
         };
-        extract(&mut file, archive_file, opts)
+        extract(&mut file, &archive_file, opts)
     }
     fn format(&self) -> Format {
         Format::SevenZ
     }
 }
 
-fn extract(mut file: &File, path: PathBuf, opts: &ExtractorOpts) -> Result<()> {
+fn extract(mut file: &File, path: &PathBuf, opts: &ExtractorOpts) -> Result<()> {
     let len = file.metadata().unwrap().len();
     let password = Password::empty();
     let archive = match Archive::read(&mut file, len, password.as_ref()) {
@@ -79,13 +79,12 @@ fn decode_entry(entry: &SevenZArchiveEntry, reader: &mut dyn Read, errs: &mut Ve
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::verboser::create_verboser;
 
     #[test]
     fn test_list() {
         let extractor = SevenZExtractor{};
         let file = PathBuf::from("testdata/test.7z");
-        match extractor.list_archives(file) {
+        match extractor.list_archives(&file) {
             Ok(r) => {
                 assert_eq!(r.len(), 21);
                 assert_eq!(r.get(0), Some("Cargo.toml".to_string()).as_ref());
@@ -105,9 +104,8 @@ mod tests {
             dest: PathBuf::from("results/sevenz"),
             use_archive_name_dir: false,
             overwrite: true,
-            v: create_verboser(false),
         };
-        match e.perform(file, &opts) {
+        match e.perform(&file, &opts) {
             Ok(_) => {
                 assert!(true);
                 assert!(PathBuf::from("results/sevenz/Cargo.toml").exists());

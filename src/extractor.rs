@@ -1,9 +1,7 @@
 use std::path::PathBuf;
 
-use crate::cli::{Result, ToteError};
-use crate::format::{find_format, Format};
-use crate::verboser::{create_verboser, Verboser};
-use crate::CliOpts;
+use super::{Result, ToteError};
+use super::format::{find_format, Format};
 
 mod cab;
 mod lha;
@@ -16,17 +14,18 @@ pub struct ExtractorOpts {
     pub dest: PathBuf,
     pub use_archive_name_dir: bool,
     pub overwrite: bool,
-    pub v: Box<dyn Verboser>,
 }
 
 impl ExtractorOpts {
-    pub fn new(opts: &CliOpts) -> ExtractorOpts {
-        let d = opts.output.clone();
+    pub fn new(dest: Option<PathBuf>) -> ExtractorOpts {
+        ExtractorOpts::new_with_opts(dest, false, false)
+    }
+
+    pub fn new_with_opts(dest: Option<PathBuf>, use_archive_name_dir: bool, overwrite: bool) -> ExtractorOpts {
         ExtractorOpts {
-            dest: d.unwrap_or_else(|| PathBuf::from(".")),
-            use_archive_name_dir: opts.to_archive_name_dir,
-            overwrite: opts.overwrite,
-            v: create_verboser(opts.verbose),
+            dest: dest.unwrap_or_else(|| PathBuf::from(".")),
+            use_archive_name_dir,
+            overwrite,
         }
     }
 
@@ -35,7 +34,11 @@ impl ExtractorOpts {
     pub fn destination(&self, target: &PathBuf) -> Result<PathBuf> {
         let dest = self.destination_file(target);
         if dest.exists() && !self.overwrite {
-            Err(ToteError::FileExists(dest.clone()))
+            if dest == PathBuf::from(".") {
+                Ok(dest)
+            } else {
+                Err(ToteError::FileExists(dest.clone()))
+            }
         } else {
             Ok(dest)
         }
@@ -56,13 +59,83 @@ impl ExtractorOpts {
     }
 }
 
-pub trait Extractor {
-    fn list_archives(&self, archive_file: PathBuf) -> Result<Vec<String>>;
-    fn perform(&self, archive_file: PathBuf, opts: &ExtractorOpts) -> Result<()>;
+
+pub struct Extractor<'a> {
+    from: PathBuf,
+    opts: &'a ExtractorOpts,
+    extractor: Box<dyn ToteExtractor>,
+}
+
+impl<'a> Extractor<'a> {
+    pub fn new(from: PathBuf, opts: &'a ExtractorOpts) -> Result<Self> {
+        match create_extractor(&from) {
+            Ok(extractor) => Ok(Self {
+                from,
+                opts,
+                extractor,
+            }),
+            Err(e) => Err(e),
+        }
+    }
+
+    pub fn format(&self) -> Format {
+        self.extractor.format()
+    }
+
+    pub fn perform(&self) -> Result<()> {
+        self.extractor.perform(&self.target_dir(), &self.opts)
+    }
+
+    pub fn can_extract(&self) -> Result<()> {
+        let dest = self.target_dir();
+        if dest == PathBuf::from(".") {
+            Ok(())
+        } else {
+            if dest.exists() && dest.is_dir() && self.opts.overwrite {
+                Err(ToteError::DirExists(dest))
+            } else if dest.is_file() {
+                Err(ToteError::FileExists(dest))
+            } else {
+                Ok(())
+            }
+        }
+    }
+
+    pub fn list(&self) -> Result<Vec<String>> {
+        self.extractor.list_archives(&self.from)
+    }
+
+    pub fn info(&self) -> String {
+        format!(
+            "Format: {:?}\nFile: {:?}\nDestination: {:?}",
+            self.extractor.format(),
+            self.from,
+            self.opts.dest,
+        )
+    }
+
+    pub fn target_dir(&self) -> PathBuf {
+        if self.opts.use_archive_name_dir {
+            let base = self.opts.dest.clone();
+            if let Some(file_name) = self.from.file_stem() {
+                let dir_name = file_name.to_str().unwrap();
+                self.opts.dest.join(dir_name)
+            } else {
+                base
+            }
+        } else {
+            self.opts.dest.clone()
+        }
+    }
+}
+
+pub(crate) trait ToteExtractor {
+    fn list_archives(&self, archive_file: &PathBuf) -> Result<Vec<String>>;
+    fn perform(&self, archive_file: &PathBuf, opts: &ExtractorOpts) -> Result<()>;
     fn format(&self) -> Format;
 }
 
-pub fn create_extractor(file: &PathBuf) -> Result<Box<dyn Extractor>> {
+fn create_extractor(file: &PathBuf) -> Result<Box<dyn ToteExtractor>> {
     let format = find_format(file.file_name());
     match format {
         Ok(format) => {
@@ -87,19 +160,6 @@ pub fn create_extractor(file: &PathBuf) -> Result<Box<dyn Extractor>> {
     }
 }
 
-pub fn extractor_info(
-    extractor: &Box<dyn Extractor>,
-    target: &PathBuf,
-    opts: &ExtractorOpts,
-) -> String {
-    format!(
-        "Format: {:?}\nFile: {:?}\nDestination: {:?}",
-        extractor.format(),
-        target,
-        opts.dest,
-    )
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -110,7 +170,6 @@ mod tests {
             dest: PathBuf::from("."),
             use_archive_name_dir: true,
             overwrite: false,
-            v: create_verboser(false),
         };
         let target = PathBuf::from("/tmp/archive.zip");
 
@@ -122,7 +181,6 @@ mod tests {
             dest: PathBuf::from("."),
             use_archive_name_dir: false,
             overwrite: false,
-            v: create_verboser(false),
         };
         let target = PathBuf::from("/tmp/archive.zip");
         if let Ok(t) = opts2.destination(&target) {

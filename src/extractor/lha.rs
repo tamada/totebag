@@ -2,13 +2,14 @@ use std::fs::{create_dir_all, File};
 use std::io::copy;
 use std::path::PathBuf;
 
-use crate::cli::{Result, ToteError};
-use crate::extractor::{Extractor, ExtractorOpts};
+use crate::{Result, ToteError};
+use crate::extractor::ToteExtractor as Extractor;
+use crate::extractor::ExtractorOpts;
 
 pub(super) struct LhaExtractor {}
 
 impl Extractor for LhaExtractor {
-    fn list_archives(&self, archive_file: PathBuf) -> Result<Vec<String>> {
+    fn list_archives(&self, archive_file: &PathBuf) -> Result<Vec<String>> {
         let mut result = Vec::<String>::new();
         let mut reader = match delharc::parse_file(&archive_file) {
             Err(e) => return Err(ToteError::IO(e)),
@@ -32,7 +33,7 @@ impl Extractor for LhaExtractor {
         Ok(result)
     }
 
-    fn perform(&self, archive_file: PathBuf, opts: &ExtractorOpts) -> Result<()> {
+    fn perform(&self, archive_file: &PathBuf, opts: &ExtractorOpts) -> Result<()> {
         let mut reader = match delharc::parse_file(&archive_file) {
             Err(e) => return Err(ToteError::IO(e)),
             Ok(h) => h,
@@ -42,11 +43,11 @@ impl Extractor for LhaExtractor {
             let name = header.parse_pathname();
             let dest = opts.destination(&archive_file)?.join(&name);
             if reader.is_decoder_supported() {
-                opts.v.verbose(format!(
+                log::info!(
                     "extracting {} ({} bytes)",
                     &name.to_str().unwrap().to_string(),
                     header.original_size
-                ));
+                );
                 create_dir_all(dest.parent().unwrap()).unwrap();
                 let mut dest = match File::create(dest) {
                     Ok(f) => f,
@@ -60,10 +61,10 @@ impl Extractor for LhaExtractor {
                     return Err(ToteError::Fatal(Box::new(e)));
                 };
             } else if !header.is_directory() {
-                opts.v.verbose(format!(
+                log::info!(
                     "{:?}: unsupported compression method ({:?})",
                     &name, header.compression
-                ));
+                );
             }
             match reader.next_file() {
                 Ok(r) => {
@@ -86,13 +87,12 @@ impl Extractor for LhaExtractor {
 mod tests {
     use super::*;
     use crate::format::Format;
-    use crate::verboser::create_verboser;
 
     #[test]
     fn test_list_archives() {
         let extractor = LhaExtractor {};
         let file = PathBuf::from("testdata/test.lzh");
-        match extractor.list_archives(file) {
+        match extractor.list_archives(&file) {
             Ok(r) => {
                 assert_eq!(r.len(), 23);
                 assert_eq!(r.get(0), Some("Cargo.toml".to_string()).as_ref());
@@ -112,9 +112,8 @@ mod tests {
             dest: PathBuf::from("results/lha"),
             use_archive_name_dir: true,
             overwrite: true,
-            v: create_verboser(false),
         };
-        match e.perform(file, &opts) {
+        match e.perform(&file, &opts) {
             Ok(_) => {
                 assert!(true);
                 assert!(PathBuf::from("results/lha/test/Cargo.toml").exists());

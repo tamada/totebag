@@ -1,7 +1,7 @@
 use std::{ffi::OsStr, path::PathBuf};
 use std::fmt::Display;
 
-use crate::cli::{Result, ToteError};
+use super::{Result, ToteError};
 
 pub fn is_all_args_archives(args: &[PathBuf]) -> bool {
     args.iter().all(is_archive_file)

@@ -3,33 +3,55 @@ use std::path::PathBuf;
 
 use sevenz_rust::{SevenZArchiveEntry, SevenZWriter};
 
-use crate::archiver::{Archiver, ArchiverOpts};
-use crate::cli::{Result, ToteError};
+use crate::archiver::{ToteArchiver, ArchiverOpts};
+use crate::{Result, ToteError};
 use crate::format::Format;
+use crate::archiver::TargetPath;
 
 pub(super) struct SevenZArchiver {}
 
-impl Archiver for SevenZArchiver {
-    fn perform(&self, opts: &ArchiverOpts) -> Result<()> {
-        match opts.destination() {
-            Err(e) => Err(e),
-            Ok(file) => write_sevenz(file, opts.targets(), opts.recursive, &opts.base_dir),
+impl ToteArchiver for SevenZArchiver {
+    fn perform(&self, file: File, tps: Vec<TargetPath>, _: &ArchiverOpts) -> Result<()> {
+        let mut w = match SevenZWriter::new(file) {
+            Ok(writer) => writer,
+            Err(e) => return Err(ToteError::Archiver(e.to_string())),
+        };
+        let mut errs = vec![];
+        for tp in tps {
+            for entry in tp.walker() {
+                if let Ok(t) = entry {
+                    let path = t.into_path();
+                    if path.is_file() {
+                        if let Err(e) = process_file(&mut w, &path, &tp.dest_path(&path)) {
+                            errs.push(e);
+                        }
+                    }
+                }
+            }
+        }
+        if let Err(e) = w.finish() {
+            errs.push(ToteError::Archiver(e.to_string()));
+        }
+        if errs.is_empty() {
+            Ok(())
+        } else {
+            Err(ToteError::Array(errs))
         }
     }
 
     fn format(&self) -> Format {
         Format::SevenZ
     }
+
+    fn enable(&self) -> bool {
+        true
+    }
 }
 
-fn process_file(szw: &mut SevenZWriter<File>, target: PathBuf, base_dir: &PathBuf) -> Result<()> {
-    let target_path = match target.strip_prefix(base_dir) {
-        Ok(p) => p.to_path_buf(),
-        Err(_) => target.clone(),
-    };
-    let name = target_path.to_str().unwrap();
+fn process_file(szw: &mut SevenZWriter<File>, target: &PathBuf, dest_path: &PathBuf) -> Result<()> {
+    let name = &dest_path.to_str().unwrap();
     if let Err(e) = szw.push_archive_entry(
-        SevenZArchiveEntry::from_path(&target, name.to_string()),
+        SevenZArchiveEntry::from_path(&dest_path, name.to_string()),
         Some(File::open(target).unwrap()),
     ) {
         return Err(ToteError::Archiver(e.to_string()));
@@ -37,49 +59,10 @@ fn process_file(szw: &mut SevenZWriter<File>, target: PathBuf, base_dir: &PathBu
     Ok(())
 }
 
-fn process_dir(szw: &mut SevenZWriter<File>, target: PathBuf, base_dir: &PathBuf) -> Result<()> {
-    for entry in target.read_dir().unwrap() {
-        if let Ok(e) = entry {
-            let p = e.path();
-            if p.is_dir() {
-                process_dir(szw, e.path(), base_dir)?
-            } else if p.is_file() {
-                process_file(szw, e.path(), base_dir)?
-            }
-        }
-    }
-    Ok(())
-}
-
-fn write_sevenz_impl(
-    mut szw: SevenZWriter<File>,
-    targets: Vec<PathBuf>,
-    recursive: bool,
-    base_dir: &PathBuf,
-) -> Result<()> {
-    for target in targets {
-        let path = target.as_path();
-        if path.is_dir() && recursive {
-            process_dir(&mut szw, path.to_path_buf(), base_dir)?
-        } else {
-            process_file(&mut szw, path.to_path_buf(), base_dir)?
-        }
-    }
-    if let Err(e) = szw.finish() {
-        return Err(ToteError::Archiver(e.to_string()));
-    }
-    Ok(())
-}
-
-fn write_sevenz(dest: File, targets: Vec<PathBuf>, recursive: bool, base_dir: &PathBuf) -> Result<()> {
-    match SevenZWriter::new(dest) {
-        Ok(write) => write_sevenz_impl(write, targets, recursive, base_dir),
-        Err(e) => Err(ToteError::Archiver(e.to_string())),
-    }
-}
-
 #[cfg(test)]
 mod tests {
+    use crate::archiver::Archiver;
+
     use super::*;
 
     use std::path::PathBuf;
@@ -106,18 +89,19 @@ mod tests {
     #[test]
     fn test_zip() {
         run_test(|| {
-            let archiver = SevenZArchiver {};
-            let inout = ArchiverOpts::create(
-                PathBuf::from("results/test.7z"),
-                vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")],
-                PathBuf::from("."),
+            let opts = ArchiverOpts::create(
+                None,
                 true,
                 true,
-                false,
+                vec![],
             );
-            let result = archiver.perform(&inout);
+            let archiver = Archiver::new(PathBuf::from("results/test.7z"),
+                vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")],
+                opts
+            ).unwrap();
+            let result = archiver.perform();
             assert!(result.is_ok());
-            assert_eq!(archiver.format(), Format::SevenZ);
+            assert_eq!(Format::SevenZ, archiver.format());
         });
     }
 
