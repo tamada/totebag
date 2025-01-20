@@ -5,8 +5,8 @@ use std::slice::Iter;
 
 use ignore::{Walk, WalkBuilder};
 
-use crate::{IgnoreType, Result, ToteError};
 use crate::format::{find_format, is_archive_file, Format};
+use crate::{IgnoreType, Result, ToteError};
 
 mod cab;
 mod lha;
@@ -22,11 +22,10 @@ pub trait ToteArchiver {
     fn enable(&self) -> bool;
 }
 
-pub struct Archiver {
+pub struct Archiver<'a> {
     pub dest: PathBuf,
     pub froms: Vec<PathBuf>,
-    pub opts: ArchiverOpts,
-    pub archiver: Box<dyn ToteArchiver>,
+    pub opts: &'a ArchiverOpts,
 }
 
 pub struct TargetPath<'a> {
@@ -73,44 +72,37 @@ impl<'a> TargetPath<'a> {
     }
 }
 
-impl Archiver {
-    pub fn create(args: Vec<String>, output: Option<PathBuf>, opts: ArchiverOpts) -> Result<Self> {
+impl<'a> Archiver<'a> {
+    pub fn create(args: Vec<String>, output: Option<PathBuf>, opts: &'a ArchiverOpts) -> Self {
         let (dest, froms) = find_dest_and_args(args, output);
-        match create_archiver(&dest) {
-            Ok(archiver) => Ok(Self {
-                dest,
-                froms,
-                opts,
-                archiver,
-            }),
-            Err(e) => Err(e),
-        }
+        Self { dest, froms, opts }
     }
 
-    pub fn new(dest: PathBuf, froms: Vec<PathBuf>, opts: ArchiverOpts) -> Result<Self> {
-        match create_archiver(&dest) {
-            Ok(archiver) => Ok(Self {
-                dest,
-                froms,
-                opts,
-                archiver,
-            }),
-            Err(e) => Err(e),
-        }
+    pub fn new(dest: PathBuf, froms: Vec<PathBuf>, opts: &'a ArchiverOpts) -> Self {
+        Self { dest, froms, opts }
     }
 
     pub fn format(&self) -> Format {
-        self.archiver.format()
+        match create_archiver(&self.dest) {
+            Ok(archiver) => archiver.format(),
+            Err(e) => Format::Unknown(format!("{:?}", e)),
+        }
     }
 
     pub fn perform(&self) -> Result<()> {
-        if self.archiver.enable() {
-            let paths = self.froms.iter()
+        let archiver = match create_archiver(&self.dest) {
+            Ok(a) => a,
+            Err(e) => return Err(e),
+        };
+        if archiver.enable() {
+            let paths = self
+                .froms
+                .iter()
                 .map(|item| TargetPath::new(item, &self.opts))
                 .collect::<Vec<TargetPath>>();
 
             match self.destination() {
-                Ok(file) => self.archiver.perform(file, paths, &self.opts),
+                Ok(file) => archiver.perform(file, paths, &self.opts),
                 Err(e) => Err(e),
             }
         } else {
@@ -147,9 +139,10 @@ impl Archiver {
     pub fn info(&self) -> String {
         format!(
             "Format: {:?}\nDestination: {:?}\nTargets: {:?}",
-            self.archiver.format(),
+            self.format(),
             self.dest,
-            self.froms.iter()
+            self.froms
+                .iter()
                 .map(|item| item.to_str().unwrap())
                 .collect::<Vec<_>>()
                 .join(", ")
@@ -164,12 +157,11 @@ fn build_walker_impl(opts: &ArchiverOpts, w: &mut WalkBuilder) {
             IgnoreType::GitIgnore => w.git_ignore(true),
             IgnoreType::GitGlobal => w.git_global(true),
             IgnoreType::GitExclude => w.git_exclude(true),
-            IgnoreType::Default => {
-                w.ignore(true)
-                    .git_ignore(true)
-                    .git_global(true)
-                    .git_exclude(true)
-            },
+            IgnoreType::Default => w
+                .ignore(true)
+                .git_ignore(true)
+                .git_global(true)
+                .git_exclude(true),
             IgnoreType::Hidden => w.hidden(true),
         };
     }
@@ -180,7 +172,9 @@ pub fn create_archiver(dest: &PathBuf) -> Result<Box<dyn ToteArchiver>> {
     use crate::archiver::lha::LhaArchiver;
     use crate::archiver::rar::RarArchiver;
     use crate::archiver::sevenz::SevenZArchiver;
-    use crate::archiver::tar::{TarArchiver, TarBz2Archiver, TarGzArchiver, TarXzArchiver, TarZstdArchiver};
+    use crate::archiver::tar::{
+        TarArchiver, TarBz2Archiver, TarGzArchiver, TarXzArchiver, TarZstdArchiver,
+    };
     use crate::archiver::zip::ZipArchiver;
 
     let format = find_format(dest.file_name());
@@ -230,7 +224,12 @@ fn find_dest_and_args(args: Vec<String>, output: Option<PathBuf>) -> (PathBuf, V
 }
 
 impl ArchiverOpts {
-    pub fn new(rebase_dir: Option<PathBuf>, overwrite: bool, recursive: bool, its: Vec<IgnoreType>) -> Self {
+    pub fn new(
+        rebase_dir: Option<PathBuf>,
+        overwrite: bool,
+        recursive: bool,
+        its: Vec<IgnoreType>,
+    ) -> Self {
         ArchiverOpts {
             rebase_dir: rebase_dir,
             overwrite: overwrite,
@@ -261,7 +260,12 @@ impl ArchiverOpts {
 
     pub fn ignore_types(&self) -> Vec<IgnoreType> {
         if self.its.is_empty() {
-            vec![IgnoreType::Ignore, IgnoreType::GitIgnore, IgnoreType::GitGlobal, IgnoreType::GitExclude]
+            vec![
+                IgnoreType::Ignore,
+                IgnoreType::GitIgnore,
+                IgnoreType::GitGlobal,
+                IgnoreType::GitExclude,
+            ]
         } else {
             let mut r = HashSet::<IgnoreType>::new();
             for &it in &self.its {
@@ -285,36 +289,38 @@ mod tests {
 
     #[test]
     fn test_target_path() {
-        let opts = ArchiverOpts::create(
-            Some(PathBuf::from("new")),
-        true, true, vec![]);
+        let opts = ArchiverOpts::create(Some(PathBuf::from("new")), true, true, vec![]);
         let base = PathBuf::from("testdata/sample");
         let tp = TargetPath::new(&base, &opts);
 
-        assert_eq!(PathBuf::from("new/testdata/sample/src/archiver.rs").as_path(), 
-                tp.dest_path(&PathBuf::from("testdata/sample/src/archiver.rs")));
+        assert_eq!(
+            PathBuf::from("new/testdata/sample/src/archiver.rs").as_path(),
+            tp.dest_path(&PathBuf::from("testdata/sample/src/archiver.rs"))
+        );
     }
 
     #[test]
     fn test_target_path2() {
-        let opts = ArchiverOpts::create(
-            None, true, true, vec![]);
+        let opts = ArchiverOpts::create(None, true, true, vec![]);
         let base = PathBuf::from("testdata/sample");
         let tp = TargetPath::new(&base, &opts);
 
-        assert_eq!(PathBuf::from("testdata/sample/Cargo.toml").as_path(), 
-                tp.dest_path(&PathBuf::from("testdata/sample/Cargo.toml")));
+        assert_eq!(
+            PathBuf::from("testdata/sample/Cargo.toml").as_path(),
+            tp.dest_path(&PathBuf::from("testdata/sample/Cargo.toml"))
+        );
     }
 
     #[test]
     fn test_target_path3() {
-        let opts = ArchiverOpts::create(
-            Some(PathBuf::from("new")), true, true, vec![]);
+        let opts = ArchiverOpts::create(Some(PathBuf::from("new")), true, true, vec![]);
         let base = PathBuf::from("testdata/sample/Cargo.toml");
         let tp = TargetPath::new(&base, &opts);
 
-        assert_eq!(PathBuf::from("new/testdata/sample/Cargo.toml").as_path(), 
-                tp.dest_path(&PathBuf::from("testdata/sample/Cargo.toml")));
+        assert_eq!(
+            PathBuf::from("new/testdata/sample/Cargo.toml").as_path(),
+            tp.dest_path(&PathBuf::from("testdata/sample/Cargo.toml"))
+        );
     }
 
     #[test]

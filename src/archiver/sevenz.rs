@@ -3,10 +3,10 @@ use std::path::PathBuf;
 
 use sevenz_rust::{SevenZArchiveEntry, SevenZWriter};
 
-use crate::archiver::{ToteArchiver, ArchiverOpts};
-use crate::{Result, ToteError};
-use crate::format::Format;
 use crate::archiver::TargetPath;
+use crate::archiver::{ArchiverOpts, ToteArchiver};
+use crate::format::Format;
+use crate::{Result, ToteError};
 
 pub(super) struct SevenZArchiver {}
 
@@ -89,16 +89,12 @@ mod tests {
     #[test]
     fn test_zip() {
         run_test(|| {
-            let opts = ArchiverOpts::create(
-                None,
-                true,
-                true,
-                vec![],
-            );
-            let archiver = Archiver::new(PathBuf::from("results/test.7z"),
+            let opts = ArchiverOpts::create(None, true, true, vec![]);
+            let archiver = Archiver::new(
+                PathBuf::from("results/test.7z"),
                 vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")],
-                opts
-            ).unwrap();
+                &opts,
+            );
             let result = archiver.perform();
             assert!(result.is_ok());
             assert_eq!(Format::SevenZ, archiver.format());

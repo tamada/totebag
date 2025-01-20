@@ -2,11 +2,11 @@ use std::fs::create_dir_all;
 use std::io::Read;
 use std::{fs::File, path::PathBuf};
 
+use crate::{Result, ToteError};
 use tar::Archive;
 use xz2::read::XzDecoder;
-use crate::{Result, ToteError};
 
-use crate::extractor::{ToteExtractor as Extractor, ExtractorOpts};
+use crate::extractor::{ExtractorOpts, ToteExtractor as Extractor};
 use crate::format::Format;
 
 pub(super) struct TarExtractor {}
@@ -181,11 +181,8 @@ mod tests {
     fn test_extract_archive() {
         let e = TarExtractor {};
         let file = PathBuf::from("testdata/test.tar");
-        let opts = ExtractorOpts {
-            dest: PathBuf::from("results/tar"),
-            use_archive_name_dir: false,
-            overwrite: true,
-        };
+        let dest = PathBuf::from("results/tar");
+        let opts = ExtractorOpts::new_with_opts(file.clone(), Some(dest), false, true);
         match e.perform(&file, &opts) {
             Ok(_) => {
                 assert!(true);
@@ -243,7 +240,6 @@ mod tests {
             Err(_) => assert!(false),
         }
     }
-
 
     #[test]
     fn test_format() {

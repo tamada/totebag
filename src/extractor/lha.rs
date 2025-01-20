@@ -2,9 +2,9 @@ use std::fs::{create_dir_all, File};
 use std::io::copy;
 use std::path::PathBuf;
 
-use crate::{Result, ToteError};
-use crate::extractor::ToteExtractor as Extractor;
 use crate::extractor::ExtractorOpts;
+use crate::extractor::ToteExtractor as Extractor;
+use crate::{Result, ToteError};
 
 pub(super) struct LhaExtractor {}
 
@@ -63,7 +63,8 @@ impl Extractor for LhaExtractor {
             } else if !header.is_directory() {
                 log::info!(
                     "{:?}: unsupported compression method ({:?})",
-                    &name, header.compression
+                    &name,
+                    header.compression
                 );
             }
             match reader.next_file() {
@@ -108,11 +109,12 @@ mod tests {
     fn test_extract_archive() {
         let e = LhaExtractor {};
         let file = PathBuf::from("testdata/test.lzh");
-        let opts = ExtractorOpts {
-            dest: PathBuf::from("results/lha"),
-            use_archive_name_dir: true,
-            overwrite: true,
-        };
+        let opts = ExtractorOpts::new_with_opts(
+            file.clone(),
+            Some(PathBuf::from("results/lha")),
+            true,
+            true,
+        );
         match e.perform(&file, &opts) {
             Ok(_) => {
                 assert!(true);

@@ -1,7 +1,9 @@
 use std::path::PathBuf;
 
-use super::{Result, ToteError};
+use crate::format;
+
 use super::format::{find_format, Format};
+use super::{Result, ToteError};
 
 mod cab;
 mod lha;
@@ -11,18 +13,25 @@ mod tar;
 mod zip;
 
 pub struct ExtractorOpts {
+    pub archive_file: PathBuf,
     pub dest: PathBuf,
     pub use_archive_name_dir: bool,
     pub overwrite: bool,
 }
 
 impl ExtractorOpts {
-    pub fn new(dest: Option<PathBuf>) -> ExtractorOpts {
-        ExtractorOpts::new_with_opts(dest, false, false)
+    pub fn new(archive_file: PathBuf, dest: Option<PathBuf>) -> ExtractorOpts {
+        ExtractorOpts::new_with_opts(archive_file, dest, false, false)
     }
 
-    pub fn new_with_opts(dest: Option<PathBuf>, use_archive_name_dir: bool, overwrite: bool) -> ExtractorOpts {
+    pub fn new_with_opts(
+        archive_file: PathBuf,
+        dest: Option<PathBuf>,
+        use_archive_name_dir: bool,
+        overwrite: bool,
+    ) -> ExtractorOpts {
         ExtractorOpts {
+            archive_file,
             dest: dest.unwrap_or_else(|| PathBuf::from(".")),
             use_archive_name_dir,
             overwrite,
@@ -31,101 +40,81 @@ impl ExtractorOpts {
 
     /// Returns the base of the destination directory for the archive file.
     /// The target is the archive file name of source.
-    pub fn destination(&self, target: &PathBuf) -> Result<PathBuf> {
-        let dest = self.destination_file(target);
-        if dest.exists() && !self.overwrite {
-            if dest == PathBuf::from(".") {
-                Ok(dest)
+    pub fn base_dir(&self) -> PathBuf {
+        if self.use_archive_name_dir {
+            if let Some(stem) = self.archive_file.file_stem() {
+                let dir_name = stem.to_str().unwrap();
+                self.dest.join(dir_name)
             } else {
-                Err(ToteError::FileExists(dest.clone()))
+                self.dest.clone()
             }
+        } else {
+            self.dest.clone()
+        }
+    }
+
+    pub fn destination(&self, target: &PathBuf) -> Result<PathBuf> {
+        let dest = self.base_dir().join(target);
+        if dest.exists() && !self.overwrite {
+            Err(ToteError::FileExists(dest.clone()))
         } else {
             Ok(dest)
         }
     }
 
-    fn destination_file(&self, target: &PathBuf) -> PathBuf {
-        if self.use_archive_name_dir {
-            let file_name = target.file_name().unwrap().to_str().unwrap();
-            let ext = target.extension().unwrap().to_str().unwrap();
-            let dir_name = file_name
-                .trim_end_matches(ext)
-                .trim_end_matches(".")
-                .to_string();
-            self.dest.join(dir_name)
-        } else {
-            self.dest.clone()
-        }
-    }
-}
-
-
-pub struct Extractor<'a> {
-    archive_file: PathBuf,
-    opts: &'a ExtractorOpts,
-    extractor: Box<dyn ToteExtractor>,
-}
-
-impl<'a> Extractor<'a> {
-    pub fn new(archive_file: PathBuf, opts: &'a ExtractorOpts) -> Result<Self> {
-        match create_extractor(&archive_file) {
-            Ok(extractor) => Ok(Self {
-                archive_file,
-                opts,
-                extractor,
-            }),
-            Err(e) => Err(e),
-        }
-    }
-
     pub fn format(&self) -> Format {
-        self.extractor.format()
-    }
-
-    pub fn perform(&self) -> Result<()> {
-        self.extractor.perform(&self.archive_file, &self.opts)
+        match format::find_format(self.archive_file.file_name()) {
+            Ok(f) => f,
+            Err(e) => Format::Unknown(format!("{:?}", e).to_string()),
+        }
     }
 
     pub fn can_extract(&self) -> Result<()> {
-        let dest = self.target_dir();
+        let dest = self.base_dir();
         if dest == PathBuf::from(".") {
             Ok(())
+        } else if dest.exists() && !self.overwrite {
+            Err(ToteError::FileExists(dest))
         } else {
-            if dest.exists() && dest.is_dir() && self.opts.overwrite {
-                Err(ToteError::DirExists(dest))
-            } else if dest.is_file() {
-                Err(ToteError::FileExists(dest))
-            } else {
-                Ok(())
-            }
+            Ok(())
         }
+    }
+}
+
+pub struct Extractor<'a> {
+    opts: &'a ExtractorOpts,
+}
+
+impl<'a> Extractor<'a> {
+    pub fn new(opts: &'a ExtractorOpts) -> Self {
+        Self { opts }
+    }
+
+    pub fn perform(&self) -> Result<()> {
+        let extractor = match create_extractor(&self.opts.archive_file) {
+            Ok(e) => e,
+            Err(e) => return Err(e),
+        };
+        extractor.perform(&self.opts.archive_file, &self.opts)
     }
 
     pub fn list(&self) -> Result<Vec<String>> {
-        self.extractor.list_archives(&self.archive_file)
+        let extractor = match create_extractor(&self.opts.archive_file) {
+            Ok(e) => e,
+            Err(e) => return Err(e),
+        };
+        extractor.list_archives(&self.opts.archive_file)
     }
 
     pub fn info(&self) -> String {
+        let f = match format::find_format(self.opts.archive_file.file_name()) {
+            Ok(f) => f,
+            Err(e) => Format::Unknown(format!("{:?}", e).to_string()),
+        };
         format!(
             "Format: {:?}\nFile: {:?}\nDestination: {:?}",
-            self.extractor.format(),
-            self.archive_file,
-            self.opts.dest,
+            f, self.opts.archive_file, self.opts.dest,
         )
-    }
-
-    pub fn target_dir(&self) -> PathBuf {
-        if self.opts.use_archive_name_dir {
-            let base = self.opts.dest.clone();
-            if let Some(file_name) = self.archive_file.file_stem() {
-                let dir_name = file_name.to_str().unwrap();
-                self.opts.dest.join(dir_name)
-            } else {
-                base
-            }
-        } else {
-            self.opts.dest.clone()
-        }
     }
 }
 
@@ -166,25 +155,22 @@ mod tests {
 
     #[test]
     fn test_destination() {
-        let opts1 = ExtractorOpts {
-            dest: PathBuf::from("."),
-            use_archive_name_dir: true,
-            overwrite: false,
-        };
         let target = PathBuf::from("/tmp/archive.zip");
-
-        if let Ok(t) = opts1.destination(&target) {
-            assert_eq!(t, PathBuf::from("./archive"));
+        let opts1 = ExtractorOpts::new_with_opts(target, None, true, false);
+        let e = Extractor::new(&opts1);
+        assert_eq!(opts1.base_dir(), PathBuf::from("./archive"));
+        if let Ok(t) = opts1.destination(&PathBuf::from("/text1.txt")) {
+            assert_eq!(t, PathBuf::from("./archive/text2.txt"));
+        }
+        if let Ok(t) = opts1.destination(&PathBuf::from("text2.txt")) {
+            assert_eq!(t, PathBuf::from("./archive/text2.txt"));
         }
 
-        let opts2 = ExtractorOpts {
-            dest: PathBuf::from("."),
-            use_archive_name_dir: false,
-            overwrite: false,
-        };
         let target = PathBuf::from("/tmp/archive.zip");
-        if let Ok(t) = opts2.destination(&target) {
-            assert_eq!(t, PathBuf::from("."));
+        let opts2 = ExtractorOpts::new(target, None);
+        assert_eq!(opts2.base_dir(), PathBuf::from("."));
+        if let Ok(t) = opts2.destination(&PathBuf::from("/text1.txt")) {
+            assert_eq!(t, PathBuf::from("./text1.txt"));
         }
     }
 
@@ -217,6 +203,10 @@ mod tests {
         let e7 = create_extractor(&PathBuf::from("results/test.7z"));
         assert!(e7.is_ok());
         assert_eq!(e7.unwrap().format(), Format::SevenZ);
+
+        let e5 = create_extractor(&PathBuf::from("results/test.lzh"));
+        assert!(e5.is_ok());
+        assert_eq!(e5.unwrap().format(), Format::LHA);
 
         let e8 = create_extractor(&PathBuf::from("results/test.unknown"));
         assert!(e8.is_err());

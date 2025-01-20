@@ -1,5 +1,5 @@
-use std::{ffi::OsStr, path::PathBuf};
 use std::fmt::Display;
+use std::{ffi::OsStr, path::PathBuf};
 
 use super::{Result, ToteError};
 
@@ -11,10 +11,10 @@ pub fn is_archive_file(arg: &PathBuf) -> bool {
     let name = arg.to_str().unwrap().to_lowercase();
     for (_, ext) in exts().iter() {
         if name.ends_with(ext) {
-            return true
+            return true;
         }
     }
-    return false
+    return false;
 }
 
 pub fn find_format(file_name: Option<&OsStr>) -> Result<Format> {
@@ -137,6 +137,14 @@ mod tests {
 
     #[test]
     fn test_is_all_args_archives() {
-        assert!(is_all_args_archives(&[PathBuf::from("test.zip"), PathBuf::from("test.tar"), PathBuf::from("test.tar.gz"), PathBuf::from("test.tgz"), PathBuf::from("test.tar.bz2"), PathBuf::from("test.tbz2"), PathBuf::from("test.rar")]));
+        assert!(is_all_args_archives(&[
+            PathBuf::from("test.zip"),
+            PathBuf::from("test.tar"),
+            PathBuf::from("test.tar.gz"),
+            PathBuf::from("test.tgz"),
+            PathBuf::from("test.tar.bz2"),
+            PathBuf::from("test.tbz2"),
+            PathBuf::from("test.rar")
+        ]));
     }
 }

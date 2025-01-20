@@ -1,17 +1,17 @@
-use std::path::PathBuf;
 use clap::Parser;
+use std::path::PathBuf;
 
-use totebag::{Result, RunMode, ToteError};
 use totebag::archiver::{Archiver, ArchiverOpts};
 use totebag::extractor::{Extractor, ExtractorOpts};
+use totebag::{Result, RunMode, ToteError};
 
 mod cli;
 
 fn perform(mut opts: cli::CliOpts) -> Result<()> {
     match opts.run_mode() {
         Ok(RunMode::Archive) => return perform_archive(opts),
-        Ok(RunMode::Extract) => return perform_extract(opts),
-        Ok(RunMode::List) => return perform_list(opts),
+        Ok(RunMode::Extract) => return perform_extract_or_list(opts, perform_extract_each),
+        Ok(RunMode::List) => return perform_extract_or_list(opts, perform_list_each),
         Ok(RunMode::Auto) => {
             return Err(ToteError::Unknown(
                 "cannot distinguish archiving and extracting".to_string(),
@@ -23,56 +23,21 @@ fn perform(mut opts: cli::CliOpts) -> Result<()> {
     };
 }
 
-fn perform_extract(opts: cli::CliOpts) -> Result<()> {
-    let args = opts.args.iter()
-        .map(PathBuf::from).collect::<Vec<PathBuf>>();
-    println!("args: {:?}", args);
-    let extractor_opts = ExtractorOpts::new_with_opts(opts.output, opts.extractors.to_archive_name_dir, opts.overwrite);
+fn perform_extract_or_list<F>(opts: cli::CliOpts, f: F) -> Result<()>
+where
+    F: Fn(&cli::CliOpts, PathBuf) -> Result<()>,
+{
+    let args = opts
+        .args
+        .iter()
+        .map(PathBuf::from)
+        .collect::<Vec<PathBuf>>();
+    log::info!("args: {:?}", args);
     let mut errs = vec![];
-    for arg in args.iter() {
-        let extractor = match Extractor::new(arg.clone(), &extractor_opts) {
-            Ok(e) => e,
-            Err(e) => return Err(e),
-        };
-        log::info!("{}", extractor.info());
-        if let Err(e) = match extractor.can_extract() {
-            Ok(_) => 
-                extractor.perform(),
-            Err(e) => Err(e),
-        } {
-            errs.push(e);
-        }
-    }
-    if errs.is_empty() {
-        Ok(())
-    } else {
-        Err(ToteError::Array(errs))
-    }
-}
-
-fn perform_list(opts: cli::CliOpts) -> Result<()> {
-    let args = opts.args.clone();
-    let extractor_opts = ExtractorOpts::new_with_opts(opts.output, opts.extractors.to_archive_name_dir, opts.overwrite);
-    let mut errs = vec![];
-    for arg in args.iter() {
-        let path = PathBuf::from(arg);
-        if !path.exists() {
-            return Err(ToteError::FileNotFound(path));
-        }
-        let extractor = match Extractor::new(path, &extractor_opts) {
-            Ok(e) => e,
-            Err(e) => return Err(e),
-        };
-        if args.len() > 1 {
-            println!("========== {:?} ========== \n", arg);
-        }
-        match extractor.list() {
-            Ok(files) => {
-                for file in files {
-                    println!("{}", file);
-                }
-            }
+    for arg in args {
+        match f(&opts, arg) {
             Err(e) => errs.push(e),
+            Ok(_) => {}
         }
     }
     if errs.is_empty() {
@@ -82,15 +47,72 @@ fn perform_list(opts: cli::CliOpts) -> Result<()> {
     }
 }
 
-fn perform_archive(opts: cli::CliOpts) -> Result<()> {
-    let inout = ArchiverOpts::new(Some(opts.archivers.base_dir), opts.overwrite, !opts.archivers.no_recursive, opts.archivers.ignores);
-    match Archiver::create(opts.args, opts.output, inout) {
-        Ok(archiver) => {
-            log::info!("{}", archiver.info());
-            archiver.perform()
+fn perform_extract(opts: cli::CliOpts) -> Result<()> {
+    let args = opts
+        .args
+        .iter()
+        .map(PathBuf::from)
+        .collect::<Vec<PathBuf>>();
+    log::info!("args: {:?}", args);
+    let mut errs = vec![];
+    for arg in args {
+        match perform_extract_each(&opts, arg) {
+            Err(e) => errs.push(e),
+            Ok(_) => {}
+        }
+    }
+    if errs.is_empty() {
+        Ok(())
+    } else {
+        Err(ToteError::Array(errs))
+    }
+}
+
+fn perform_extract_each(opts: &cli::CliOpts, arg: PathBuf) -> Result<()> {
+    let extractor_opts = ExtractorOpts::new_with_opts(
+        arg,
+        opts.output.clone(),
+        opts.extractors.to_archive_name_dir,
+        opts.overwrite,
+    );
+    let extractor = Extractor::new(&extractor_opts);
+    log::info!("{}", extractor.info());
+    match extractor_opts.can_extract() {
+        Ok(_) => extractor.perform(),
+        Err(e) => Err(e),
+    }
+}
+
+fn perform_list_each(opts: &cli::CliOpts, arg: PathBuf) -> Result<()> {
+    let extractor_opts = ExtractorOpts::new_with_opts(
+        arg,
+        opts.output.clone(),
+        opts.extractors.to_archive_name_dir,
+        opts.overwrite,
+    );
+    let extractor = Extractor::new(&extractor_opts);
+    log::info!("{}", extractor.info());
+    match extractor.list() {
+        Ok(files) => {
+            for file in files {
+                println!("{}", file);
+            }
+            Ok(())
         }
         Err(e) => Err(e),
     }
+}
+
+fn perform_archive(cliopts: cli::CliOpts) -> Result<()> {
+    let opts = ArchiverOpts::new(
+        Some(cliopts.archivers.base_dir),
+        cliopts.overwrite,
+        !cliopts.archivers.no_recursive,
+        cliopts.archivers.ignores,
+    );
+    let archiver = Archiver::create(cliopts.args, cliopts.output, &opts);
+    log::info!("{}", archiver.info());
+    archiver.perform()
 }
 
 fn main() -> Result<()> {
@@ -113,11 +135,9 @@ fn print_error(e: &ToteError) {
         ToteError::DirExists(p) => println!("{}: directory already exists", p.to_str().unwrap()),
         ToteError::Fatal(e) => println!("Error: {}", e),
         ToteError::FileNotFound(p) => println!("{}: file not found", p.to_str().unwrap()),
-        ToteError::FileExists(p) => 
-            println!("{}: file already exists", p.to_str().unwrap()),
+        ToteError::FileExists(p) => println!("{}: file already exists", p.to_str().unwrap()),
         ToteError::IO(e) => println!("IO error: {}", e),
-        ToteError::NoArgumentsGiven => 
-            println!("No arguments given. Use --help for usage."),
+        ToteError::NoArgumentsGiven => println!("No arguments given. Use --help for usage."),
         ToteError::Unknown(s) => println!("Unknown error: {}", s),
         ToteError::UnknownFormat(f) => println!("{}: unknown format", f),
         ToteError::UnsupportedFormat(f) => println!("{}: unsupported format", f),
@@ -127,8 +147,8 @@ fn print_error(e: &ToteError) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use totebag::RunMode;
     use std::path::PathBuf;
+    use totebag::RunMode;
 
     #[test]
     fn test_run() {
@@ -144,14 +164,6 @@ mod tests {
         assert_eq!(opts.mode, RunMode::Auto);
         assert_eq!(opts.output, Some(PathBuf::from("test.zip")));
         assert_eq!(opts.args.len(), 4);
-        assert_eq!(
-            opts.args,
-            vec![
-                "src",
-                "LICENSE",
-                "README.md",
-                "Cargo.toml"
-            ]
-        );
+        assert_eq!(opts.args, vec!["src", "LICENSE", "README.md", "Cargo.toml"]);
     }
 }

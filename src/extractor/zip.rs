@@ -1,16 +1,14 @@
-use std::fs::{File, create_dir_all};
+use std::fs::{create_dir_all, File};
 use std::io::copy;
 use std::path::PathBuf;
 
-use crate::Result;
-use crate::format::Format;
 use crate::extractor::{ExtractorOpts, ToteExtractor as Extractor};
+use crate::format::Format;
+use crate::Result;
 
+pub(super) struct ZipExtractor {}
 
-pub(super) struct ZipExtractor {
-}
-
-impl Extractor for  ZipExtractor {
+impl Extractor for ZipExtractor {
     fn list_archives(&self, archive_file: &PathBuf) -> Result<Vec<String>> {
         let zip_file = File::open(archive_file).unwrap();
         let mut zip = zip::ZipArchive::new(zip_file).unwrap();
@@ -53,7 +51,7 @@ mod tests {
 
     #[test]
     fn test_list_archives() {
-        let extractor = ZipExtractor{};
+        let extractor = ZipExtractor {};
         let file = PathBuf::from("testdata/test.zip");
         match extractor.list_archives(&file) {
             Ok(r) => {
@@ -62,34 +60,30 @@ mod tests {
                 assert_eq!(r.get(1), Some("build.rs".to_string()).as_ref());
                 assert_eq!(r.get(2), Some("LICENSE".to_string()).as_ref());
                 assert_eq!(r.get(3), Some("README.md".to_string()).as_ref());
-            },
+            }
             Err(_) => assert!(false),
         }
     }
 
     #[test]
     fn test_extract_archive() {
-        let e = ZipExtractor{};
+        let e = ZipExtractor {};
         let file = PathBuf::from("testdata/test.zip");
-        let opts = ExtractorOpts {
-            dest: PathBuf::from("results/zip"),
-            use_archive_name_dir: false,
-            overwrite: true,
-        };
+        let dest = PathBuf::from("results/zip");
+        let opts = ExtractorOpts::new_with_opts(file.clone(), Some(dest), false, true);
         match e.perform(&file, &opts) {
             Ok(_) => {
                 assert!(true);
                 assert!(PathBuf::from("results/zip/Cargo.toml").exists());
                 std::fs::remove_dir_all(PathBuf::from("results/zip")).unwrap();
-            },
+            }
             Err(_) => assert!(false),
         };
     }
 
     #[test]
     fn test_format() {
-        let e = ZipExtractor{};
+        let e = ZipExtractor {};
         assert_eq!(e.format(), Format::Zip);
     }
-    
 }

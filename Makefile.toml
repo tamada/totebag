@@ -1,0 +1,40 @@
+[tasks.format]
+install_crate = "rustfmt"
+command = "cargo"
+args = ["fmt", "--", "--emit=files"]
+
+[tasks.build]
+command = "cargo"
+args = ["build"]
+dependencies = ["format"]
+
+[tasks.test]
+command = "cargo"
+args = ["llvm-cov", "--html"]
+
+# [tasks.post-build]
+# description = "Generate completion files after build"
+# script = [
+#     "mkdir -p target/completions",
+#     "cargo run -- --generate-completion-files --completion-out-dir target/completions"
+# ]
+
+[tasks.start]
+description = "Start the document server"
+script = ["hugo -s site server"]
+
+[tasks.site]
+description = "Build the site document"
+script = ["hugo -s site"]
+
+[tasks.docker]
+description = "Build the docker image for the current arch"
+script = [
+    "docker build -t ghcr.io/tamada/totebag:latest -t ghcr.io/tamada/totebag:${CARGO_MAKE_WORKSPACE_PACKAGE_VERSION}."
+]
+
+[tasks.docker_buildx]
+description = "Build the docker image for multi-arch"
+script = [
+    "docker buildx build --platform linux/arm64/v8,linux/amd64 --output=type=image,push=true -t ghcr.io/tamada/totebag:latest -t ghcr.io/tamada/totebag:${CARGO_MAKE_WORKSPACE_PACKAGE_VERSION} ."
+]
