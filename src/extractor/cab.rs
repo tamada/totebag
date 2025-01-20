@@ -38,7 +38,7 @@ impl Extractor for CabExtractor {
         let mut cabinet = open_cabinet(&archive_file)?;
         for file in list {
             let file_name = file.0.clone();
-            let dest_file = opts.destination(&archive_file)?.join(&file_name);
+            let dest_file = opts.base_dir().join(&file_name);
             log::info!("extracting {} ({} bytes)", &file_name, file.1);
             create_dir_all(dest_file.parent().unwrap()).unwrap();
             let mut dest = match File::create(dest_file) {

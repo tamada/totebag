@@ -27,7 +27,7 @@ impl Extractor for RarExtractor {
         let mut file = archive.open_for_processing().unwrap();
         while let Some(header) = file.read_header().unwrap() {
             let name = header.entry().filename.to_str().unwrap();
-            let dest = opts.destination(&archive_file)?.join(PathBuf::from(name));
+            let dest = opts.base_dir().join(PathBuf::from(name));
             file = if header.entry().is_file() {
                 log::info!(
                     "extracting {} ({} bytes)",

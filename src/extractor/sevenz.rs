@@ -1,10 +1,8 @@
 use std::fs::File;
-use std::io::Read;
 use std::path::PathBuf;
 
 use crate::{Result, ToteError};
-use sevenz_rust::{Archive, BlockDecoder, Password, SevenZArchiveEntry};
-use zstd::zstd_safe::ContentSizeError;
+use sevenz_rust::{Archive, BlockDecoder, Password};
 
 use crate::extractor::ToteExtractor as Extractor;
 use crate::format::Format;
@@ -33,14 +31,14 @@ impl Extractor for SevenZExtractor {
             Ok(file) => file,
             Err(e) => return Err(ToteError::IO(e)),
         };
-        extract(&mut file, &archive_file, opts)
+        extract(&mut file, opts)
     }
     fn format(&self) -> Format {
         Format::SevenZ
     }
 }
 
-fn extract(mut file: &File, path: &PathBuf, opts: &ExtractorOpts) -> Result<()> {
+fn extract(mut file: &File, opts: &ExtractorOpts) -> Result<()> {
     let len = file.metadata().unwrap().len();
     let password = Password::empty();
     let archive = match Archive::read(&mut file, len, password.as_ref()) {
@@ -51,14 +49,8 @@ fn extract(mut file: &File, path: &PathBuf, opts: &ExtractorOpts) -> Result<()> 
     for findex in 0..folder_count {
         let folder_decoder = BlockDecoder::new(findex, &archive, password.as_slice(), &mut file);
         if let Err(e) = folder_decoder.for_each_entries(&mut |entry, reader| {
-            let r = match opts.destination(&path) {
-                Ok(d) => {
-                    let d = d.join(&entry.name);
-                    sevenz_rust::default_entry_extract_fn(entry, reader, &d)
-                }
-                Err(e) => Err(sevenz_rust::Error::Other(format!("{:?}", e).into())),
-            };
-            r
+            let d = opts.base_dir().join(&entry.name);
+            sevenz_rust::default_entry_extract_fn(entry, reader, &d)
         }) {
             return Err(ToteError::Fatal(Box::new(e)));
         }

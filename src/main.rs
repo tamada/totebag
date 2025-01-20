@@ -47,27 +47,6 @@ where
     }
 }
 
-fn perform_extract(opts: cli::CliOpts) -> Result<()> {
-    let args = opts
-        .args
-        .iter()
-        .map(PathBuf::from)
-        .collect::<Vec<PathBuf>>();
-    log::info!("args: {:?}", args);
-    let mut errs = vec![];
-    for arg in args {
-        match perform_extract_each(&opts, arg) {
-            Err(e) => errs.push(e),
-            Ok(_) => {}
-        }
-    }
-    if errs.is_empty() {
-        Ok(())
-    } else {
-        Err(ToteError::Array(errs))
-    }
-}
-
 fn perform_extract_each(opts: &cli::CliOpts, arg: PathBuf) -> Result<()> {
     let extractor_opts = ExtractorOpts::new_with_opts(
         arg,

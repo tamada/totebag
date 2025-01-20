@@ -25,7 +25,7 @@ impl Extractor for TarExtractor {
     fn perform(&self, archive_file: &PathBuf, opts: &ExtractorOpts) -> Result<()> {
         match open_tar_file(&archive_file, |f| f) {
             Err(e) => Err(e),
-            Ok(archive) => extract_tar(archive, archive_file, opts),
+            Ok(archive) => extract_tar(archive, opts),
         }
     }
     fn format(&self) -> Format {
@@ -42,7 +42,7 @@ impl Extractor for TarGzExtractor {
     }
     fn perform(&self, archive_file: &PathBuf, opts: &ExtractorOpts) -> Result<()> {
         match open_tar_file(&archive_file, |f| flate2::read::GzDecoder::new(f)) {
-            Ok(archive) => extract_tar(archive, archive_file, opts),
+            Ok(archive) => extract_tar(archive, opts),
             Err(e) => Err(e),
         }
     }
@@ -61,7 +61,7 @@ impl Extractor for TarBz2Extractor {
     fn perform(&self, archive_file: &PathBuf, opts: &ExtractorOpts) -> Result<()> {
         match open_tar_file(&archive_file, |f| bzip2::read::BzDecoder::new(f)) {
             Err(e) => Err(e),
-            Ok(archive) => extract_tar(archive, archive_file, opts),
+            Ok(archive) => extract_tar(archive, opts),
         }
     }
     fn format(&self) -> Format {
@@ -79,7 +79,7 @@ impl Extractor for TarXzExtractor {
     fn perform(&self, archive_file: &PathBuf, opts: &ExtractorOpts) -> Result<()> {
         match open_tar_file(&archive_file, |f| XzDecoder::new(f)) {
             Err(e) => Err(e),
-            Ok(archive) => extract_tar(archive, archive_file, opts),
+            Ok(archive) => extract_tar(archive, opts),
         }
     }
     fn format(&self) -> Format {
@@ -98,7 +98,7 @@ impl Extractor for TarZstdExtractor {
     fn perform(&self, archive_file: &PathBuf, opts: &ExtractorOpts) -> Result<()> {
         match open_tar_file(&archive_file, |f| zstd::Decoder::new(f).unwrap()) {
             Err(e) => Err(e),
-            Ok(archive) => extract_tar(archive, archive_file, opts),
+            Ok(archive) => extract_tar(archive, opts),
         }
     }
     fn format(&self) -> Format {
@@ -118,11 +118,7 @@ where
     Ok(Archive::new(writer))
 }
 
-fn extract_tar<R: Read>(
-    mut archive: tar::Archive<R>,
-    original: &PathBuf,
-    opts: &ExtractorOpts,
-) -> Result<()> {
+fn extract_tar<R: Read>(mut archive: tar::Archive<R>, opts: &ExtractorOpts) -> Result<()> {
     for entry in archive.entries().unwrap() {
         let mut entry = entry.unwrap();
         let path = entry.header().path().unwrap();
@@ -133,7 +129,7 @@ fn extract_tar<R: Read>(
         let size = entry.header().size().unwrap();
         log::info!("extracting {:?} ({} bytes)", path, size);
 
-        let dest = opts.destination(&original)?.join(path);
+        let dest = opts.base_dir().join(path);
         if entry.header().entry_type().is_file() {
             create_dir_all(dest.parent().unwrap()).unwrap();
             entry.unpack(dest).unwrap();

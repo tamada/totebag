@@ -158,7 +158,6 @@ mod tests {
     fn test_destination() {
         let target = PathBuf::from("/tmp/archive.zip");
         let opts1 = ExtractorOpts::new_with_opts(target, None, true, false);
-        let e = Extractor::new(&opts1);
         assert_eq!(opts1.base_dir(), PathBuf::from("./archive"));
         if let Ok(t) = opts1.destination(&PathBuf::from("text1.txt")) {
             assert_eq!(t, PathBuf::from("./archive/text1.txt"));

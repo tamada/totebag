@@ -25,7 +25,7 @@ impl Extractor for ZipExtractor {
     fn perform(&self, archive_file: &PathBuf, opts: &ExtractorOpts) -> Result<()> {
         let zip_file = File::open(&archive_file).unwrap();
         let mut zip = zip::ZipArchive::new(zip_file).unwrap();
-        let dest_base = opts.destination(&archive_file)?;
+        let dest_base = opts.base_dir();
         for i in 0..zip.len() {
             let mut file = zip.by_index(i).unwrap();
             if file.is_file() {
