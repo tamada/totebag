@@ -54,7 +54,8 @@ impl ExtractorOpts {
     }
 
     pub fn destination(&self, target: &PathBuf) -> Result<PathBuf> {
-        let dest = self.base_dir().join(target);
+        let base = self.base_dir();
+        let dest = base.join(target);
         if dest.exists() && !self.overwrite {
             Err(ToteError::FileExists(dest.clone()))
         } else {
@@ -159,8 +160,8 @@ mod tests {
         let opts1 = ExtractorOpts::new_with_opts(target, None, true, false);
         let e = Extractor::new(&opts1);
         assert_eq!(opts1.base_dir(), PathBuf::from("./archive"));
-        if let Ok(t) = opts1.destination(&PathBuf::from("/text1.txt")) {
-            assert_eq!(t, PathBuf::from("./archive/text2.txt"));
+        if let Ok(t) = opts1.destination(&PathBuf::from("text1.txt")) {
+            assert_eq!(t, PathBuf::from("./archive/text1.txt"));
         }
         if let Ok(t) = opts1.destination(&PathBuf::from("text2.txt")) {
             assert_eq!(t, PathBuf::from("./archive/text2.txt"));
@@ -169,7 +170,7 @@ mod tests {
         let target = PathBuf::from("/tmp/archive.zip");
         let opts2 = ExtractorOpts::new(target, None);
         assert_eq!(opts2.base_dir(), PathBuf::from("."));
-        if let Ok(t) = opts2.destination(&PathBuf::from("/text1.txt")) {
+        if let Ok(t) = opts2.destination(&PathBuf::from("./text1.txt")) {
             assert_eq!(t, PathBuf::from("./text1.txt"));
         }
     }
