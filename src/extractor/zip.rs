@@ -9,7 +9,7 @@ use crate::Result;
 pub(super) struct ZipExtractor {}
 
 impl Extractor for ZipExtractor {
-    fn list_archives(&self, archive_file: &PathBuf) -> Result<Vec<String>> {
+    fn list(&self, archive_file: &PathBuf) -> Result<Vec<String>> {
         let zip_file = File::open(archive_file).unwrap();
         let mut zip = zip::ZipArchive::new(zip_file).unwrap();
 
@@ -25,7 +25,7 @@ impl Extractor for ZipExtractor {
     fn perform(&self, archive_file: &PathBuf, opts: &ExtractorOpts) -> Result<()> {
         let zip_file = File::open(&archive_file).unwrap();
         let mut zip = zip::ZipArchive::new(zip_file).unwrap();
-        let dest_base = opts.base_dir();
+        let dest_base = opts.base_dir(archive_file);
         for i in 0..zip.len() {
             let mut file = zip.by_index(i).unwrap();
             if file.is_file() {
@@ -53,7 +53,7 @@ mod tests {
     fn test_list_archives() {
         let extractor = ZipExtractor {};
         let file = PathBuf::from("testdata/test.zip");
-        match extractor.list_archives(&file) {
+        match extractor.list(&file) {
             Ok(r) => {
                 assert_eq!(r.len(), 19);
                 assert_eq!(r.get(0), Some("Cargo.toml".to_string()).as_ref());
@@ -68,10 +68,10 @@ mod tests {
     #[test]
     fn test_extract_archive() {
         let e = ZipExtractor {};
-        let file = PathBuf::from("testdata/test.zip");
+        let archive_file = PathBuf::from("testdata/test.zip");
         let dest = PathBuf::from("results/zip");
-        let opts = ExtractorOpts::new_with_opts(file.clone(), Some(dest), false, true);
-        match e.perform(&file, &opts) {
+        let opts = ExtractorOpts::new_with_opts(Some(dest), false, true);
+        match e.perform(&archive_file, &opts) {
             Ok(_) => {
                 assert!(true);
                 assert!(PathBuf::from("results/zip/Cargo.toml").exists());

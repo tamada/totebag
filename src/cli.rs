@@ -2,7 +2,15 @@ use clap::{Parser, ValueEnum};
 use std::path::PathBuf;
 
 use totebag::format::is_all_args_archives;
-use totebag::{IgnoreType, Result, RunMode, ToteError};
+use totebag::{IgnoreType, Result, ToteError};
+
+#[derive(Debug, Clone, ValueEnum, PartialEq, Copy)]
+pub enum RunMode {
+    Auto,
+    Archive,
+    Extract,
+    List,
+}
 
 #[derive(Parser, Debug)]
 #[clap(version, author, about, arg_required_else_help = true)]

@@ -24,7 +24,7 @@ where
 }
 
 impl Extractor for CabExtractor {
-    fn list_archives(&self, archive_file: &PathBuf) -> Result<Vec<String>> {
+    fn list(&self, archive_file: &PathBuf) -> Result<Vec<String>> {
         list_impl(&archive_file, |file| file.name().to_string())
     }
 
@@ -38,7 +38,7 @@ impl Extractor for CabExtractor {
         let mut cabinet = open_cabinet(&archive_file)?;
         for file in list {
             let file_name = file.0.clone();
-            let dest_file = opts.base_dir().join(&file_name);
+            let dest_file = opts.base_dir(archive_file).join(&file_name);
             log::info!("extracting {} ({} bytes)", &file_name, file.1);
             create_dir_all(dest_file.parent().unwrap()).unwrap();
             let mut dest = match File::create(dest_file) {
@@ -78,7 +78,7 @@ mod tests {
     fn test_list_archives() {
         let extractor = CabExtractor {};
         let file = PathBuf::from("testdata/test.cab");
-        match extractor.list_archives(&file) {
+        match extractor.list(&file) {
             Ok(r) => {
                 assert_eq!(r.len(), 16);
                 assert_eq!(r.get(0), Some("Cargo.toml".to_string()).as_ref());
@@ -93,10 +93,10 @@ mod tests {
     #[test]
     fn test_extract_archive() {
         let e = CabExtractor {};
-        let file = PathBuf::from("testdata/test.cab");
+        let archive_file = PathBuf::from("testdata/test.cab");
         let dest = PathBuf::from("results/cab");
-        let opts = ExtractorOpts::new_with_opts(file.clone(), Some(dest), true, true);
-        match e.perform(&file, &opts) {
+        let opts = ExtractorOpts::new_with_opts(Some(dest), true, true);
+        match e.perform(&archive_file, &opts) {
             Ok(_) => {
                 assert!(true);
                 assert!(PathBuf::from("results/cab/test/Cargo.toml").exists());

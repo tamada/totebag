@@ -1,7 +1,5 @@
 use std::path::PathBuf;
 
-use crate::format;
-
 use super::format::{find_format, Format};
 use super::{Result, ToteError};
 
@@ -12,26 +10,30 @@ mod sevenz;
 mod tar;
 mod zip;
 
+/// The optional parameters for `ToteExtractor`.
 pub struct ExtractorOpts {
-    pub archive_file: PathBuf,
     pub dest: PathBuf,
     pub use_archive_name_dir: bool,
     pub overwrite: bool,
 }
 
 impl ExtractorOpts {
-    pub fn new(archive_file: PathBuf, dest: Option<PathBuf>) -> ExtractorOpts {
-        ExtractorOpts::new_with_opts(archive_file, dest, false, false)
+    /// ```
+    /// ExtractorOpts::new_with_opts(None, false, false);
+    /// ```
+    ///
+    /// `None` of `dest` means the current directory (`PathBuf::from(".")`).
+    pub fn new() -> Self {
+        ExtractorOpts::new_with_opts(None, false, false)
     }
 
+    /// create a new ExtractorOpts instance with the given parameters.
     pub fn new_with_opts(
-        archive_file: PathBuf,
         dest: Option<PathBuf>,
         use_archive_name_dir: bool,
         overwrite: bool,
-    ) -> ExtractorOpts {
+    ) -> Self {
         ExtractorOpts {
-            archive_file,
             dest: dest.unwrap_or_else(|| PathBuf::from(".")),
             use_archive_name_dir,
             overwrite,
@@ -40,9 +42,9 @@ impl ExtractorOpts {
 
     /// Returns the base of the destination directory for the archive file.
     /// The target is the archive file name of source.
-    pub fn base_dir(&self) -> PathBuf {
+    pub fn base_dir(&self, archive_file: &PathBuf) -> PathBuf {
         if self.use_archive_name_dir {
-            if let Some(stem) = self.archive_file.file_stem() {
+            if let Some(stem) = archive_file.file_stem() {
                 let dir_name = stem.to_str().unwrap();
                 self.dest.join(dir_name)
             } else {
@@ -53,8 +55,9 @@ impl ExtractorOpts {
         }
     }
 
-    pub fn destination(&self, target: &PathBuf) -> Result<PathBuf> {
-        let base = self.base_dir();
+    /// Return the path of the `target` file for output.
+    pub fn destination(&self, archive_file: &PathBuf, target: &PathBuf) -> Result<PathBuf> {
+        let base = self.base_dir(archive_file);
         let dest = base.join(target);
         if dest.exists() && !self.overwrite {
             Err(ToteError::FileExists(dest.clone()))
@@ -63,15 +66,15 @@ impl ExtractorOpts {
         }
     }
 
-    pub fn format(&self) -> Format {
-        match format::find_format(self.archive_file.file_name()) {
-            Ok(f) => f,
-            Err(e) => Format::Unknown(format!("{:?}", e).to_string()),
-        }
-    }
+    // pub fn format(&self, archive_file: &PathBuf) -> Format {
+    //     match format::find_format(archive_file.file_name()) {
+    //         Ok(f) => f,
+    //         Err(e) => Format::Unknown(format!("{:?}", e).to_string()),
+    //     }
+    // }
 
-    pub fn can_extract(&self) -> Result<()> {
-        let dest = self.base_dir();
+    pub fn can_extract(&self, archive_file: &PathBuf) -> Result<()> {
+        let dest = self.base_dir(archive_file);
         if dest == PathBuf::from(".") {
             Ok(())
         } else if dest.exists() && !self.overwrite {
@@ -91,42 +94,45 @@ impl<'a> Extractor<'a> {
         Self { opts }
     }
 
-    pub fn perform(&self) -> Result<()> {
-        let extractor = match create_extractor(&self.opts.archive_file) {
+    pub fn perform(&self, archive_file: &PathBuf) -> Result<()> {
+        let extractor = match create_extractor(archive_file) {
             Ok(e) => e,
             Err(e) => return Err(e),
         };
-        extractor.perform(&self.opts.archive_file, &self.opts)
+        extractor.perform(archive_file, &self.opts)
     }
 
-    pub fn list(&self) -> Result<Vec<String>> {
-        let extractor = match create_extractor(&self.opts.archive_file) {
+    pub fn list(&self, archive_file: &PathBuf) -> Result<Vec<String>> {
+        let extractor = match create_extractor(archive_file) {
             Ok(e) => e,
             Err(e) => return Err(e),
         };
-        extractor.list_archives(&self.opts.archive_file)
+        extractor.list(archive_file)
     }
 
-    pub fn info(&self) -> String {
-        let f = match format::find_format(self.opts.archive_file.file_name()) {
+    pub fn info(&self, archive_file: &PathBuf) -> String {
+        let f = match find_format(archive_file) {
             Ok(f) => f,
             Err(e) => Format::Unknown(format!("{:?}", e).to_string()),
         };
         format!(
             "Format: {:?}\nFile: {:?}\nDestination: {:?}",
-            f, self.opts.archive_file, self.opts.dest,
+            f, archive_file, self.opts.dest,
         )
     }
 }
 
-pub(crate) trait ToteExtractor {
-    fn list_archives(&self, archive_file: &PathBuf) -> Result<Vec<String>>;
+pub trait ToteExtractor {
+    /// returns the entry list of the given archive file.
+    fn list(&self, archive_file: &PathBuf) -> Result<Vec<String>>;
+    /// extract the given archive file into the specified directory with the given options.
     fn perform(&self, archive_file: &PathBuf, opts: &ExtractorOpts) -> Result<()>;
+    /// returns the supported format of the extractor.
     fn format(&self) -> Format;
 }
 
 fn create_extractor(file: &PathBuf) -> Result<Box<dyn ToteExtractor>> {
-    let format = find_format(file.file_name());
+    let format = find_format(file);
     match format {
         Ok(format) => {
             return match format {
@@ -156,20 +162,20 @@ mod tests {
 
     #[test]
     fn test_destination() {
-        let target = PathBuf::from("/tmp/archive.zip");
-        let opts1 = ExtractorOpts::new_with_opts(target, None, true, false);
-        assert_eq!(opts1.base_dir(), PathBuf::from("./archive"));
-        if let Ok(t) = opts1.destination(&PathBuf::from("text1.txt")) {
+        let archive_file = PathBuf::from("/tmp/archive.zip");
+        let opts1 = ExtractorOpts::new_with_opts(None, true, false);
+        assert_eq!(opts1.base_dir(&archive_file), PathBuf::from("./archive"));
+        if let Ok(t) = opts1.destination(&archive_file, &PathBuf::from("text1.txt")) {
             assert_eq!(t, PathBuf::from("./archive/text1.txt"));
         }
-        if let Ok(t) = opts1.destination(&PathBuf::from("text2.txt")) {
+        if let Ok(t) = opts1.destination(&archive_file, &PathBuf::from("text2.txt")) {
             assert_eq!(t, PathBuf::from("./archive/text2.txt"));
         }
 
-        let target = PathBuf::from("/tmp/archive.zip");
-        let opts2 = ExtractorOpts::new(target, None);
-        assert_eq!(opts2.base_dir(), PathBuf::from("."));
-        if let Ok(t) = opts2.destination(&PathBuf::from("./text1.txt")) {
+        let archive_file = PathBuf::from("/tmp/archive.zip");
+        let opts2 = ExtractorOpts::new();
+        assert_eq!(opts2.base_dir(&archive_file), PathBuf::from("."));
+        if let Ok(t) = opts2.destination(&archive_file, &PathBuf::from("./text1.txt")) {
             assert_eq!(t, PathBuf::from("./text1.txt"));
         }
     }
@@ -210,10 +216,12 @@ mod tests {
 
         let e8 = create_extractor(&PathBuf::from("results/test.unknown"));
         assert!(e8.is_err());
-        if let Err(ToteError::UnknownFormat(msg)) = e8 {
-            assert_eq!(msg, "test.unknown: unsupported format".to_string());
-        } else {
-            assert!(false);
+        match e8 {
+            Err(ToteError::UnknownFormat(msg)) => {
+                assert_eq!(msg, "test.unknown".to_string());
+            }
+            Err(e) => panic!("unexpected error: {:?}", e),
+            Ok(_) => panic!("unexpected success"),
         }
     }
 }

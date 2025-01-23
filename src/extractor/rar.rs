@@ -9,7 +9,7 @@ use crate::format::Format;
 pub(super) struct RarExtractor {}
 
 impl Extractor for RarExtractor {
-    fn list_archives(&self, archive_file: &PathBuf) -> Result<Vec<String>> {
+    fn list(&self, archive_file: &PathBuf) -> Result<Vec<String>> {
         let mut r = Vec::<String>::new();
         for entry in unrar::Archive::new(&archive_file)
             .open_for_listing()
@@ -27,7 +27,7 @@ impl Extractor for RarExtractor {
         let mut file = archive.open_for_processing().unwrap();
         while let Some(header) = file.read_header().unwrap() {
             let name = header.entry().filename.to_str().unwrap();
-            let dest = opts.base_dir().join(PathBuf::from(name));
+            let dest = opts.base_dir(archive_file).join(PathBuf::from(name));
             file = if header.entry().is_file() {
                 log::info!(
                     "extracting {} ({} bytes)",
@@ -56,7 +56,7 @@ mod tests {
     fn test_list_archives() {
         let extractor = RarExtractor {};
         let file = PathBuf::from("testdata/test.rar");
-        match extractor.list_archives(&file) {
+        match extractor.list(&file) {
             Ok(r) => {
                 assert_eq!(r.len(), 18);
                 assert_eq!(r.get(0), Some("Cargo.toml".to_string()).as_ref());
@@ -71,10 +71,10 @@ mod tests {
     #[test]
     fn test_extract_archive() {
         let e = RarExtractor {};
-        let file = PathBuf::from("testdata/test.rar");
+        let archive_file = PathBuf::from("testdata/test.rar");
         let dest = PathBuf::from("results/rar");
-        let opts = ExtractorOpts::new_with_opts(file.clone(), Some(dest), true, true);
-        match e.perform(&file, &opts) {
+        let opts = ExtractorOpts::new_with_opts(Some(dest), true, true);
+        match e.perform(&archive_file, &opts) {
             Ok(_) => {
                 assert!(true);
                 assert!(PathBuf::from("results/rar/test/Cargo.toml").exists());

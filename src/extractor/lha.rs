@@ -9,7 +9,7 @@ use crate::{Result, ToteError};
 pub(super) struct LhaExtractor {}
 
 impl Extractor for LhaExtractor {
-    fn list_archives(&self, archive_file: &PathBuf) -> Result<Vec<String>> {
+    fn list(&self, archive_file: &PathBuf) -> Result<Vec<String>> {
         let mut result = Vec::<String>::new();
         let mut reader = match delharc::parse_file(&archive_file) {
             Err(e) => return Err(ToteError::IO(e)),
@@ -41,7 +41,7 @@ impl Extractor for LhaExtractor {
         loop {
             let header = reader.header();
             let name = header.parse_pathname();
-            let dest = opts.base_dir().join(&name);
+            let dest = opts.base_dir(archive_file).join(&name);
             if reader.is_decoder_supported() {
                 log::info!(
                     "extracting {} ({} bytes)",
@@ -93,7 +93,7 @@ mod tests {
     fn test_list_archives() {
         let extractor = LhaExtractor {};
         let file = PathBuf::from("testdata/test.lzh");
-        match extractor.list_archives(&file) {
+        match extractor.list(&file) {
             Ok(r) => {
                 assert_eq!(r.len(), 23);
                 assert_eq!(r.get(0), Some("Cargo.toml".to_string()).as_ref());
@@ -108,14 +108,9 @@ mod tests {
     #[test]
     fn test_extract_archive() {
         let e = LhaExtractor {};
-        let file = PathBuf::from("testdata/test.lzh");
-        let opts = ExtractorOpts::new_with_opts(
-            file.clone(),
-            Some(PathBuf::from("results/lha")),
-            true,
-            true,
-        );
-        match e.perform(&file, &opts) {
+        let archive_file = PathBuf::from("testdata/test.lzh");
+        let opts = ExtractorOpts::new_with_opts(Some(PathBuf::from("results/lha")), true, true);
+        match e.perform(&archive_file, &opts) {
             Ok(_) => {
                 assert!(true);
                 assert!(PathBuf::from("results/lha/test/Cargo.toml").exists());

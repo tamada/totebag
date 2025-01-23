@@ -177,7 +177,7 @@ pub fn create_archiver(dest: &PathBuf) -> Result<Box<dyn ToteArchiver>> {
     };
     use crate::archiver::zip::ZipArchiver;
 
-    let format = find_format(dest.file_name());
+    let format = find_format(dest);
     match format {
         Ok(format) => {
             return match format {
@@ -198,6 +198,7 @@ pub fn create_archiver(dest: &PathBuf) -> Result<Box<dyn ToteArchiver>> {
     }
 }
 
+/// The optional parameters for `ToteArchiver`.
 pub struct ArchiverOpts {
     pub rebase_dir: Option<PathBuf>,
     pub overwrite: bool,
@@ -370,12 +371,10 @@ mod tests {
 
         let ae = create_archiver(&PathBuf::from("results/test.unknown"));
         assert!(ae.is_err());
-        if let Err(e) = ae {
-            if let ToteError::UnknownFormat(msg) = e {
-                assert_eq!(msg, "test.unknown: unknown format".to_string());
-            } else {
-                assert!(false);
-            }
+        match ae {
+            Err(ToteError::UnknownFormat(msg)) => assert_eq!(msg, "test.unknown".to_string()),
+            Err(e) => panic!("unexpected error: {:?}", e),
+            Ok(_) => panic!("unexpected result"),
         }
     }
 }

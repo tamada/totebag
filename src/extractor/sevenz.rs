@@ -12,7 +12,7 @@ use super::ExtractorOpts;
 pub(super) struct SevenZExtractor {}
 
 impl Extractor for SevenZExtractor {
-    fn list_archives(&self, archive_file: &PathBuf) -> Result<Vec<String>> {
+    fn list(&self, archive_file: &PathBuf) -> Result<Vec<String>> {
         let mut reader = File::open(archive_file).unwrap();
         let len = reader.metadata().unwrap().len();
         match Archive::read(&mut reader, len, Password::empty().as_ref()) {
@@ -31,14 +31,14 @@ impl Extractor for SevenZExtractor {
             Ok(file) => file,
             Err(e) => return Err(ToteError::IO(e)),
         };
-        extract(&mut file, opts)
+        extract(archive_file, &mut file, opts)
     }
     fn format(&self) -> Format {
         Format::SevenZ
     }
 }
 
-fn extract(mut file: &File, opts: &ExtractorOpts) -> Result<()> {
+fn extract(archive_file: &PathBuf, mut file: &File, opts: &ExtractorOpts) -> Result<()> {
     let len = file.metadata().unwrap().len();
     let password = Password::empty();
     let archive = match Archive::read(&mut file, len, password.as_ref()) {
@@ -49,7 +49,7 @@ fn extract(mut file: &File, opts: &ExtractorOpts) -> Result<()> {
     for findex in 0..folder_count {
         let folder_decoder = BlockDecoder::new(findex, &archive, password.as_slice(), &mut file);
         if let Err(e) = folder_decoder.for_each_entries(&mut |entry, reader| {
-            let d = opts.base_dir().join(&entry.name);
+            let d = opts.base_dir(archive_file).join(&entry.name);
             sevenz_rust::default_entry_extract_fn(entry, reader, &d)
         }) {
             return Err(ToteError::Fatal(Box::new(e)));
@@ -66,7 +66,7 @@ mod tests {
     fn test_list() {
         let extractor = SevenZExtractor {};
         let file = PathBuf::from("testdata/test.7z");
-        match extractor.list_archives(&file) {
+        match extractor.list(&file) {
             Ok(r) => {
                 assert_eq!(r.len(), 21);
                 assert_eq!(r.get(0), Some("Cargo.toml".to_string()).as_ref());
@@ -81,10 +81,10 @@ mod tests {
     #[test]
     fn test_extract_archive() {
         let e = SevenZExtractor {};
-        let file = PathBuf::from("testdata/test.7z");
+        let archive_file = PathBuf::from("testdata/test.7z");
         let dest = PathBuf::from("results/sevenz");
-        let opts = ExtractorOpts::new_with_opts(file.clone(), Some(dest), false, true);
-        match e.perform(&file, &opts) {
+        let opts = ExtractorOpts::new_with_opts(Some(dest), false, true);
+        match e.perform(&archive_file, &opts) {
             Ok(_) => {
                 assert!(true);
                 assert!(PathBuf::from("results/sevenz/Cargo.toml").exists());

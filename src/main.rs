@@ -1,9 +1,10 @@
 use clap::Parser;
 use std::path::PathBuf;
 
+use cli::RunMode;
 use totebag::archiver::{Archiver, ArchiverOpts};
 use totebag::extractor::{Extractor, ExtractorOpts};
-use totebag::{Result, RunMode, ToteError};
+use totebag::{Result, ToteError};
 
 mod cli;
 
@@ -47,31 +48,29 @@ where
     }
 }
 
-fn perform_extract_each(opts: &cli::CliOpts, arg: PathBuf) -> Result<()> {
+fn perform_extract_each(opts: &cli::CliOpts, archive_file: PathBuf) -> Result<()> {
     let extractor_opts = ExtractorOpts::new_with_opts(
-        arg,
         opts.output.clone(),
         opts.extractors.to_archive_name_dir,
         opts.overwrite,
     );
     let extractor = Extractor::new(&extractor_opts);
-    log::info!("{}", extractor.info());
-    match extractor_opts.can_extract() {
-        Ok(_) => extractor.perform(),
+    log::info!("{}", extractor.info(&archive_file));
+    match extractor_opts.can_extract(&archive_file) {
+        Ok(_) => extractor.perform(&archive_file),
         Err(e) => Err(e),
     }
 }
 
-fn perform_list_each(opts: &cli::CliOpts, arg: PathBuf) -> Result<()> {
+fn perform_list_each(opts: &cli::CliOpts, archive_file: PathBuf) -> Result<()> {
     let extractor_opts = ExtractorOpts::new_with_opts(
-        arg,
         opts.output.clone(),
         opts.extractors.to_archive_name_dir,
         opts.overwrite,
     );
     let extractor = Extractor::new(&extractor_opts);
-    log::info!("{}", extractor.info());
-    match extractor.list() {
+    log::info!("{}", extractor.info(&archive_file));
+    match extractor.list(&archive_file) {
         Ok(files) => {
             for file in files {
                 println!("{}", file);
@@ -126,8 +125,8 @@ fn print_error(e: &ToteError) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use cli::RunMode;
     use std::path::PathBuf;
-    use totebag::RunMode;
 
     #[test]
     fn test_run() {

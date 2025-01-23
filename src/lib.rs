@@ -5,8 +5,10 @@ pub mod format;
 use clap::ValueEnum;
 use std::path::PathBuf;
 
+/// Define the result type for the this library.
 pub type Result<T> = std::result::Result<T, ToteError>;
 
+/// Define the ignore types for directory traversing.
 #[derive(Debug, Clone, ValueEnum, PartialEq, Copy, Hash, Eq)]
 pub enum IgnoreType {
     Default,
@@ -17,14 +19,7 @@ pub enum IgnoreType {
     Ignore,
 }
 
-#[derive(Debug, Clone, ValueEnum, PartialEq, Copy)]
-pub enum RunMode {
-    Auto,
-    Archive,
-    Extract,
-    List,
-}
-
+/// Define the errors for this library.
 #[derive(Debug)]
 pub enum ToteError {
     Archiver(String),
@@ -47,7 +42,7 @@ mod tests {
 
     use crate::archiver::{Archiver, ArchiverOpts};
     use crate::extractor::{Extractor, ExtractorOpts};
-    use crate::format::Format;
+    use crate::format::{find_format, Format};
     use crate::Result;
 
     fn archive_file(dest: PathBuf, sources: Vec<PathBuf>) -> Result<()> {
@@ -56,13 +51,16 @@ mod tests {
         archiver.perform()
     }
 
-    fn archive_and_extract(f: Format, dest: PathBuf, sources: Vec<PathBuf>) {
-        let r = archive_file(dest.clone(), sources.clone());
+    fn archive_and_extract(f: Format, archive_file_name: PathBuf, sources: Vec<PathBuf>) {
+        let r = archive_file(archive_file_name.clone(), sources.clone());
         assert!(r.is_ok());
-        let opts = ExtractorOpts::new_with_opts(dest, Some(PathBuf::from("results")), false, true);
+        let opts = ExtractorOpts::new_with_opts(Some(PathBuf::from("results")), false, true);
         let extractor = Extractor::new(&opts);
-        assert_eq!(f, opts.format());
-        let r = extractor.list();
+        match find_format(&archive_file_name) {
+            Ok(format) => assert_eq!(f, format),
+            Err(e) => panic!("unexpected error: {:?}", e),
+        }
+        let r = extractor.list(&archive_file_name);
         assert!(r.is_ok());
         let list = r.unwrap();
         assert!(list.contains(&"testdata/sample/Cargo.toml".to_string()));
