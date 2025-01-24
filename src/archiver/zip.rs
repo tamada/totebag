@@ -41,7 +41,7 @@ impl ZipArchiver {
 }
 
 impl ToteArchiver for ZipArchiver {
-    fn perform(&self, file: File, tps: Vec<TargetPath>, _opts: &ArchiverOpts) -> Result<()> {
+    fn perform_impl(&self, file: File, tps: Vec<TargetPath>, _opts: &ArchiverOpts) -> Result<()> {
         let mut errs = vec![];
         let mut zw = zip::ZipWriter::new(file);
         for tp in tps {

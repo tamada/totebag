@@ -41,7 +41,7 @@ mod tests {
     use std::path::PathBuf;
 
     use crate::archiver::{Archiver, ArchiverOpts};
-    use crate::extractor::{Extractor, ExtractorOpts};
+    use crate::extractor::create;
     use crate::format::{find_format, Format};
     use crate::Result;
 
@@ -54,15 +54,18 @@ mod tests {
     fn archive_and_extract(f: Format, archive_file_name: PathBuf, sources: Vec<PathBuf>) {
         let r = archive_file(archive_file_name.clone(), sources.clone());
         assert!(r.is_ok());
-        let opts = ExtractorOpts::new_with_opts(Some(PathBuf::from("results")), false, true);
-        let extractor = Extractor::new(&opts);
+        let e = create(archive_file_name.clone()).unwrap();
         match find_format(&archive_file_name) {
             Ok(format) => assert_eq!(f, format),
             Err(e) => panic!("unexpected error: {:?}", e),
         }
-        let r = extractor.list(&archive_file_name);
+        let r = e.list();
         assert!(r.is_ok());
-        let list = r.unwrap();
+        let list = r
+            .unwrap()
+            .iter()
+            .map(|e| e.name.clone())
+            .collect::<Vec<String>>();
         assert!(list.contains(&"testdata/sample/Cargo.toml".to_string()));
         assert!(list.contains(&"testdata/sample/LICENSE".to_string()));
         assert!(list.contains(&"testdata/sample/README.md".to_string()));

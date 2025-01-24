@@ -2,40 +2,66 @@ use std::fs::File;
 use std::path::PathBuf;
 
 use crate::{Result, ToteError};
-use sevenz_rust::{Archive, BlockDecoder, Password};
+use chrono::DateTime;
+use sevenz_rust::{Archive, BlockDecoder, Password, SevenZArchiveEntry};
 
-use crate::extractor::ToteExtractor as Extractor;
+use crate::extractor::{Entry, Extractor, ExtractorOpts};
 use crate::format::Format;
 
-use super::ExtractorOpts;
+pub(super) struct SevenZExtractor {
+    target: PathBuf,
+}
 
-pub(super) struct SevenZExtractor {}
+impl SevenZExtractor {
+    pub(crate) fn new(file: PathBuf) -> Self {
+        Self { target: file }
+    }
+}
 
 impl Extractor for SevenZExtractor {
-    fn list(&self, archive_file: &PathBuf) -> Result<Vec<String>> {
-        let mut reader = File::open(archive_file).unwrap();
+    fn list(&self) -> Result<Vec<Entry>> {
+        let mut reader = File::open(&self.target).unwrap();
         let len = reader.metadata().unwrap().len();
         match Archive::read(&mut reader, len, Password::empty().as_ref()) {
             Ok(archive) => {
-                let mut r = Vec::<String>::new();
+                let mut r = vec![];
                 for entry in &archive.files {
-                    r.push(entry.name.clone())
+                    r.push(convert(entry));
                 }
                 Ok(r)
             }
             Err(e) => Err(ToteError::Fatal(Box::new(e))),
         }
     }
-    fn perform(&self, archive_file: &PathBuf, opts: &ExtractorOpts) -> Result<()> {
-        let mut file = match File::open(&archive_file) {
+    fn target(&self) -> &PathBuf {
+        &self.target
+    }
+
+    fn perform(&self, opts: &ExtractorOpts) -> Result<()> {
+        let mut file = match File::open(&self.target) {
             Ok(file) => file,
             Err(e) => return Err(ToteError::IO(e)),
         };
-        extract(archive_file, &mut file, opts)
+        extract(&self.target, &mut file, opts)
     }
     fn format(&self) -> Format {
         Format::SevenZ
     }
+}
+
+fn convert(e: &SevenZArchiveEntry) -> Entry {
+    let name = e.name().to_string();
+    let compressed_size = e.compressed_size;
+    let uncompressed_size = e.size;
+    let mtime = e.last_modified_date.to_unix_time();
+    let dt = DateTime::from_timestamp(mtime, 0);
+    Entry::new(
+        name,
+        Some(compressed_size),
+        Some(uncompressed_size),
+        None,
+        dt.map(|dt| dt.naive_local()),
+    )
 }
 
 fn extract(archive_file: &PathBuf, mut file: &File, opts: &ExtractorOpts) -> Result<()> {
@@ -64,10 +90,11 @@ mod tests {
 
     #[test]
     fn test_list() {
-        let extractor = SevenZExtractor {};
         let file = PathBuf::from("testdata/test.7z");
-        match extractor.list(&file) {
+        let extractor = SevenZExtractor::new(file);
+        match extractor.list() {
             Ok(r) => {
+                let r = r.iter().map(|e| e.name.clone()).collect::<Vec<_>>();
                 assert_eq!(r.len(), 21);
                 assert_eq!(r.get(0), Some("Cargo.toml".to_string()).as_ref());
                 assert_eq!(r.get(1), Some("build.rs".to_string()).as_ref());
@@ -80,11 +107,11 @@ mod tests {
 
     #[test]
     fn test_extract_archive() {
-        let e = SevenZExtractor {};
         let archive_file = PathBuf::from("testdata/test.7z");
+        let e = SevenZExtractor::new(archive_file.clone());
         let dest = PathBuf::from("results/sevenz");
         let opts = ExtractorOpts::new_with_opts(Some(dest), false, true);
-        match e.perform(&archive_file, &opts) {
+        match e.perform(&opts) {
             Ok(_) => {
                 assert!(true);
                 assert!(PathBuf::from("results/sevenz/Cargo.toml").exists());
@@ -96,7 +123,7 @@ mod tests {
 
     #[test]
     fn test_format() {
-        let e = SevenZExtractor {};
+        let e = SevenZExtractor::new(PathBuf::from("testdata/test.7z"));
         assert_eq!(e.format(), Format::SevenZ);
     }
 }

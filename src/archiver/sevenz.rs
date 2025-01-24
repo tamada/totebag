@@ -11,7 +11,7 @@ use crate::{Result, ToteError};
 pub(super) struct SevenZArchiver {}
 
 impl ToteArchiver for SevenZArchiver {
-    fn perform(&self, file: File, tps: Vec<TargetPath>, _: &ArchiverOpts) -> Result<()> {
+    fn perform_impl(&self, file: File, tps: Vec<TargetPath>, _: &ArchiverOpts) -> Result<()> {
         let mut w = match SevenZWriter::new(file) {
             Ok(writer) => writer,
             Err(e) => return Err(ToteError::Archiver(e.to_string())),

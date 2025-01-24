@@ -1,33 +1,47 @@
 use std::fs::create_dir_all;
 use std::path::PathBuf;
 
+use chrono::DateTime;
+use unrar::FileHeader;
+
 use crate::Result;
 
-use crate::extractor::{ExtractorOpts, ToteExtractor as Extractor};
+use crate::extractor::{Entry, Extractor, ExtractorOpts};
 use crate::format::Format;
 
-pub(super) struct RarExtractor {}
+pub(super) struct RarExtractor {
+    target: PathBuf,
+}
+
+impl RarExtractor {
+    pub(crate) fn new(file: PathBuf) -> Self {
+        Self { target: file }
+    }
+}
 
 impl Extractor for RarExtractor {
-    fn list(&self, archive_file: &PathBuf) -> Result<Vec<String>> {
-        let mut r = Vec::<String>::new();
-        for entry in unrar::Archive::new(&archive_file)
+    fn list(&self) -> Result<Vec<Entry>> {
+        let mut r = vec![];
+        for entry in unrar::Archive::new(&self.target)
             .open_for_listing()
             .unwrap()
         {
             let header = entry.unwrap();
-            let name = header.filename.to_str().unwrap();
-            r.push(name.to_string())
+            r.push(convert(header));
         }
         Ok(r)
     }
 
-    fn perform(&self, archive_file: &PathBuf, opts: &ExtractorOpts) -> Result<()> {
-        let archive = unrar::Archive::new(&archive_file);
+    fn target(&self) -> &PathBuf {
+        &self.target
+    }
+
+    fn perform(&self, opts: &ExtractorOpts) -> Result<()> {
+        let archive = unrar::Archive::new(&self.target);
         let mut file = archive.open_for_processing().unwrap();
         while let Some(header) = file.read_header().unwrap() {
             let name = header.entry().filename.to_str().unwrap();
-            let dest = opts.base_dir(archive_file).join(PathBuf::from(name));
+            let dest = opts.base_dir(&self.target).join(PathBuf::from(name));
             file = if header.entry().is_file() {
                 log::info!(
                     "extracting {} ({} bytes)",
@@ -48,16 +62,31 @@ impl Extractor for RarExtractor {
     }
 }
 
+fn convert(fh: FileHeader) -> Entry {
+    let name = fh.filename.to_str().unwrap();
+    let uncompressed_size = fh.unpacked_size;
+    let mtime = fh.file_time as i64;
+    let dt = DateTime::from_timestamp(mtime, 0);
+    Entry::new(
+        name.to_string(),
+        None,
+        Some(uncompressed_size),
+        None,
+        dt.map(|dt| dt.naive_local()),
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn test_list_archives() {
-        let extractor = RarExtractor {};
         let file = PathBuf::from("testdata/test.rar");
-        match extractor.list(&file) {
+        let extractor = RarExtractor::new(file);
+        match extractor.list() {
             Ok(r) => {
+                let r = r.iter().map(|e| e.name.clone()).collect::<Vec<_>>();
                 assert_eq!(r.len(), 18);
                 assert_eq!(r.get(0), Some("Cargo.toml".to_string()).as_ref());
                 assert_eq!(r.get(1), Some("build.rs".to_string()).as_ref());
@@ -70,11 +99,11 @@ mod tests {
 
     #[test]
     fn test_extract_archive() {
-        let e = RarExtractor {};
         let archive_file = PathBuf::from("testdata/test.rar");
+        let e = RarExtractor::new(archive_file.clone());
         let dest = PathBuf::from("results/rar");
         let opts = ExtractorOpts::new_with_opts(Some(dest), true, true);
-        match e.perform(&archive_file, &opts) {
+        match e.perform(&opts) {
             Ok(_) => {
                 assert!(true);
                 assert!(PathBuf::from("results/rar/test/Cargo.toml").exists());
@@ -86,7 +115,7 @@ mod tests {
 
     #[test]
     fn test_format() {
-        let extractor = RarExtractor {};
-        assert_eq!(extractor.format(), Format::Rar);
+        let e = RarExtractor::new(PathBuf::from("testdata/test.rar"));
+        assert_eq!(e.format(), Format::Rar);
     }
 }

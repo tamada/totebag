@@ -1,44 +1,42 @@
 use std::fs::{create_dir_all, File};
 use std::path::PathBuf;
 
-use cab::Cabinet;
+use cab::{Cabinet, FileEntry};
 
-use crate::extractor::ExtractorOpts;
-use crate::extractor::ToteExtractor as Extractor;
+use crate::extractor::Extractor;
+use crate::extractor::{Entry, ExtractorOpts};
 use crate::{Result, ToteError};
 
-pub(super) struct CabExtractor {}
+pub(super) struct CabExtractor {
+    target: PathBuf,
+}
 
-fn list_impl<F, T>(archive_file: &PathBuf, mapper: F) -> Result<Vec<T>>
-where
-    F: Fn(&cab::FileEntry) -> T,
-{
-    let cabinet = open_cabinet(&archive_file)?;
-    let mut result = vec![];
-    for folder in cabinet.folder_entries() {
-        for file in folder.file_entries() {
-            result.push(mapper(file));
-        }
+impl CabExtractor {
+    pub(crate) fn new(file: PathBuf) -> Self {
+        Self { target: file }
     }
-    Ok(result)
 }
 
 impl Extractor for CabExtractor {
-    fn list(&self, archive_file: &PathBuf) -> Result<Vec<String>> {
-        list_impl(&archive_file, |file| file.name().to_string())
+    fn list(&self) -> Result<Vec<Entry>> {
+        list_impl(&self.target, |file| convert(file))
     }
 
-    fn perform(&self, archive_file: &PathBuf, opts: &ExtractorOpts) -> Result<()> {
-        let list = match list_impl(&archive_file, |file| {
+    fn target(&self) -> &PathBuf {
+        &self.target
+    }
+
+    fn perform(&self, opts: &ExtractorOpts) -> Result<()> {
+        let list = match list_impl(&self.target, |file| {
             (file.name().to_string(), file.uncompressed_size())
         }) {
             Ok(l) => l,
             Err(e) => return Err(e),
         };
-        let mut cabinet = open_cabinet(&archive_file)?;
+        let mut cabinet = open_cabinet(&self.target)?;
         for file in list {
             let file_name = file.0.clone();
-            let dest_file = opts.base_dir(archive_file).join(&file_name);
+            let dest_file = opts.base_dir(&self.target).join(&file_name);
             log::info!("extracting {} ({} bytes)", &file_name, file.1);
             create_dir_all(dest_file.parent().unwrap()).unwrap();
             let mut dest = match File::create(dest_file) {
@@ -70,16 +68,45 @@ fn open_cabinet(archive_file: &PathBuf) -> Result<Cabinet<File>> {
     }
 }
 
+fn list_impl<F, T>(archive_file: &PathBuf, mapper: F) -> Result<Vec<T>>
+where
+    F: Fn(&cab::FileEntry) -> T,
+{
+    let cabinet = open_cabinet(&archive_file)?;
+    let mut result = vec![];
+    for folder in cabinet.folder_entries() {
+        for file in folder.file_entries() {
+            result.push(mapper(file));
+        }
+    }
+    Ok(result)
+}
+
+fn convert(f: &FileEntry) -> Entry {
+    let name = f.name().to_string();
+    let uncompressed_size = f.uncompressed_size();
+    let mtime = f.datetime().map(|t| to_naive_datetime(t));
+    Entry::new(name, None, Some(uncompressed_size as u64), None, mtime)
+}
+
+fn to_naive_datetime(t: time::PrimitiveDateTime) -> chrono::NaiveDateTime {
+    let timestamp = t.assume_utc().unix_timestamp();
+    chrono::DateTime::from_timestamp(timestamp, 0)
+        .unwrap()
+        .naive_local()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::format::Format;
     #[test]
     fn test_list_archives() {
-        let extractor = CabExtractor {};
         let file = PathBuf::from("testdata/test.cab");
-        match extractor.list(&file) {
+        let extractor = CabExtractor::new(file);
+        match extractor.list() {
             Ok(r) => {
+                let r = r.iter().map(|e| e.name.clone()).collect::<Vec<_>>();
                 assert_eq!(r.len(), 16);
                 assert_eq!(r.get(0), Some("Cargo.toml".to_string()).as_ref());
                 assert_eq!(r.get(1), Some("LICENSE".to_string()).as_ref());
@@ -92,11 +119,11 @@ mod tests {
 
     #[test]
     fn test_extract_archive() {
-        let e = CabExtractor {};
         let archive_file = PathBuf::from("testdata/test.cab");
+        let e = CabExtractor::new(archive_file.clone());
         let dest = PathBuf::from("results/cab");
         let opts = ExtractorOpts::new_with_opts(Some(dest), true, true);
-        match e.perform(&archive_file, &opts) {
+        match e.perform(&opts) {
             Ok(_) => {
                 assert!(true);
                 assert!(PathBuf::from("results/cab/test/Cargo.toml").exists());
@@ -108,7 +135,7 @@ mod tests {
 
     #[test]
     fn test_format() {
-        let extractor = CabExtractor {};
-        assert_eq!(extractor.format(), Format::Cab);
+        let e = CabExtractor::new(PathBuf::from("testdata/test.cab"));
+        assert_eq!(e.format(), Format::Cab);
     }
 }

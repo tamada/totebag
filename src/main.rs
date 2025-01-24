@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use cli::RunMode;
 use totebag::archiver::{Archiver, ArchiverOpts};
-use totebag::extractor::{Extractor, ExtractorOpts};
+use totebag::extractor::{create, ExtractorOpts};
 use totebag::{Result, ToteError};
 
 mod cli;
@@ -54,10 +54,13 @@ fn perform_extract_each(opts: &cli::CliOpts, archive_file: PathBuf) -> Result<()
         opts.extractors.to_archive_name_dir,
         opts.overwrite,
     );
-    let extractor = Extractor::new(&extractor_opts);
-    log::info!("{}", extractor.info(&archive_file));
+    let e = create(archive_file.clone())?;
+    log::info!(
+        "{}",
+        totebag::extractor::info(&e, &archive_file, &extractor_opts)
+    );
     match extractor_opts.can_extract(&archive_file) {
-        Ok(_) => extractor.perform(&archive_file),
+        Ok(_) => e.perform(&extractor_opts),
         Err(e) => Err(e),
     }
 }
@@ -68,12 +71,15 @@ fn perform_list_each(opts: &cli::CliOpts, archive_file: PathBuf) -> Result<()> {
         opts.extractors.to_archive_name_dir,
         opts.overwrite,
     );
-    let extractor = Extractor::new(&extractor_opts);
-    log::info!("{}", extractor.info(&archive_file));
-    match extractor.list(&archive_file) {
+    let e = create(archive_file.clone())?;
+    log::info!(
+        "{}",
+        totebag::extractor::info(&e, &archive_file, &extractor_opts)
+    );
+    match e.list() {
         Ok(files) => {
             for file in files {
-                println!("{}", file);
+                println!("{}", file.name);
             }
             Ok(())
         }

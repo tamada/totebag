@@ -8,7 +8,7 @@ use super::TargetPath;
 pub(super) struct LhaArchiver {}
 
 impl ToteArchiver for LhaArchiver {
-    fn perform(&self, _: File, _: Vec<TargetPath>, _: &ArchiverOpts) -> Result<()> {
+    fn perform_impl(&self, _: File, _: Vec<TargetPath>, _: &ArchiverOpts) -> Result<()> {
         Err(ToteError::UnsupportedFormat(
             "only extraction support for lha".to_string(),
         ))
@@ -49,7 +49,7 @@ mod tests {
         let archiver = LhaArchiver {};
         assert_eq!(archiver.format(), Format::LHA);
         let file = File::create("results/test.lzh").unwrap();
-        let r = archiver.perform(
+        let r = archiver.perform_impl(
             file,
             vec![],
             &ArchiverOpts::create(None, false, false, vec![]),

@@ -8,7 +8,7 @@ use super::TargetPath;
 pub(super) struct RarArchiver {}
 
 impl ToteArchiver for RarArchiver {
-    fn perform(&self, _: File, _: Vec<TargetPath>, _: &ArchiverOpts) -> Result<()> {
+    fn perform_impl(&self, _: File, _: Vec<TargetPath>, _: &ArchiverOpts) -> Result<()> {
         Err(ToteError::UnsupportedFormat(
             "only extraction support for rar".to_string(),
         ))
@@ -50,7 +50,7 @@ mod tests {
         let archiver = RarArchiver {};
         assert_eq!(archiver.format(), Format::Rar);
         let file = File::create("results/test.rar").unwrap();
-        let r = archiver.perform(
+        let r = archiver.perform_impl(
             file,
             vec![],
             &ArchiverOpts::create(None, false, false, vec![]),

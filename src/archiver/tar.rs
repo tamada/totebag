@@ -18,7 +18,7 @@ pub(super) struct TarXzArchiver {}
 pub(super) struct TarZstdArchiver {}
 
 impl ToteArchiver for TarArchiver {
-    fn perform(&self, file: File, tps: Vec<TargetPath>, _opts: &ArchiverOpts) -> Result<()> {
+    fn perform_impl(&self, file: File, tps: Vec<TargetPath>, _opts: &ArchiverOpts) -> Result<()> {
         write_tar(tps, file)
     }
     fn format(&self) -> Format {
@@ -30,7 +30,7 @@ impl ToteArchiver for TarArchiver {
 }
 
 impl ToteArchiver for TarGzArchiver {
-    fn perform(&self, file: File, tps: Vec<TargetPath>, _opts: &ArchiverOpts) -> Result<()> {
+    fn perform_impl(&self, file: File, tps: Vec<TargetPath>, _opts: &ArchiverOpts) -> Result<()> {
         write_tar(tps, GzEncoder::new(file, flate2::Compression::default()))
     }
     fn format(&self) -> Format {
@@ -42,7 +42,7 @@ impl ToteArchiver for TarGzArchiver {
 }
 
 impl ToteArchiver for TarBz2Archiver {
-    fn perform(&self, file: File, tps: Vec<TargetPath>, _opts: &ArchiverOpts) -> Result<()> {
+    fn perform_impl(&self, file: File, tps: Vec<TargetPath>, _opts: &ArchiverOpts) -> Result<()> {
         write_tar(tps, BzEncoder::new(file, bzip2::Compression::best()))
     }
     fn format(&self) -> Format {
@@ -54,7 +54,7 @@ impl ToteArchiver for TarBz2Archiver {
 }
 
 impl ToteArchiver for TarXzArchiver {
-    fn perform(&self, file: File, tps: Vec<TargetPath>, _opts: &ArchiverOpts) -> Result<()> {
+    fn perform_impl(&self, file: File, tps: Vec<TargetPath>, _opts: &ArchiverOpts) -> Result<()> {
         write_tar(tps, XzEncoder::new(file, 9))
     }
 
@@ -67,7 +67,7 @@ impl ToteArchiver for TarXzArchiver {
 }
 
 impl ToteArchiver for TarZstdArchiver {
-    fn perform(&self, file: File, tps: Vec<TargetPath>, _: &ArchiverOpts) -> Result<()> {
+    fn perform_impl(&self, file: File, tps: Vec<TargetPath>, _: &ArchiverOpts) -> Result<()> {
         let encoder = zstd::Encoder::new(file, 9).unwrap();
         write_tar(tps, encoder.auto_finish())
     }

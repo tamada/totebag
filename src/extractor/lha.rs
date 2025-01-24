@@ -2,24 +2,34 @@ use std::fs::{create_dir_all, File};
 use std::io::copy;
 use std::path::PathBuf;
 
-use crate::extractor::ExtractorOpts;
-use crate::extractor::ToteExtractor as Extractor;
+use chrono::DateTime;
+use delharc::LhaHeader;
+
+use crate::extractor::Extractor;
+use crate::extractor::{Entry, ExtractorOpts};
 use crate::{Result, ToteError};
 
-pub(super) struct LhaExtractor {}
+pub(super) struct LhaExtractor {
+    target: PathBuf,
+}
+
+impl LhaExtractor {
+    pub(crate) fn new(file: PathBuf) -> Self {
+        Self { target: file }
+    }
+}
 
 impl Extractor for LhaExtractor {
-    fn list(&self, archive_file: &PathBuf) -> Result<Vec<String>> {
-        let mut result = Vec::<String>::new();
-        let mut reader = match delharc::parse_file(&archive_file) {
+    fn list(&self) -> Result<Vec<Entry>> {
+        let mut result = vec![];
+        let mut reader = match delharc::parse_file(&self.target) {
             Err(e) => return Err(ToteError::IO(e)),
             Ok(h) => h,
         };
         loop {
             let header = reader.header();
-            let name = header.parse_pathname();
             if !header.is_directory() {
-                result.push(name.to_str().unwrap().to_string());
+                result.push(convert(header));
             }
             match reader.next_file() {
                 Ok(r) => {
@@ -33,15 +43,19 @@ impl Extractor for LhaExtractor {
         Ok(result)
     }
 
-    fn perform(&self, archive_file: &PathBuf, opts: &ExtractorOpts) -> Result<()> {
-        let mut reader = match delharc::parse_file(&archive_file) {
+    fn target(&self) -> &PathBuf {
+        &self.target
+    }
+
+    fn perform(&self, opts: &ExtractorOpts) -> Result<()> {
+        let mut reader = match delharc::parse_file(&self.target) {
             Err(e) => return Err(ToteError::IO(e)),
             Ok(h) => h,
         };
         loop {
             let header = reader.header();
             let name = header.parse_pathname();
-            let dest = opts.base_dir(archive_file).join(&name);
+            let dest = opts.base_dir(&self.target).join(&name);
             if reader.is_decoder_supported() {
                 log::info!(
                     "extracting {} ({} bytes)",
@@ -84,6 +98,21 @@ impl Extractor for LhaExtractor {
     }
 }
 
+fn convert(h: &LhaHeader) -> Entry {
+    let name = h.parse_pathname().to_str().unwrap().to_string();
+    let compressed_size = h.compressed_size;
+    let original_size = h.original_size;
+    let mtime = h.last_modified as i64;
+    let dt = DateTime::from_timestamp(mtime, 0);
+    Entry::new(
+        name,
+        Some(compressed_size),
+        Some(original_size),
+        None,
+        dt.map(|dt| dt.naive_local()),
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -91,10 +120,11 @@ mod tests {
 
     #[test]
     fn test_list_archives() {
-        let extractor = LhaExtractor {};
         let file = PathBuf::from("testdata/test.lzh");
-        match extractor.list(&file) {
+        let extractor = LhaExtractor::new(file);
+        match extractor.list() {
             Ok(r) => {
+                let r = r.iter().map(|e| e.name.clone()).collect::<Vec<_>>();
                 assert_eq!(r.len(), 23);
                 assert_eq!(r.get(0), Some("Cargo.toml".to_string()).as_ref());
                 assert_eq!(r.get(1), Some("LICENSE".to_string()).as_ref());
@@ -107,10 +137,10 @@ mod tests {
 
     #[test]
     fn test_extract_archive() {
-        let e = LhaExtractor {};
         let archive_file = PathBuf::from("testdata/test.lzh");
+        let e = LhaExtractor::new(archive_file.clone());
         let opts = ExtractorOpts::new_with_opts(Some(PathBuf::from("results/lha")), true, true);
-        match e.perform(&archive_file, &opts) {
+        match e.perform(&opts) {
             Ok(_) => {
                 assert!(true);
                 assert!(PathBuf::from("results/lha/test/Cargo.toml").exists());
@@ -125,7 +155,7 @@ mod tests {
 
     #[test]
     fn test_format() {
-        let extractor = LhaExtractor {};
-        assert_eq!(extractor.format(), Format::LHA);
+        let e = LhaExtractor::new(PathBuf::from("testdata/test.lzh"));
+        assert_eq!(e.format(), Format::LHA);
     }
 }

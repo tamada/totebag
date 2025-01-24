@@ -10,7 +10,7 @@ use crate::{Result, ToteError};
 pub(super) struct CabArchiver {}
 
 impl ToteArchiver for CabArchiver {
-    fn perform(&self, file: File, tps: Vec<TargetPath>, _opts: &ArchiverOpts) -> Result<()> {
+    fn perform_impl(&self, file: File, tps: Vec<TargetPath>, _opts: &ArchiverOpts) -> Result<()> {
         let mut errs = vec![];
         let mut builder = CabinetBuilder::new();
         let folder = builder.add_folder(cab::CompressionType::MsZip);

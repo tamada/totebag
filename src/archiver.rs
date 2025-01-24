@@ -17,8 +17,51 @@ mod tar;
 mod zip;
 
 pub trait ToteArchiver {
-    fn perform(&self, file: File, tps: Vec<TargetPath>, opts: &ArchiverOpts) -> Result<()>;
+    /// Perform the archiving operation.
+    /// The user of `ToteArchiver` should call this method to perform the archiving operation.
+    /// - `archive_file` is the destination file for the archive.
+    /// - `files` is the list of files to be archived.
+    /// - `opts` is the optional parameters for the archiving operation.
+    fn perform(
+        &self,
+        archive_file: PathBuf,
+        files: Vec<PathBuf>,
+        opts: &ArchiverOpts,
+    ) -> Result<()> {
+        let paths = files
+            .iter()
+            .map(|item| TargetPath::new(item, &opts))
+            .collect::<Vec<TargetPath>>();
+
+        log::info!("{:?}: {}", archive_file, archive_file.exists());
+        if archive_file.exists() {
+            if archive_file.is_dir() {
+                return Err(ToteError::DestIsDir(archive_file));
+            } else if archive_file.is_file() && !opts.overwrite {
+                return Err(ToteError::FileExists(archive_file));
+            }
+        }
+        if let Some(parent) = archive_file.parent() {
+            if !parent.exists() {
+                if let Err(e) = create_dir_all(parent) {
+                    return Err(ToteError::IO(e));
+                }
+            }
+        }
+        match File::create(archive_file) {
+            Ok(f) => self.perform_impl(f, paths, &opts),
+            Err(e) => Err(ToteError::IO(e)),
+        }
+    }
+    /// The implementation of `ToteArchiver` should implement this method to perform the archiving operation.
+    /// - `file` is the destination file for the archive.
+    /// - `tps` is the list of files to be archived.
+    /// - `opts` is the optional parameters for the archiving operation.
+    fn perform_impl(&self, file: File, tps: Vec<TargetPath>, opts: &ArchiverOpts) -> Result<()>;
+
+    /// Returns the format object of this archiver.
     fn format(&self) -> Format;
+    /// Returns true if this archiver is enabled.
     fn enable(&self) -> bool;
 }
 
@@ -28,6 +71,7 @@ pub struct Archiver<'a> {
     pub opts: &'a ArchiverOpts,
 }
 
+/// TargetPath is a helper struct to handle the target path for the archiving operation.
 pub struct TargetPath<'a> {
     base_path: &'a PathBuf,
     opts: &'a ArchiverOpts,
@@ -41,22 +85,8 @@ impl<'a> TargetPath<'a> {
         }
     }
 
+    /// Returns the destination path for the target file.
     pub fn dest_path(&self, target: &PathBuf) -> PathBuf {
-        // let target_path = if self.base_path.is_dir() {
-        //     match target.strip_prefix(&self.base_path) {
-        //         Ok(p) => p,
-        //         Err(_) => target,
-        //     }
-        // } else {
-        //     if let Some(basedir) = self.base_path.parent() {
-        //         match target.strip_prefix(basedir) {
-        //             Ok(p) => p,
-        //             Err(_) => target,
-        //         }
-        //     } else {
-        //         target
-        //     }
-        // };
         let target_path = target;
         if let Some(rebase) = &self.opts.rebase_dir {
             rebase.join(target_path)
@@ -65,6 +95,7 @@ impl<'a> TargetPath<'a> {
         }
     }
 
+    /// Returns the directory traversing walker for the given path of this instance.
     pub fn walker(&self) -> Walk {
         let mut builder = WalkBuilder::new(&self.base_path);
         build_walker_impl(self.opts, &mut builder);
@@ -94,20 +125,7 @@ impl<'a> Archiver<'a> {
             Ok(a) => a,
             Err(e) => return Err(e),
         };
-        if archiver.enable() {
-            let paths = self
-                .froms
-                .iter()
-                .map(|item| TargetPath::new(item, &self.opts))
-                .collect::<Vec<TargetPath>>();
-
-            match self.destination() {
-                Ok(file) => archiver.perform(file, paths, &self.opts),
-                Err(e) => Err(e),
-            }
-        } else {
-            Err(ToteError::UnsupportedFormat(self.format().to_string()))
-        }
+        archiver.perform(self.dest.clone(), self.froms.clone(), self.opts)
     }
 
     /// Returns the destination file for the archive with opening it and create the parent directories.
