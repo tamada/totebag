@@ -16,6 +16,7 @@ list\t''"
 complete -c totebag -s o -l output -d 'Output file in archive mode, or output directory in extraction mode' -r -F
 complete -c totebag -l to-archive-name-dir -d 'extract files to DEST/ARCHIVE_NAME directory (extract mode).'
 complete -c totebag -s n -l no-recursive -d 'No recursive directory (archive mode).'
+complete -c totebag -s l -l long -d 'List entries in the archive file with long format.'
 complete -c totebag -l generate-completion -d 'Generate the completion files'
 complete -c totebag -l overwrite -d 'Overwrite existing files.'
 complete -c totebag -s h -l help -d 'Print help'

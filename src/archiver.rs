@@ -44,6 +44,7 @@ pub(crate) trait ToteArchiver {
 /// ```
 #[derive(Debug, TypedBuilder)]
 pub struct Archiver {
+    #[builder(setter(into))]
     pub archive_file: PathBuf,
     pub targets: Vec<PathBuf>,
     #[builder(default = None, setter(strip_option, into))]

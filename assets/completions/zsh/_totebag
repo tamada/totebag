@@ -27,6 +27,8 @@ _totebag() {
 '--to-archive-name-dir[extract files to DEST/ARCHIVE_NAME directory (extract mode).]' \
 '-n[No recursive directory (archive mode).]' \
 '--no-recursive[No recursive directory (archive mode).]' \
+'-l[List entries in the archive file with long format.]' \
+'--long[List entries in the archive file with long format.]' \
 '--generate-completion[Generate the completion files]' \
 '--overwrite[Overwrite existing files.]' \
 '-h[Print help]' \

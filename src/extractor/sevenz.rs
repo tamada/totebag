@@ -5,7 +5,7 @@ use crate::{Result, ToteError};
 use chrono::DateTime;
 use sevenz_rust::{Archive, BlockDecoder, Password, SevenZArchiveEntry};
 
-use crate::extractor::{Entry, Extractor, ExtractorOpts};
+use crate::extractor::{Entry, Extractor, ToteExtractor};
 use crate::format::Format;
 
 pub(super) struct SevenZExtractor {
@@ -18,7 +18,7 @@ impl SevenZExtractor {
     }
 }
 
-impl Extractor for SevenZExtractor {
+impl ToteExtractor for SevenZExtractor {
     fn list(&self) -> Result<Vec<Entry>> {
         let mut reader = File::open(&self.target).unwrap();
         let len = reader.metadata().unwrap().len();
@@ -34,12 +34,12 @@ impl Extractor for SevenZExtractor {
         }
     }
 
-    fn perform(&self, opts: &ExtractorOpts) -> Result<()> {
+    fn perform(&self, opts: &Extractor) -> Result<()> {
         let mut file = match File::open(&self.target) {
             Ok(file) => file,
             Err(e) => return Err(ToteError::IO(e)),
         };
-        extract(&self.target, &mut file, opts)
+        extract(&mut file, opts)
     }
     fn format(&self) -> Format {
         Format::SevenZ
@@ -61,7 +61,7 @@ fn convert(e: &SevenZArchiveEntry) -> Entry {
     )
 }
 
-fn extract(archive_file: &PathBuf, mut file: &File, opts: &ExtractorOpts) -> Result<()> {
+fn extract(mut file: &File, opts: &Extractor) -> Result<()> {
     let len = file.metadata().unwrap().len();
     let password = Password::empty();
     let archive = match Archive::read(&mut file, len, password.as_ref()) {
@@ -72,7 +72,7 @@ fn extract(archive_file: &PathBuf, mut file: &File, opts: &ExtractorOpts) -> Res
     for findex in 0..folder_count {
         let folder_decoder = BlockDecoder::new(findex, &archive, password.as_slice(), &mut file);
         if let Err(e) = folder_decoder.for_each_entries(&mut |entry, reader| {
-            let d = opts.base_dir(archive_file).join(&entry.name);
+            let d = opts.base_dir().join(&entry.name);
             sevenz_rust::default_entry_extract_fn(entry, reader, &d)
         }) {
             return Err(ToteError::Fatal(Box::new(e)));
@@ -105,10 +105,11 @@ mod tests {
     #[test]
     fn test_extract_archive() {
         let archive_file = PathBuf::from("testdata/test.7z");
-        let e = SevenZExtractor::new(archive_file.clone());
-        let dest = PathBuf::from("results/sevenz");
-        let opts = ExtractorOpts::new_with_opts(Some(dest), false, true);
-        match e.perform(&opts) {
+        let opts = Extractor::builder()
+            .archive_file(archive_file)
+            .destination("results/sevenz")
+            .build();
+        match opts.perform() {
             Ok(_) => {
                 assert!(true);
                 assert!(PathBuf::from("results/sevenz/Cargo.toml").exists());

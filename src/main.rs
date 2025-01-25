@@ -3,10 +3,11 @@ use std::path::PathBuf;
 
 use cli::RunMode;
 use totebag::archiver::Archiver;
-use totebag::extractor::{create, ExtractorOpts};
+use totebag::extractor::Extractor;
 use totebag::{Result, ToteError};
 
 mod cli;
+mod list;
 
 fn update_loglevel(opts: &cli::CliOpts) {
     use env_logger;
@@ -63,37 +64,32 @@ where
 }
 
 fn perform_extract_each(opts: &cli::CliOpts, archive_file: PathBuf) -> Result<()> {
-    let extractor_opts = ExtractorOpts::new_with_opts(
-        opts.output.clone(),
-        opts.extractors.to_archive_name_dir,
-        opts.overwrite,
-    );
-    let e = create(archive_file.clone())?;
-    log::info!(
-        "{}",
-        totebag::extractor::info(&e, &archive_file, &extractor_opts)
-    );
-    match extractor_opts.can_extract(&archive_file) {
-        Ok(_) => e.perform(&extractor_opts),
-        Err(e) => Err(e),
-    }
+    let extractor = Extractor::builder()
+        .archive_file(archive_file)
+        .destination(opts.output.clone().unwrap_or_else(|| PathBuf::from(".")))
+        .use_archive_name_dir(opts.extractors.to_archive_name_dir)
+        .overwrite(opts.overwrite)
+        .build();
+    log::info!("{}", extractor.info());
+    extractor.perform()
 }
 
 fn perform_list_each(opts: &cli::CliOpts, archive_file: PathBuf) -> Result<()> {
-    let extractor_opts = ExtractorOpts::new_with_opts(
-        opts.output.clone(),
-        opts.extractors.to_archive_name_dir,
-        opts.overwrite,
-    );
-    let e = create(archive_file.clone())?;
-    log::info!(
-        "{}",
-        totebag::extractor::info(&e, &archive_file, &extractor_opts)
-    );
-    match e.list() {
+    let extractor = Extractor::builder()
+        .archive_file(archive_file)
+        .destination(opts.output.clone().unwrap_or_else(|| PathBuf::from(".")))
+        .use_archive_name_dir(opts.extractors.to_archive_name_dir)
+        .overwrite(opts.overwrite)
+        .build();
+    log::info!("{}", extractor.info());
+    match extractor.list() {
         Ok(files) => {
             for file in files {
-                println!("{}", file.name);
+                if opts.listers.long {
+                    list::print_long_format(file)
+                } else {
+                    println!("{}", file.name);
+                }
             }
             Ok(())
         }
@@ -102,12 +98,6 @@ fn perform_list_each(opts: &cli::CliOpts, archive_file: PathBuf) -> Result<()> {
 }
 
 fn perform_archive(cliopts: cli::CliOpts) -> Result<()> {
-    // let opts = ArchiverOpts::new(
-    //     Some(cliopts.archivers.base_dir),
-    //     cliopts.overwrite,
-    //     !cliopts.archivers.no_recursive,
-    //     cliopts.archivers.ignores,
-    // );
     let archiver = Archiver::builder()
         .archive_file(cliopts.output.unwrap())
         .targets(

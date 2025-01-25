@@ -5,8 +5,8 @@ use std::path::PathBuf;
 use chrono::DateTime;
 use delharc::LhaHeader;
 
-use crate::extractor::Extractor;
-use crate::extractor::{Entry, ExtractorOpts};
+use crate::extractor::ToteExtractor;
+use crate::extractor::{Entry, Extractor};
 use crate::{Result, ToteError};
 
 pub(super) struct LhaExtractor {
@@ -19,7 +19,7 @@ impl LhaExtractor {
     }
 }
 
-impl Extractor for LhaExtractor {
+impl ToteExtractor for LhaExtractor {
     fn list(&self) -> Result<Vec<Entry>> {
         let mut result = vec![];
         let mut reader = match delharc::parse_file(&self.target) {
@@ -43,7 +43,7 @@ impl Extractor for LhaExtractor {
         Ok(result)
     }
 
-    fn perform(&self, opts: &ExtractorOpts) -> Result<()> {
+    fn perform(&self, opts: &Extractor) -> Result<()> {
         let mut reader = match delharc::parse_file(&self.target) {
             Err(e) => return Err(ToteError::IO(e)),
             Ok(h) => h,
@@ -51,7 +51,7 @@ impl Extractor for LhaExtractor {
         loop {
             let header = reader.header();
             let name = header.parse_pathname();
-            let dest = opts.base_dir(&self.target).join(&name);
+            let dest = opts.base_dir().join(&name);
             if reader.is_decoder_supported() {
                 log::info!(
                     "extracting {} ({} bytes)",
@@ -134,9 +134,13 @@ mod tests {
     #[test]
     fn test_extract_archive() {
         let archive_file = PathBuf::from("testdata/test.lzh");
-        let e = LhaExtractor::new(archive_file.clone());
-        let opts = ExtractorOpts::new_with_opts(Some(PathBuf::from("results/lha")), true, true);
-        match e.perform(&opts) {
+        let opts = Extractor::builder()
+            .archive_file(archive_file)
+            .destination("results/lha")
+            .use_archive_name_dir(true)
+            .overwrite(true)
+            .build();
+        match opts.perform() {
             Ok(_) => {
                 assert!(true);
                 assert!(PathBuf::from("results/lha/test/Cargo.toml").exists());

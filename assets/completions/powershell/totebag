@@ -33,6 +33,8 @@ Register-ArgumentCompleter -Native -CommandName 'totebag' -ScriptBlock {
             [CompletionResult]::new('--to-archive-name-dir', '--to-archive-name-dir', [CompletionResultType]::ParameterName, 'extract files to DEST/ARCHIVE_NAME directory (extract mode).')
             [CompletionResult]::new('-n', '-n', [CompletionResultType]::ParameterName, 'No recursive directory (archive mode).')
             [CompletionResult]::new('--no-recursive', '--no-recursive', [CompletionResultType]::ParameterName, 'No recursive directory (archive mode).')
+            [CompletionResult]::new('-l', '-l', [CompletionResultType]::ParameterName, 'List entries in the archive file with long format.')
+            [CompletionResult]::new('--long', '--long', [CompletionResultType]::ParameterName, 'List entries in the archive file with long format.')
             [CompletionResult]::new('--generate-completion', '--generate-completion', [CompletionResultType]::ParameterName, 'Generate the completion files')
             [CompletionResult]::new('--overwrite', '--overwrite', [CompletionResultType]::ParameterName, 'Overwrite existing files.')
             [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help')

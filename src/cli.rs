@@ -21,6 +21,9 @@ pub struct CliOpts {
     #[clap(flatten)]
     pub archivers: ArchiverOpts,
 
+    #[clap(flatten)]
+    pub listers: ListerOpts,
+
     #[clap(long = "level", help = "Specify the log level", default_value_t = LogLevel::Warn, ignore_case = true, value_enum)]
     pub level: LogLevel,
 
@@ -28,7 +31,7 @@ pub struct CliOpts {
     pub mode: RunMode,
 
     #[cfg(debug_assertions)]
-    #[clap(long = "generate-completion", help = "Generate the completion files")]
+    #[clap(long = "generate-completion", hide = true, help = "Generate the completion files")]
     pub generate_completion: bool,
 
     #[clap(
@@ -56,8 +59,12 @@ If the frist argument was not the archive name, the default archive name `toteba
 }
 
 #[derive(Parser, Debug)]
-pub struct ListOpts {
-    #[clap(short, long, help = "List with long format.")]
+pub struct ListerOpts {
+    #[clap(
+        short,
+        long,
+        help = "List entries in the archive file with long format."
+    )]
     pub long: bool,
 }
 

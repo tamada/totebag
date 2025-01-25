@@ -19,7 +19,7 @@ _totebag() {
 
     case "${cmd}" in
         totebag)
-            opts="-C -i -n -m -o -h -V --to-archive-name-dir --dir --ignore-types --no-recursive --level --mode --generate-completion --output --overwrite --help --version [ARGUMENTS]..."
+            opts="-C -i -n -l -m -o -h -V --to-archive-name-dir --dir --ignore-types --no-recursive --long --level --mode --generate-completion --output --overwrite --help --version [ARGUMENTS]..."
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0

@@ -41,7 +41,7 @@ mod tests {
     use std::path::PathBuf;
 
     use crate::archiver::Archiver;
-    use crate::extractor::create;
+    use crate::extractor::Extractor;
     use crate::format::{find_format, Format};
     use crate::Result;
 
@@ -57,7 +57,10 @@ mod tests {
     fn archive_and_extract(f: Format, archive_file_name: PathBuf, sources: Vec<PathBuf>) {
         let r = archive_file(archive_file_name.clone(), sources);
         assert!(r.is_ok());
-        let e = create(archive_file_name.clone()).unwrap();
+        let e = Extractor::builder()
+            .archive_file(archive_file_name.clone())
+            .destination(PathBuf::from("results"))
+            .build();
         match find_format(&archive_file_name) {
             Ok(format) => assert_eq!(f, format),
             Err(e) => panic!("unexpected error: {:?}", e),

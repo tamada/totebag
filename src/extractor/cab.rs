@@ -3,8 +3,8 @@ use std::path::PathBuf;
 
 use cab::{Cabinet, FileEntry};
 
-use crate::extractor::Extractor;
-use crate::extractor::{Entry, ExtractorOpts};
+use crate::extractor::ToteExtractor;
+use crate::extractor::{Entry, Extractor};
 use crate::{Result, ToteError};
 
 pub(super) struct CabExtractor {
@@ -17,12 +17,12 @@ impl CabExtractor {
     }
 }
 
-impl Extractor for CabExtractor {
+impl ToteExtractor for CabExtractor {
     fn list(&self) -> Result<Vec<Entry>> {
         list_impl(&self.target, |file| convert(file))
     }
 
-    fn perform(&self, opts: &ExtractorOpts) -> Result<()> {
+    fn perform(&self, opts: &Extractor) -> Result<()> {
         let list = match list_impl(&self.target, |file| {
             (file.name().to_string(), file.uncompressed_size())
         }) {
@@ -32,7 +32,7 @@ impl Extractor for CabExtractor {
         let mut cabinet = open_cabinet(&self.target)?;
         for file in list {
             let file_name = file.0.clone();
-            let dest_file = opts.base_dir(&self.target).join(&file_name);
+            let dest_file = opts.base_dir().join(&file_name);
             log::info!("extracting {} ({} bytes)", &file_name, file.1);
             create_dir_all(dest_file.parent().unwrap()).unwrap();
             let mut dest = match File::create(dest_file) {
@@ -116,10 +116,14 @@ mod tests {
     #[test]
     fn test_extract_archive() {
         let archive_file = PathBuf::from("testdata/test.cab");
-        let e = CabExtractor::new(archive_file.clone());
         let dest = PathBuf::from("results/cab");
-        let opts = ExtractorOpts::new_with_opts(Some(dest), true, true);
-        match e.perform(&opts) {
+        let opts = Extractor::builder()
+            .archive_file(archive_file)
+            .destination(dest)
+            .use_archive_name_dir(true)
+            .build();
+
+        match opts.perform() {
             Ok(_) => {
                 assert!(true);
                 assert!(PathBuf::from("results/cab/test/Cargo.toml").exists());

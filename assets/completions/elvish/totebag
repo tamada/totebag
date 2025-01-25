@@ -30,6 +30,8 @@ set edit:completion:arg-completer[totebag] = {|@words|
             cand --to-archive-name-dir 'extract files to DEST/ARCHIVE_NAME directory (extract mode).'
             cand -n 'No recursive directory (archive mode).'
             cand --no-recursive 'No recursive directory (archive mode).'
+            cand -l 'List entries in the archive file with long format.'
+            cand --long 'List entries in the archive file with long format.'
             cand --generate-completion 'Generate the completion files'
             cand --overwrite 'Overwrite existing files.'
             cand -h 'Print help'

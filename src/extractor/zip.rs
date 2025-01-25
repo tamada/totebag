@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use chrono::NaiveDateTime;
 use zip::read::ZipFile;
 
-use crate::extractor::{Entry, Extractor, ExtractorOpts};
+use crate::extractor::{Entry, Extractor, ToteExtractor};
 use crate::format::Format;
 use crate::Result;
 
@@ -19,7 +19,7 @@ impl ZipExtractor {
     }
 }
 
-impl Extractor for ZipExtractor {
+impl ToteExtractor for ZipExtractor {
     fn list(&self) -> Result<Vec<Entry>> {
         let zip_file = File::open(&self.target).unwrap();
         let mut zip = zip::ZipArchive::new(zip_file).unwrap();
@@ -32,10 +32,10 @@ impl Extractor for ZipExtractor {
         Ok(result)
     }
 
-    fn perform(&self, opts: &ExtractorOpts) -> Result<()> {
+    fn perform(&self, opts: &Extractor) -> Result<()> {
         let zip_file = File::open(&self.target).unwrap();
         let mut zip = zip::ZipArchive::new(zip_file).unwrap();
-        let dest_base = opts.base_dir(&self.target);
+        let dest_base = opts.base_dir();
         for i in 0..zip.len() {
             let mut file = zip.by_index(i).unwrap();
             if file.is_file() {
@@ -122,10 +122,11 @@ mod tests {
     #[test]
     fn test_extract_archive() {
         let archive_file = PathBuf::from("testdata/test.zip");
-        let e = ZipExtractor::new(archive_file.clone());
-        let dest = PathBuf::from("results/zip");
-        let opts = ExtractorOpts::new_with_opts(Some(dest), false, true);
-        match e.perform(&opts) {
+        let opts = Extractor::builder()
+            .archive_file(archive_file)
+            .destination("results/zip")
+            .build();
+        match opts.perform() {
             Ok(_) => {
                 assert!(true);
                 assert!(PathBuf::from("results/zip/Cargo.toml").exists());
