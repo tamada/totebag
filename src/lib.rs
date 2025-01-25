@@ -52,7 +52,7 @@ mod tests {
     }
 
     fn archive_and_extract(f: Format, archive_file_name: PathBuf, sources: Vec<PathBuf>) {
-        let r = archive_file(archive_file_name.clone(), sources.clone());
+        let r = archive_file(archive_file_name.clone(), sources);
         assert!(r.is_ok());
         let e = create(archive_file_name.clone()).unwrap();
         match find_format(&archive_file_name) {
@@ -72,51 +72,75 @@ mod tests {
         assert!(list.contains(&"testdata/sample/build.rs".to_string()));
     }
 
-    #[test]
-    fn test_archive_and_extract() {
-        let sources = vec!["testdata/sample"]
+    fn gen_sources() -> Vec<PathBuf> {
+        vec!["testdata/sample"]
             .iter()
             .map(PathBuf::from)
-            .collect::<Vec<PathBuf>>();
+            .collect::<Vec<PathBuf>>()
+    }
+
+    #[test]
+    fn test_archive_and_extract_zip() {
         archive_and_extract(
             Format::Zip,
             PathBuf::from("results/union_test.zip"),
-            sources.clone(),
+            gen_sources(),
         );
+    }
+    #[test]
+    fn test_archive_and_extract_cab() {
         archive_and_extract(
             Format::Cab,
             PathBuf::from("results/union_test.cab"),
-            sources.clone(),
+            gen_sources(),
         );
+    }
+    #[test]
+    fn test_archive_and_extract_sevenz() {
         archive_and_extract(
             Format::SevenZ,
             PathBuf::from("results/union_test.7z"),
-            sources.clone(),
+            gen_sources(),
         );
+    }
+    #[test]
+    fn test_archive_and_extract_tar() {
         archive_and_extract(
             Format::Tar,
             PathBuf::from("results/union_test.tar"),
-            sources.clone(),
+            gen_sources(),
         );
+    }
+    #[test]
+    fn test_archive_and_extract_targz() {
         archive_and_extract(
             Format::TarGz,
             PathBuf::from("results/union_test.tar.gz"),
-            sources.clone(),
+            gen_sources(),
         );
+    }
+    #[test]
+    fn test_archive_and_extract_tarbz2() {
         archive_and_extract(
             Format::TarBz2,
             PathBuf::from("results/union_test.tar.bz2"),
-            sources.clone(),
+            gen_sources(),
         );
+    }
+    #[test]
+    fn test_archive_and_extract_tarxz() {
         archive_and_extract(
             Format::TarXz,
             PathBuf::from("results/union_test.tar.xz"),
-            sources.clone(),
+            gen_sources(),
         );
+    }
+    #[test]
+    fn test_archive_and_extract_tarzstd() {
         archive_and_extract(
             Format::TarZstd,
             PathBuf::from("results/union_test.tar.zst"),
-            sources.clone(),
+            gen_sources(),
         );
     }
 }

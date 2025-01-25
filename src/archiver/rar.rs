@@ -46,17 +46,16 @@ mod tests {
     }
 
     #[test]
-    fn test_lha_archiver() {
+    fn test_rar_archiver() {
         let archiver = RarArchiver {};
         assert_eq!(archiver.format(), Format::Rar);
-        let file = File::create("results/test.rar").unwrap();
-        let r = archiver.perform_impl(
-            file,
-            vec![],
+        let r = archiver.perform(
+            PathBuf::from("results/test.rar"),
+            vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")],
             &ArchiverOpts::create(None, false, false, vec![]),
         );
         if let Err(ToteError::UnsupportedFormat(e)) = r {
-            assert_eq!(e, "only extraction support for rar");
+            assert_eq!(e, "Rar: not support archiving");
         } else {
             panic!("unexpected result: {:?}", r);
         }

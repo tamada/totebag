@@ -200,8 +200,6 @@ pub trait Extractor {
     fn perform(&self, opts: &ExtractorOpts) -> Result<()>;
     /// returns the supported format of the extractor.
     fn format(&self) -> Format;
-    /// Returns the archive file for extraction.
-    fn target(&self) -> &PathBuf;
 }
 
 pub fn info(e: &Box<dyn Extractor>, archive_file: &PathBuf, opts: &ExtractorOpts) -> String {

@@ -27,6 +27,10 @@ pub struct CliOpts {
     #[clap(short = 'm', long = "mode", default_value_t = RunMode::Auto, value_name = "MODE", required = false, ignore_case = true, value_enum, help = "Mode of operation.")]
     pub mode: RunMode,
 
+    #[cfg(debug_assertions)]
+    #[clap(long = "generate-completion", help = "Generate the completion files")]
+    pub generate_completion: bool,
+
     #[clap(
         short = 'o',
         short_alias = 'd',
@@ -103,7 +107,6 @@ pub enum LogLevel {
     Warn,
     Info,
     Debug,
-    Trace,
 }
 
 impl CliOpts {

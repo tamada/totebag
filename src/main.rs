@@ -8,20 +8,34 @@ use totebag::{Result, ToteError};
 
 mod cli;
 
+fn update_loglevel(opts: &cli::CliOpts) {
+    use env_logger;
+    match opts.level {
+        cli::LogLevel::Error => std::env::set_var("RUST_LOG", "error"),
+        cli::LogLevel::Warn => std::env::set_var("RUST_LOG", "warn"),
+        cli::LogLevel::Info => std::env::set_var("RUST_LOG", "info"),
+        cli::LogLevel::Debug => std::env::set_var("RUST_LOG", "debug"),
+    }
+    env_logger::init();
+}
+
 fn perform(mut opts: cli::CliOpts) -> Result<()> {
+    update_loglevel(&opts);
+    if cfg!(debug_assertions) {
+        #[cfg(debug_assertions)]
+        if opts.generate_completion {
+            return gencomp::generate(PathBuf::from("target/completions"));
+        }
+    }
     match opts.run_mode() {
-        Ok(RunMode::Archive) => return perform_archive(opts),
-        Ok(RunMode::Extract) => return perform_extract_or_list(opts, perform_extract_each),
-        Ok(RunMode::List) => return perform_extract_or_list(opts, perform_list_each),
-        Ok(RunMode::Auto) => {
-            return Err(ToteError::Unknown(
-                "cannot distinguish archiving and extracting".to_string(),
-            ))
-        }
-        Err(e) => {
-            return Err(e);
-        }
-    };
+        Ok(RunMode::Archive) => perform_archive(opts),
+        Ok(RunMode::Extract) => perform_extract_or_list(opts, perform_extract_each),
+        Ok(RunMode::List) => perform_extract_or_list(opts, perform_list_each),
+        Ok(RunMode::Auto) => Err(ToteError::Unknown(
+            "cannot distinguish archiving and extracting".to_string(),
+        )),
+        Err(e) => Err(e),
+    }
 }
 
 fn perform_extract_or_list<F>(opts: cli::CliOpts, f: F) -> Result<()>
@@ -125,6 +139,53 @@ fn print_error(e: &ToteError) {
         ToteError::Unknown(s) => println!("Unknown error: {}", s),
         ToteError::UnknownFormat(f) => println!("{}: unknown format", f),
         ToteError::UnsupportedFormat(f) => println!("{}: unsupported format", f),
+    }
+}
+
+#[cfg(debug_assertions)]
+mod gencomp {
+    use crate::cli::CliOpts;
+    use totebag::{Result, ToteError};
+
+    use clap::{Command, CommandFactory};
+    use clap_complete::Shell;
+    use std::path::PathBuf;
+
+    fn generate_impl(app: &mut Command, shell: Shell, dest: PathBuf) -> Result<()> {
+        log::info!("generate completion for {:?} to {:?}", shell, dest);
+        if let Err(e) = std::fs::create_dir_all(dest.parent().unwrap()) {
+            return Err(ToteError::IO(e));
+        }
+        match std::fs::File::create(dest) {
+            Err(e) => Err(ToteError::IO(e)),
+            Ok(mut out) => {
+                clap_complete::generate(shell, app, "totebag", &mut out);
+                Ok(())
+            }
+        }
+    }
+
+    pub fn generate(outdir: PathBuf) -> Result<()> {
+        let shells = vec![
+            (Shell::Bash, "bash/totebag"),
+            (Shell::Fish, "fish/totebag"),
+            (Shell::Zsh, "zsh/_totebag"),
+            (Shell::Elvish, "elvish/totebag"),
+            (Shell::PowerShell, "powershell/totebag"),
+        ];
+        let mut app = CliOpts::command();
+        app.set_bin_name("totebag");
+        let mut errs = vec![];
+        for (shell, file) in shells {
+            if let Err(e) = generate_impl(&mut app, shell, outdir.join(file)) {
+                errs.push(e);
+            }
+        }
+        if errs.is_empty() {
+            Ok(())
+        } else {
+            Err(ToteError::Array(errs))
+        }
     }
 }
 

@@ -14,10 +14,13 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bzip2 = "0.4.4"
+bzip2 = "0.4.4" # the newer version 0.5.0 does not work well.
 cab = "0.6.0"
-clap = { version = "4.5.26", features = ["derive"] }
+chrono = "0.4.39"
+clap = { version = "4.5.27", features = ["derive"] }
+clap_complete = "4.5.42"
 delharc = "0.6.1"
+env_logger = "0.11.6"
 flate2 = "1.0.35"
 ignore = "0.4.23"
 log = "0.4.25"
@@ -28,9 +31,3 @@ unrar = "0.5.7"
 xz2 = "0.1.7"
 zip = "2.1.0"
 zstd = "0.13.2"
-
-[build-dependencies]
-clap = { version = "4.5.4", features = ["derive"] }
-clap_complete = "4.5.42"
-toml = "0.8.12"
-

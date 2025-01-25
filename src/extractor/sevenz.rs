@@ -33,9 +33,6 @@ impl Extractor for SevenZExtractor {
             Err(e) => Err(ToteError::Fatal(Box::new(e))),
         }
     }
-    fn target(&self) -> &PathBuf {
-        &self.target
-    }
 
     fn perform(&self, opts: &ExtractorOpts) -> Result<()> {
         let mut file = match File::open(&self.target) {

@@ -32,10 +32,6 @@ impl Extractor for ZipExtractor {
         Ok(result)
     }
 
-    fn target(&self) -> &PathBuf {
-        &self.target
-    }
-
     fn perform(&self, opts: &ExtractorOpts) -> Result<()> {
         let zip_file = File::open(&self.target).unwrap();
         let mut zip = zip::ZipArchive::new(zip_file).unwrap();

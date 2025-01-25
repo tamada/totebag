@@ -66,9 +66,6 @@ impl Extractor for TarExtractor {
             Err(e) => Err(e),
         }
     }
-    fn target(&self) -> &PathBuf {
-        &self.target
-    }
     fn perform(&self, opts: &ExtractorOpts) -> Result<()> {
         match open_tar_file(&self.target, |f| f) {
             Err(e) => Err(e),
@@ -86,9 +83,6 @@ impl Extractor for TarGzExtractor {
             Ok(archive) => list_tar(archive),
             Err(e) => Err(e),
         }
-    }
-    fn target(&self) -> &PathBuf {
-        &self.target
     }
     fn perform(&self, opts: &ExtractorOpts) -> Result<()> {
         match open_tar_file(&self.target, |f| flate2::read::GzDecoder::new(f)) {
@@ -108,9 +102,6 @@ impl Extractor for TarBz2Extractor {
             Err(e) => Err(e),
         }
     }
-    fn target(&self) -> &PathBuf {
-        &self.target
-    }
     fn perform(&self, opts: &ExtractorOpts) -> Result<()> {
         match open_tar_file(&self.target, |f| bzip2::read::BzDecoder::new(f)) {
             Err(e) => Err(e),
@@ -129,9 +120,6 @@ impl Extractor for TarXzExtractor {
             Ok(archive) => list_tar(archive),
         }
     }
-    fn target(&self) -> &PathBuf {
-        &self.target
-    }
     fn perform(&self, opts: &ExtractorOpts) -> Result<()> {
         match open_tar_file(&self.target, |f| XzDecoder::new(f)) {
             Err(e) => Err(e),
@@ -149,9 +137,6 @@ impl Extractor for TarZstdExtractor {
             Err(e) => Err(e),
             Ok(archive) => list_tar(archive),
         }
-    }
-    fn target(&self) -> &PathBuf {
-        &self.target
     }
     fn perform(&self, opts: &ExtractorOpts) -> Result<()> {
         match open_tar_file(&self.target, |f| zstd::Decoder::new(f).unwrap()) {

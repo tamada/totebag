@@ -32,10 +32,6 @@ impl Extractor for RarExtractor {
         Ok(r)
     }
 
-    fn target(&self) -> &PathBuf {
-        &self.target
-    }
-
     fn perform(&self, opts: &ExtractorOpts) -> Result<()> {
         let archive = unrar::Archive::new(&self.target);
         let mut file = archive.open_for_processing().unwrap();

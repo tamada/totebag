@@ -48,14 +48,13 @@ mod tests {
     fn test_lha_archiver() {
         let archiver = LhaArchiver {};
         assert_eq!(archiver.format(), Format::LHA);
-        let file = File::create("results/test.lzh").unwrap();
-        let r = archiver.perform_impl(
-            file,
-            vec![],
+        let r = archiver.perform(
+            PathBuf::from("results/test.lzh"),
+            vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")],
             &ArchiverOpts::create(None, false, false, vec![]),
         );
         if let Err(ToteError::UnsupportedFormat(e)) = r {
-            assert_eq!(e, "only extraction support for lha");
+            assert_eq!(e, "LHA: not support archiving");
         } else {
             panic!("unexpected result: {:?}", r);
         }

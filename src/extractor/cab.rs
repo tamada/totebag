@@ -22,10 +22,6 @@ impl Extractor for CabExtractor {
         list_impl(&self.target, |file| convert(file))
     }
 
-    fn target(&self) -> &PathBuf {
-        &self.target
-    }
-
     fn perform(&self, opts: &ExtractorOpts) -> Result<()> {
         let list = match list_impl(&self.target, |file| {
             (file.name().to_string(), file.uncompressed_size())

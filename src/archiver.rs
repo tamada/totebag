@@ -28,6 +28,12 @@ pub trait ToteArchiver {
         files: Vec<PathBuf>,
         opts: &ArchiverOpts,
     ) -> Result<()> {
+        if !self.enable() {
+            return Err(ToteError::UnsupportedFormat(format!(
+                "{:?}: not support archiving",
+                self.format()
+            )));
+        }
         let paths = files
             .iter()
             .map(|item| TargetPath::new(item, &opts))

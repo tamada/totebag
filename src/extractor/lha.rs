@@ -43,10 +43,6 @@ impl Extractor for LhaExtractor {
         Ok(result)
     }
 
-    fn target(&self) -> &PathBuf {
-        &self.target
-    }
-
     fn perform(&self, opts: &ExtractorOpts) -> Result<()> {
         let mut reader = match delharc::parse_file(&self.target) {
             Err(e) => return Err(ToteError::IO(e)),
