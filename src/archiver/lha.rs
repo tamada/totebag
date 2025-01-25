@@ -1,6 +1,6 @@
 use std::fs::File;
 
-use crate::archiver::{ArchiverOpts, Format, ToteArchiver};
+use crate::archiver::{Format, ToteArchiver};
 use crate::{Result, ToteError};
 
 use super::TargetPath;
@@ -8,7 +8,7 @@ use super::TargetPath;
 pub(super) struct LhaArchiver {}
 
 impl ToteArchiver for LhaArchiver {
-    fn perform_impl(&self, _: File, _: Vec<TargetPath>, _: &ArchiverOpts) -> Result<()> {
+    fn perform(&self, _: File, _: Vec<TargetPath>) -> Result<()> {
         Err(ToteError::UnsupportedFormat(
             "only extraction support for lha".to_string(),
         ))
@@ -36,23 +36,13 @@ mod tests {
     }
 
     #[test]
-    fn test_archive() {
-        let opts = ArchiverOpts::create(None, false, false, vec![]);
-        let archiver = Archiver::new(PathBuf::from("results/test.lzh"), vec![], &opts);
-
+    fn test_lha_archive() {
+        let archiver = Archiver::builder()
+            .archive_file(PathBuf::from("results/test.lzh"))
+            .targets(vec![])
+            .build();
         let r = archiver.perform();
         assert!(r.is_err());
-    }
-
-    #[test]
-    fn test_lha_archiver() {
-        let archiver = LhaArchiver {};
-        assert_eq!(archiver.format(), Format::LHA);
-        let r = archiver.perform(
-            PathBuf::from("results/test.lzh"),
-            vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")],
-            &ArchiverOpts::create(None, false, false, vec![]),
-        );
         if let Err(ToteError::UnsupportedFormat(e)) = r {
             assert_eq!(e, "LHA: not support archiving");
         } else {

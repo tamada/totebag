@@ -4,14 +4,14 @@ use std::path::PathBuf;
 use sevenz_rust::{SevenZArchiveEntry, SevenZWriter};
 
 use crate::archiver::TargetPath;
-use crate::archiver::{ArchiverOpts, ToteArchiver};
+use crate::archiver::ToteArchiver;
 use crate::format::Format;
 use crate::{Result, ToteError};
 
 pub(super) struct SevenZArchiver {}
 
 impl ToteArchiver for SevenZArchiver {
-    fn perform_impl(&self, file: File, tps: Vec<TargetPath>, _: &ArchiverOpts) -> Result<()> {
+    fn perform(&self, file: File, tps: Vec<TargetPath>) -> Result<()> {
         let mut w = match SevenZWriter::new(file) {
             Ok(writer) => writer,
             Err(e) => return Err(ToteError::Archiver(e.to_string())),
@@ -89,12 +89,11 @@ mod tests {
     #[test]
     fn test_zip() {
         run_test(|| {
-            let opts = ArchiverOpts::create(None, true, true, vec![]);
-            let archiver = Archiver::new(
-                PathBuf::from("results/test.7z"),
-                vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")],
-                &opts,
-            );
+            let archiver = Archiver::builder()
+                .archive_file(PathBuf::from("results/test.7z"))
+                .targets(vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")])
+                .overwrite(true)
+                .build();
             let result = archiver.perform();
             assert!(result.is_ok());
             assert_eq!(Format::SevenZ, archiver.format());

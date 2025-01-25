@@ -2,7 +2,7 @@ use clap::Parser;
 use std::path::PathBuf;
 
 use cli::RunMode;
-use totebag::archiver::{Archiver, ArchiverOpts};
+use totebag::archiver::Archiver;
 use totebag::extractor::{create, ExtractorOpts};
 use totebag::{Result, ToteError};
 
@@ -102,13 +102,26 @@ fn perform_list_each(opts: &cli::CliOpts, archive_file: PathBuf) -> Result<()> {
 }
 
 fn perform_archive(cliopts: cli::CliOpts) -> Result<()> {
-    let opts = ArchiverOpts::new(
-        Some(cliopts.archivers.base_dir),
-        cliopts.overwrite,
-        !cliopts.archivers.no_recursive,
-        cliopts.archivers.ignores,
-    );
-    let archiver = Archiver::create(cliopts.args, cliopts.output, &opts);
+    // let opts = ArchiverOpts::new(
+    //     Some(cliopts.archivers.base_dir),
+    //     cliopts.overwrite,
+    //     !cliopts.archivers.no_recursive,
+    //     cliopts.archivers.ignores,
+    // );
+    let archiver = Archiver::builder()
+        .archive_file(cliopts.output.unwrap())
+        .targets(
+            cliopts
+                .args
+                .iter()
+                .map(|s| PathBuf::from(s))
+                .collect::<Vec<PathBuf>>(),
+        )
+        .rebase_dir(cliopts.archivers.base_dir)
+        .overwrite(cliopts.overwrite)
+        .no_recursive(cliopts.archivers.no_recursive)
+        .ignore_types(cliopts.archivers.ignores)
+        .build();
     log::info!("{}", archiver.info());
     archiver.perform()
 }

@@ -9,10 +9,9 @@ use std::io::BufReader;
 use std::path::PathBuf;
 use zip::ZipWriter;
 
-use crate::archiver::{ArchiverOpts, Format, ToteArchiver};
+use crate::archiver::{TargetPath, ToteArchiver};
+use crate::format::Format;
 use crate::{Result, ToteError};
-
-use super::TargetPath;
 
 pub(super) struct ZipArchiver {}
 
@@ -41,7 +40,7 @@ impl ZipArchiver {
 }
 
 impl ToteArchiver for ZipArchiver {
-    fn perform_impl(&self, file: File, tps: Vec<TargetPath>, _opts: &ArchiverOpts) -> Result<()> {
+    fn perform(&self, file: File, tps: Vec<TargetPath>) -> Result<()> {
         let mut errs = vec![];
         let mut zw = zip::ZipWriter::new(file);
         for tp in tps {
@@ -77,7 +76,7 @@ impl ToteArchiver for ZipArchiver {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::archiver::{Archiver, ArchiverOpts};
+    use crate::archiver::Archiver;
 
     fn run_test<F>(f: F)
     where
@@ -95,12 +94,12 @@ mod tests {
     #[test]
     fn test_zip() {
         run_test(|| {
-            let opts = ArchiverOpts::create(None, true, true, vec![]);
-            let archiver = Archiver::new(
-                PathBuf::from("results/test.zip"),
-                vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")],
-                &opts,
-            );
+            let archiver = Archiver::builder()
+                .archive_file(PathBuf::from("results/test.zip"))
+                .targets(vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")])
+                .overwrite(true)
+                .build();
+
             let result = archiver.perform();
             assert!(result.is_ok());
             assert_eq!(archiver.format(), Format::Zip);

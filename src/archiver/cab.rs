@@ -3,14 +3,14 @@ use std::path::PathBuf;
 
 use cab::{CabinetBuilder, CabinetWriter};
 
-use crate::archiver::{ArchiverOpts, TargetPath, ToteArchiver};
+use crate::archiver::{TargetPath, ToteArchiver};
 use crate::format::Format;
 use crate::{Result, ToteError};
 
 pub(super) struct CabArchiver {}
 
 impl ToteArchiver for CabArchiver {
-    fn perform_impl(&self, file: File, tps: Vec<TargetPath>, _opts: &ArchiverOpts) -> Result<()> {
+    fn perform(&self, file: File, tps: Vec<TargetPath>) -> Result<()> {
         let mut errs = vec![];
         let mut builder = CabinetBuilder::new();
         let folder = builder.add_folder(cab::CompressionType::MsZip);
@@ -102,17 +102,12 @@ mod tests {
     #[test]
     fn test_archive() {
         run_test(|| {
-            let opts = ArchiverOpts {
-                rebase_dir: None,
-                overwrite: false,
-                recursive: false,
-                its: vec![],
-            };
-            let archiver = Archiver::new(
-                PathBuf::from("results/test.cab"),
-                vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")],
-                &opts,
-            );
+            let archiver = Archiver::builder()
+                .archive_file(PathBuf::from("results/test.cab"))
+                .targets(vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")])
+                .overwrite(false)
+                .no_recursive(true)
+                .build();
             let r = archiver.perform();
             assert!(r.is_ok());
         });
