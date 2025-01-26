@@ -131,7 +131,7 @@ impl Extractor {
             Err(e) => return Err(e),
         };
         match self.can_extract() {
-            Ok(_) => extractor.perform(self.archive_file.clone(), PathUtils { e: &self }),
+            Ok(_) => extractor.perform(self.archive_file.clone(), PathUtils { e: self }),
             Err(e) => Err(e),
         }
     }
@@ -196,7 +196,8 @@ pub(crate) trait ToteExtractor {
 
 /// Returns the extractor for the given archive file.
 /// The supported format is `cab`, `lha`, `rar`, `7z`, `tar`, `tar.gz`, `tar.bz2`, `tar.xz`, `tar.zst`, and `zip`.
-fn create(file: &Path) -> Result<Box<dyn ToteExtractor>> {
+fn create<P: AsRef<Path>>(file: P) -> Result<Box<dyn ToteExtractor>> {
+    let file = file.as_ref();
     let format = find_format(file);
     match format {
         Ok(format) => match format {

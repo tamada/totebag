@@ -1,5 +1,5 @@
 use std::fmt::Display;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use super::{Result, ToteError};
 
@@ -7,12 +7,13 @@ use super::{Result, ToteError};
 /// ```
 /// args.iter().all(is_archive_file)
 /// ```
-pub fn is_all_args_archives(args: &[PathBuf]) -> bool {
+pub fn is_all_args_archives<P: AsRef<Path>>(args: &[P]) -> bool {
     args.iter().all(is_archive_file)
 }
 
 /// returns `true`` when the given path is an acceptable archive file name for totebag.
-pub fn is_archive_file(arg: &PathBuf) -> bool {
+pub fn is_archive_file<P: AsRef<Path>>(arg: P) -> bool {
+    let arg = arg.as_ref();
     let name = arg.to_str().unwrap().to_lowercase();
     for (_, ext) in exts().iter() {
         if name.ends_with(ext) {
@@ -24,8 +25,8 @@ pub fn is_archive_file(arg: &PathBuf) -> bool {
 
 /// Find the format of the given file name.
 /// If the given file name has an unknown extension for totebag, it returns an `Err(ToteErro::Unknown)`.
-pub fn find_format(path: &Path) -> Result<Format> {
-    match path.file_name() {
+pub fn find_format<P: AsRef<Path>>(path: P) -> Result<Format> {
+    match path.as_ref().file_name() {
         Some(file_name) => {
             let name = file_name.to_str().unwrap().to_lowercase();
             for ext in exts().iter() {
@@ -103,42 +104,42 @@ mod tests {
 
     #[test]
     fn test_format() {
-        if let Err(e) = find_format(&PathBuf::from("hoge.unknown")) {
+        if let Err(e) = find_format("hoge.unknown") {
             if let ToteError::UnknownFormat(s) = e {
                 assert_eq!(s, "hoge.unknown".to_string());
             } else {
                 assert!(false);
             }
         }
-        if let Ok(f) = find_format(&PathBuf::from("hoge.zip")) {
+        if let Ok(f) = find_format("hoge.zip") {
             assert_eq!(f, Format::Zip);
             assert_eq!(f.to_string(), "Zip".to_string());
         }
-        if let Ok(f) = find_format(&PathBuf::from("hoge.tar")) {
+        if let Ok(f) = find_format("hoge.tar") {
             assert_eq!(f, Format::Tar);
             assert_eq!(f.to_string(), "Tar".to_string());
         }
-        if let Ok(f) = find_format(&PathBuf::from("hoge.rar")) {
+        if let Ok(f) = find_format("hoge.rar") {
             assert_eq!(f, Format::Rar);
             assert_eq!(f.to_string(), "Rar".to_string());
         }
-        if let Ok(f) = find_format(&PathBuf::from("hoge.tar.gz")) {
+        if let Ok(f) = find_format("hoge.tar.gz") {
             assert_eq!(f, Format::TarGz);
             assert_eq!(f.to_string(), "TarGz".to_string());
         }
-        if let Ok(f) = find_format(&PathBuf::from("hoge.tar.bz2")) {
+        if let Ok(f) = find_format("hoge.tar.bz2") {
             assert_eq!(f, Format::TarBz2);
             assert_eq!(f.to_string(), "TarBz2".to_string());
         }
-        if let Ok(f) = find_format(&PathBuf::from("hoge.tar.xz")) {
+        if let Ok(f) = find_format("hoge.tar.xz") {
             assert_eq!(f, Format::TarXz);
             assert_eq!(f.to_string(), "TarXz".to_string());
         }
-        if let Ok(f) = find_format(&PathBuf::from("hoge.7z")) {
+        if let Ok(f) = find_format("hoge.7z") {
             assert_eq!(f, Format::SevenZ);
             assert_eq!(f.to_string(), "SevenZ".to_string());
         }
-        if let Err(e) = find_format(&PathBuf::from(".")) {
+        if let Err(e) = find_format(".") {
             if let ToteError::NoArgumentsGiven = e {
                 assert!(true);
             } else {
@@ -150,13 +151,13 @@ mod tests {
     #[test]
     fn test_is_all_args_archives() {
         assert!(is_all_args_archives(&[
-            PathBuf::from("test.zip"),
-            PathBuf::from("test.tar"),
-            PathBuf::from("test.tar.gz"),
-            PathBuf::from("test.tgz"),
-            PathBuf::from("test.tar.bz2"),
-            PathBuf::from("test.tbz2"),
-            PathBuf::from("test.rar")
+            "test.zip",
+            "test.tar",
+            "test.tar.gz",
+            "test.tgz",
+            "test.tar.bz2",
+            "test.tbz2",
+            "test.rar",
         ]));
     }
 }

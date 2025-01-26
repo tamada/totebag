@@ -10,7 +10,6 @@ mod cli;
 mod list;
 
 fn update_loglevel(level: LogLevel) {
-    use env_logger;
     match level {
         cli::LogLevel::Error => std::env::set_var("RUST_LOG", "error"),
         cli::LogLevel::Warn => std::env::set_var("RUST_LOG", "warn"),

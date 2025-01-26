@@ -138,7 +138,7 @@ fn extract_tar<R: Read>(mut archive: tar::Archive<R>, opts: PathUtils) -> Result
         let size = entry.header().size().unwrap();
         log::info!("extracting {:?} ({} bytes)", path, size);
 
-        let dest = opts.destination(path.to_path_buf())?;
+        let dest = opts.destination(&path)?;
         if entry.header().entry_type().is_file() {
             create_dir_all(dest.parent().unwrap()).unwrap();
             entry.unpack(dest).unwrap();
