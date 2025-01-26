@@ -78,6 +78,20 @@ impl Entry {
     }
 }
 
+pub struct PathUtils<'a> {
+    e: &'a Extractor,
+}
+
+impl<'a> PathUtils<'a> {
+    pub fn base_dir(&self) -> PathBuf {
+        self.e.base_dir()
+    }
+
+    fn destination(&self, target: PathBuf) -> Result<PathBuf> {
+        self.e.destination(target)
+    }
+}
+
 /// This struct represents the extractor for the archive file.
 #[derive(Debug, TypedBuilder)]
 pub struct Extractor {
@@ -103,21 +117,21 @@ pub struct Extractor {
 impl Extractor {
     /// Returns the entries in the archive file.
     pub fn list(&self) -> Result<Vec<Entry>> {
-        let extractor = match create(self.archive_file.clone()) {
+        let extractor = match create(&self.archive_file) {
             Ok(e) => e,
             Err(e) => return Err(e),
         };
-        extractor.list()
+        extractor.list(&self.archive_file)
     }
 
     /// Execute extraction of the archive file.
     pub fn perform(&self) -> Result<()> {
-        let extractor = match create(self.archive_file.clone()) {
+        let extractor = match create(&self.archive_file) {
             Ok(e) => e,
             Err(e) => return Err(e),
         };
         match self.can_extract() {
-            Ok(_) => extractor.perform(self),
+            Ok(_) => extractor.perform(&self.archive_file, PathUtils { e: self }),
             Err(e) => Err(e),
         }
     }
@@ -134,7 +148,7 @@ impl Extractor {
 
     /// Returns the base of the destination directory for the archive file.
     /// The target is the archive file name of source.
-    pub fn base_dir(&self) -> PathBuf {
+    fn base_dir(&self) -> PathBuf {
         if self.use_archive_name_dir {
             if let Some(stem) = self.archive_file.file_stem() {
                 let dir_name = stem.to_str().unwrap();
@@ -148,7 +162,7 @@ impl Extractor {
     }
 
     /// Return the path of the `target` file for output.
-    pub fn destination(&self, target: &PathBuf) -> Result<PathBuf> {
+    fn destination(&self, target: PathBuf) -> Result<PathBuf> {
         let base = self.base_dir();
         let dest = base.join(target);
         if dest.exists() && !self.overwrite {
@@ -158,7 +172,6 @@ impl Extractor {
         }
     }
 
-    /// Check if the extraction can be performed.
     pub fn can_extract(&self) -> Result<()> {
         let dest = self.base_dir();
         if dest == PathBuf::from(".") {
@@ -174,30 +187,31 @@ impl Extractor {
 /// The trait for extracting the archive file.
 pub(crate) trait ToteExtractor {
     /// returns the entry list of the given archive file.
-    fn list(&self) -> Result<Vec<Entry>>;
+    fn list(&self, archive_file: &PathBuf) -> Result<Vec<Entry>>;
     /// extract the given archive file into the specified directory with the given options.
-    fn perform(&self, opts: &Extractor) -> Result<()>;
+    fn perform(&self, archive_file: &PathBuf, opts: PathUtils) -> Result<()>;
+    #[cfg(test)]
     /// returns the supported format of the extractor.
     fn format(&self) -> Format;
 }
 
 /// Returns the extractor for the given archive file.
 /// The supported format is `cab`, `lha`, `rar`, `7z`, `tar`, `tar.gz`, `tar.bz2`, `tar.xz`, `tar.zst`, and `zip`.
-fn create(file: PathBuf) -> Result<Box<dyn ToteExtractor>> {
+fn create(file: &PathBuf) -> Result<Box<dyn ToteExtractor>> {
     let format = find_format(&file);
     match format {
         Ok(format) => {
             return match format {
-                Format::Cab => Ok(Box::new(cab::CabExtractor::new(file))),
-                Format::LHA => Ok(Box::new(lha::LhaExtractor::new(file))),
-                Format::Rar => Ok(Box::new(rar::RarExtractor::new(file))),
-                Format::SevenZ => Ok(Box::new(sevenz::SevenZExtractor::new(file))),
-                Format::Tar => Ok(Box::new(tar::TarExtractor::new(file))),
-                Format::TarBz2 => Ok(Box::new(tar::TarBz2Extractor::new(file))),
-                Format::TarGz => Ok(Box::new(tar::TarGzExtractor::new(file))),
-                Format::TarXz => Ok(Box::new(tar::TarXzExtractor::new(file))),
-                Format::TarZstd => Ok(Box::new(tar::TarZstdExtractor::new(file))),
-                Format::Zip => Ok(Box::new(zip::ZipExtractor::new(file))),
+                Format::Cab => Ok(Box::new(cab::CabExtractor {})),
+                Format::LHA => Ok(Box::new(lha::LhaExtractor {})),
+                Format::Rar => Ok(Box::new(rar::RarExtractor {})),
+                Format::SevenZ => Ok(Box::new(sevenz::SevenZExtractor {})),
+                Format::Tar => Ok(Box::new(tar::TarExtractor {})),
+                Format::TarBz2 => Ok(Box::new(tar::TarBz2Extractor {})),
+                Format::TarGz => Ok(Box::new(tar::TarGzExtractor {})),
+                Format::TarXz => Ok(Box::new(tar::TarXzExtractor {})),
+                Format::TarZstd => Ok(Box::new(tar::TarZstdExtractor {})),
+                Format::Zip => Ok(Box::new(zip::ZipExtractor {})),
                 Format::Unknown(s) => Err(ToteError::UnknownFormat(format!(
                     "{}: unsupported format",
                     s
@@ -220,56 +234,56 @@ mod tests {
             .use_archive_name_dir(true)
             .build();
         assert_eq!(opts1.base_dir(), PathBuf::from("./archive"));
-        if let Ok(t) = opts1.destination(&PathBuf::from("text1.txt")) {
+        if let Ok(t) = opts1.destination("text1.txt".into()) {
             assert_eq!(t, PathBuf::from("./archive/text1.txt"));
         }
-        if let Ok(t) = opts1.destination(&PathBuf::from("text2.txt")) {
+        if let Ok(t) = opts1.destination("text2.txt".into()) {
             assert_eq!(t, PathBuf::from("./archive/text2.txt"));
         }
 
         let archive_file = PathBuf::from("/tmp/archive.zip");
         let opts2 = Extractor::builder().archive_file(archive_file).build();
         assert_eq!(opts2.base_dir(), PathBuf::from("."));
-        if let Ok(t) = opts2.destination(&PathBuf::from("./text1.txt")) {
+        if let Ok(t) = opts2.destination("./text1.txt".into()) {
             assert_eq!(t, PathBuf::from("./text1.txt"));
         }
     }
 
     #[test]
     fn test_create_extractor() {
-        let e1 = create(PathBuf::from("results/test.zip"));
+        let e1 = create(&PathBuf::from("results/test.zip"));
         assert!(e1.is_ok());
         assert_eq!(e1.unwrap().format(), Format::Zip);
 
-        let e2 = create(PathBuf::from("results/test.tar"));
+        let e2 = create(&PathBuf::from("results/test.tar"));
         assert!(e2.is_ok());
         assert_eq!(e2.unwrap().format(), Format::Tar);
 
-        let e3 = create(PathBuf::from("results/test.tgz"));
+        let e3 = create(&PathBuf::from("results/test.tgz"));
         assert!(e3.is_ok());
         assert_eq!(e3.unwrap().format(), Format::TarGz);
 
-        let e4 = create(PathBuf::from("results/test.tbz2"));
+        let e4 = create(&PathBuf::from("results/test.tbz2"));
         assert!(e4.is_ok());
         assert_eq!(e4.unwrap().format(), Format::TarBz2);
 
-        let e5 = create(PathBuf::from("results/test.rar"));
+        let e5 = create(&PathBuf::from("results/test.rar"));
         assert!(e5.is_ok());
         assert_eq!(e5.unwrap().format(), Format::Rar);
 
-        let e6 = create(PathBuf::from("results/test.tar.xz"));
+        let e6 = create(&PathBuf::from("results/test.tar.xz"));
         assert!(e6.is_ok());
         assert_eq!(e6.unwrap().format(), Format::TarXz);
 
-        let e7 = create(PathBuf::from("results/test.7z"));
+        let e7 = create(&PathBuf::from("results/test.7z"));
         assert!(e7.is_ok());
         assert_eq!(e7.unwrap().format(), Format::SevenZ);
 
-        let e5 = create(PathBuf::from("results/test.lzh"));
+        let e5 = create(&PathBuf::from("results/test.lzh"));
         assert!(e5.is_ok());
         assert_eq!(e5.unwrap().format(), Format::LHA);
 
-        let e8 = create(PathBuf::from("results/test.unknown"));
+        let e8 = create(&PathBuf::from("results/test.unknown"));
         assert!(e8.is_err());
         match e8 {
             Err(ToteError::UnknownFormat(msg)) => {

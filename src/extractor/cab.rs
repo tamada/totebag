@@ -4,52 +4,67 @@ use std::path::PathBuf;
 use cab::{Cabinet, FileEntry};
 
 use crate::extractor::ToteExtractor;
-use crate::extractor::{Entry, Extractor};
+use crate::extractor::{Entry, PathUtils};
 use crate::{Result, ToteError};
 
-pub(super) struct CabExtractor {
-    target: PathBuf,
-}
-
-impl CabExtractor {
-    pub(crate) fn new(file: PathBuf) -> Self {
-        Self { target: file }
-    }
-}
+pub(super) struct CabExtractor {}
 
 impl ToteExtractor for CabExtractor {
-    fn list(&self) -> Result<Vec<Entry>> {
-        list_impl(&self.target, |file| convert(file))
+    fn list(&self, target: &PathBuf) -> Result<Vec<Entry>> {
+        list_impl(target, |file| convert(file))
     }
 
-    fn perform(&self, opts: &Extractor) -> Result<()> {
-        let list = match list_impl(&self.target, |file| {
+    fn perform(&self, target: &PathBuf, opts: PathUtils) -> Result<()> {
+        let list = match list_impl(target, |file| {
             (file.name().to_string(), file.uncompressed_size())
         }) {
             Ok(l) => l,
             Err(e) => return Err(e),
         };
-        let mut cabinet = open_cabinet(&self.target)?;
+        let mut errs = vec![];
+        let mut cabinet = open_cabinet(target)?;
         for file in list {
-            let file_name = file.0.clone();
-            let dest_file = opts.base_dir().join(&file_name);
-            log::info!("extracting {} ({} bytes)", &file_name, file.1);
-            create_dir_all(dest_file.parent().unwrap()).unwrap();
-            let mut dest = match File::create(dest_file) {
-                Ok(f) => f,
-                Err(e) => return Err(ToteError::IO(e)),
-            };
-            let mut file_from = cabinet.read_file(&file_name).unwrap();
-            match std::io::copy(&mut file_from, &mut dest) {
-                Ok(_) => {}
-                Err(e) => return Err(ToteError::IO(e)),
+            if let Err(e) = write_file_impl(&mut cabinet, file, &opts) {
+                errs.push(e);
             }
         }
-        Ok(())
+        if errs.is_empty() {
+            Ok(())
+        } else {
+            Err(ToteError::Array(errs))
+        }
     }
 
+    #[cfg(test)]
     fn format(&self) -> crate::format::Format {
         crate::format::Format::Cab
+    }
+}
+
+fn write_file_impl(
+    cabinet: &mut Cabinet<File>,
+    file: (String, u32),
+    opts: &PathUtils,
+) -> Result<()> {
+    let file_name = file.0.clone();
+    let dest_file = match opts.destination(PathBuf::from(file_name.clone())) {
+        Ok(dest_file) => dest_file,
+        Err(e) => return Err(e),
+    };
+    log::info!("extracting {} ({} bytes)", file_name, file.1);
+    match create_dir_all(dest_file.parent().unwrap()) {
+        Ok(_) => {}
+        Err(e) => return Err(ToteError::IO(e)),
+    }
+    match File::create(dest_file) {
+        Ok(mut dest) => {
+            let mut file_from = cabinet.read_file(&file_name).unwrap();
+            match std::io::copy(&mut file_from, &mut dest) {
+                Ok(_) => Ok(()),
+                Err(e) => Err(ToteError::IO(e)),
+            }
+        }
+        Err(e) => Err(ToteError::IO(e)),
     }
 }
 
@@ -95,12 +110,13 @@ fn to_naive_datetime(t: time::PrimitiveDateTime) -> chrono::NaiveDateTime {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::format::Format;
+    use crate::extractor::Extractor;
+
     #[test]
     fn test_list_archives() {
         let file = PathBuf::from("testdata/test.cab");
-        let extractor = CabExtractor::new(file);
-        match extractor.list() {
+        let extractor = CabExtractor {};
+        match extractor.list(&file) {
             Ok(r) => {
                 let r = r.iter().map(|e| e.name.clone()).collect::<Vec<_>>();
                 assert_eq!(r.len(), 16);
@@ -135,7 +151,7 @@ mod tests {
 
     #[test]
     fn test_format() {
-        let e = CabExtractor::new(PathBuf::from("testdata/test.cab"));
-        assert_eq!(e.format(), Format::Cab);
+        let e = CabExtractor {};
+        assert_eq!(e.format(), crate::format::Format::Cab);
     }
 }

@@ -31,7 +31,11 @@ pub struct CliOpts {
     pub mode: RunMode,
 
     #[cfg(debug_assertions)]
-    #[clap(long = "generate-completion", hide = true, help = "Generate the completion files")]
+    #[clap(
+        long = "generate-completion",
+        hide = true,
+        help = "Generate the completion files"
+    )]
     pub generate_completion: bool,
 
     #[clap(

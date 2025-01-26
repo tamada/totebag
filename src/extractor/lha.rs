@@ -3,26 +3,18 @@ use std::io::copy;
 use std::path::PathBuf;
 
 use chrono::DateTime;
-use delharc::LhaHeader;
+use delharc::{LhaDecodeReader, LhaHeader};
 
 use crate::extractor::ToteExtractor;
-use crate::extractor::{Entry, Extractor};
+use crate::extractor::{Entry, PathUtils};
 use crate::{Result, ToteError};
 
-pub(super) struct LhaExtractor {
-    target: PathBuf,
-}
-
-impl LhaExtractor {
-    pub(crate) fn new(file: PathBuf) -> Self {
-        Self { target: file }
-    }
-}
+pub(super) struct LhaExtractor {}
 
 impl ToteExtractor for LhaExtractor {
-    fn list(&self) -> Result<Vec<Entry>> {
+    fn list(&self, archive_file: &PathBuf) -> Result<Vec<Entry>> {
         let mut result = vec![];
-        let mut reader = match delharc::parse_file(&self.target) {
+        let mut reader = match delharc::parse_file(&archive_file) {
             Err(e) => return Err(ToteError::IO(e)),
             Ok(h) => h,
         };
@@ -43,39 +35,15 @@ impl ToteExtractor for LhaExtractor {
         Ok(result)
     }
 
-    fn perform(&self, opts: &Extractor) -> Result<()> {
-        let mut reader = match delharc::parse_file(&self.target) {
+    fn perform(&self, archive_file: &PathBuf, opts: PathUtils) -> Result<()> {
+        let mut reader = match delharc::parse_file(&archive_file) {
             Err(e) => return Err(ToteError::IO(e)),
             Ok(h) => h,
         };
+        let mut errs = vec![];
         loop {
-            let header = reader.header();
-            let name = header.parse_pathname();
-            let dest = opts.base_dir().join(&name);
-            if reader.is_decoder_supported() {
-                log::info!(
-                    "extracting {} ({} bytes)",
-                    &name.to_str().unwrap().to_string(),
-                    header.original_size
-                );
-                create_dir_all(dest.parent().unwrap()).unwrap();
-                let mut dest = match File::create(dest) {
-                    Ok(f) => f,
-                    Err(e) => return Err(ToteError::IO(e)),
-                };
-                match copy(&mut reader, &mut dest) {
-                    Ok(_) => {}
-                    Err(e) => return Err(ToteError::IO(e)),
-                }
-                if let Err(e) = reader.crc_check() {
-                    return Err(ToteError::Fatal(Box::new(e)));
-                };
-            } else if !header.is_directory() {
-                log::info!(
-                    "{:?}: unsupported compression method ({:?})",
-                    &name,
-                    header.compression
-                );
+            if let Err(e) = write_data_impl(&mut reader, &opts) {
+                errs.push(e);
             }
             match reader.next_file() {
                 Ok(r) => {
@@ -86,12 +54,48 @@ impl ToteExtractor for LhaExtractor {
                 Err(e) => return Err(ToteError::Fatal(Box::new(e))),
             }
         }
-        Ok(())
+        if errs.is_empty() {
+            Ok(())
+        } else {
+            Err(ToteError::Array(errs))
+        }
     }
 
+    #[cfg(test)]
     fn format(&self) -> crate::format::Format {
         crate::format::Format::LHA
     }
+}
+
+fn write_data_impl(reader: &mut LhaDecodeReader<File>, opts: &PathUtils) -> Result<()> {
+    let header = reader.header();
+    let name = header.parse_pathname();
+    let dest = match opts.destination(name.clone()) {
+        Ok(dest) => dest,
+        Err(e) => return Err(e),
+    };
+    if reader.is_decoder_supported() {
+        log::info!("extracting {:?} ({} bytes)", &name, header.original_size);
+        create_dir_all(dest.parent().unwrap()).unwrap();
+        let mut dest = match File::create(dest) {
+            Ok(f) => f,
+            Err(e) => return Err(ToteError::IO(e)),
+        };
+        match copy(reader, &mut dest) {
+            Ok(_) => {}
+            Err(e) => return Err(ToteError::IO(e)),
+        }
+        if let Err(e) = reader.crc_check() {
+            return Err(ToteError::Fatal(Box::new(e)));
+        };
+    } else if !header.is_directory() {
+        log::info!(
+            "{:?}: unsupported compression method ({:?})",
+            &name,
+            header.compression
+        );
+    }
+    Ok(())
 }
 
 fn convert(h: &LhaHeader) -> Entry {
@@ -112,13 +116,14 @@ fn convert(h: &LhaHeader) -> Entry {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::extractor::Extractor;
     use crate::format::Format;
 
     #[test]
     fn test_list_archives() {
         let file = PathBuf::from("testdata/test.lzh");
-        let extractor = LhaExtractor::new(file);
-        match extractor.list() {
+        let extractor = LhaExtractor {};
+        match extractor.list(&file) {
             Ok(r) => {
                 let r = r.iter().map(|e| e.name.clone()).collect::<Vec<_>>();
                 assert_eq!(r.len(), 23);
@@ -155,7 +160,7 @@ mod tests {
 
     #[test]
     fn test_format() {
-        let e = LhaExtractor::new(PathBuf::from("testdata/test.lzh"));
+        let e = LhaExtractor {};
         assert_eq!(e.format(), Format::LHA);
     }
 }

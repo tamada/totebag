@@ -5,22 +5,13 @@ use crate::{Result, ToteError};
 use chrono::DateTime;
 use sevenz_rust::{Archive, BlockDecoder, Password, SevenZArchiveEntry};
 
-use crate::extractor::{Entry, Extractor, ToteExtractor};
-use crate::format::Format;
+use crate::extractor::{Entry, PathUtils, ToteExtractor};
 
-pub(super) struct SevenZExtractor {
-    target: PathBuf,
-}
-
-impl SevenZExtractor {
-    pub(crate) fn new(file: PathBuf) -> Self {
-        Self { target: file }
-    }
-}
+pub(super) struct SevenZExtractor {}
 
 impl ToteExtractor for SevenZExtractor {
-    fn list(&self) -> Result<Vec<Entry>> {
-        let mut reader = File::open(&self.target).unwrap();
+    fn list(&self, archive_file: &PathBuf) -> Result<Vec<Entry>> {
+        let mut reader = File::open(&archive_file).unwrap();
         let len = reader.metadata().unwrap().len();
         match Archive::read(&mut reader, len, Password::empty().as_ref()) {
             Ok(archive) => {
@@ -34,15 +25,17 @@ impl ToteExtractor for SevenZExtractor {
         }
     }
 
-    fn perform(&self, opts: &Extractor) -> Result<()> {
-        let mut file = match File::open(&self.target) {
+    fn perform(&self, archive_file: &PathBuf, opts: PathUtils) -> Result<()> {
+        let mut file = match File::open(&archive_file) {
             Ok(file) => file,
             Err(e) => return Err(ToteError::IO(e)),
         };
         extract(&mut file, opts)
     }
-    fn format(&self) -> Format {
-        Format::SevenZ
+
+    #[cfg(test)]
+    fn format(&self) -> crate::format::Format {
+        crate::format::Format::SevenZ
     }
 }
 
@@ -61,7 +54,7 @@ fn convert(e: &SevenZArchiveEntry) -> Entry {
     )
 }
 
-fn extract(mut file: &File, opts: &Extractor) -> Result<()> {
+fn extract(mut file: &File, opts: PathUtils) -> Result<()> {
     let len = file.metadata().unwrap().len();
     let password = Password::empty();
     let archive = match Archive::read(&mut file, len, password.as_ref()) {
@@ -72,7 +65,7 @@ fn extract(mut file: &File, opts: &Extractor) -> Result<()> {
     for findex in 0..folder_count {
         let folder_decoder = BlockDecoder::new(findex, &archive, password.as_slice(), &mut file);
         if let Err(e) = folder_decoder.for_each_entries(&mut |entry, reader| {
-            let d = opts.base_dir().join(&entry.name);
+            let d = opts.destination(PathBuf::from(entry.name.clone())).unwrap();
             sevenz_rust::default_entry_extract_fn(entry, reader, &d)
         }) {
             return Err(ToteError::Fatal(Box::new(e)));
@@ -84,12 +77,13 @@ fn extract(mut file: &File, opts: &Extractor) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::extractor::Extractor;
 
     #[test]
     fn test_list() {
         let file = PathBuf::from("testdata/test.7z");
-        let extractor = SevenZExtractor::new(file);
-        match extractor.list() {
+        let extractor = SevenZExtractor {};
+        match extractor.list(&file) {
             Ok(r) => {
                 let r = r.iter().map(|e| e.name.clone()).collect::<Vec<_>>();
                 assert_eq!(r.len(), 21);
@@ -121,7 +115,7 @@ mod tests {
 
     #[test]
     fn test_format() {
-        let e = SevenZExtractor::new(PathBuf::from("testdata/test.7z"));
-        assert_eq!(e.format(), Format::SevenZ);
+        let e = SevenZExtractor {};
+        assert_eq!(e.format(), crate::format::Format::SevenZ);
     }
 }

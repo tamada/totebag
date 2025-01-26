@@ -5,23 +5,14 @@ use std::path::PathBuf;
 use chrono::NaiveDateTime;
 use zip::read::ZipFile;
 
-use crate::extractor::{Entry, Extractor, ToteExtractor};
-use crate::format::Format;
+use crate::extractor::{Entry, PathUtils, ToteExtractor};
 use crate::Result;
 
-pub(super) struct ZipExtractor {
-    target: PathBuf,
-}
-
-impl ZipExtractor {
-    pub(crate) fn new(file: PathBuf) -> Self {
-        Self { target: file }
-    }
-}
+pub(super) struct ZipExtractor {}
 
 impl ToteExtractor for ZipExtractor {
-    fn list(&self) -> Result<Vec<Entry>> {
-        let zip_file = File::open(&self.target).unwrap();
+    fn list(&self, archive_file: &PathBuf) -> Result<Vec<Entry>> {
+        let zip_file = File::open(&archive_file).unwrap();
         let mut zip = zip::ZipArchive::new(zip_file).unwrap();
 
         let mut result = vec![];
@@ -32,15 +23,16 @@ impl ToteExtractor for ZipExtractor {
         Ok(result)
     }
 
-    fn perform(&self, opts: &Extractor) -> Result<()> {
-        let zip_file = File::open(&self.target).unwrap();
+    fn perform(&self, archive_file: &PathBuf, opts: PathUtils) -> Result<()> {
+        let zip_file = File::open(&archive_file).unwrap();
         let mut zip = zip::ZipArchive::new(zip_file).unwrap();
-        let dest_base = opts.base_dir();
         for i in 0..zip.len() {
             let mut file = zip.by_index(i).unwrap();
             if file.is_file() {
                 log::info!("extracting {} ({} bytes)", file.name(), file.size());
-                let dest = dest_base.join(PathBuf::from(file.name().to_string()));
+                let dest = opts
+                    .destination(PathBuf::from(file.name().to_string()))
+                    .unwrap();
                 create_dir_all(dest.parent().unwrap()).unwrap();
                 let mut out = File::create(dest).unwrap();
                 copy(&mut file, &mut out).unwrap();
@@ -49,8 +41,9 @@ impl ToteExtractor for ZipExtractor {
         Ok(())
     }
 
-    fn format(&self) -> Format {
-        Format::Zip
+    #[cfg(test)]
+    fn format(&self) -> crate::format::Format {
+        crate::format::Format::Zip
     }
 }
 
@@ -89,13 +82,14 @@ fn convert_to_datetime(t: zip::DateTime) -> Option<NaiveDateTime> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::extractor::Extractor;
     use std::path::PathBuf;
 
     #[test]
     fn test_list_archives() {
         let file = PathBuf::from("testdata/test.zip");
-        let extractor = ZipExtractor::new(file);
-        match extractor.list() {
+        let extractor = ZipExtractor {};
+        match extractor.list(&file) {
             Ok(r) => {
                 assert_eq!(r.len(), 19);
                 assert_eq!(
@@ -138,7 +132,7 @@ mod tests {
 
     #[test]
     fn test_format() {
-        let e = ZipExtractor::new(PathBuf::from("testdata/test.zip"));
-        assert_eq!(e.format(), Format::Zip);
+        let e = ZipExtractor {};
+        assert_eq!(e.format(), crate::format::Format::Zip);
     }
 }
