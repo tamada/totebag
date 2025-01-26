@@ -122,7 +122,7 @@ pub enum LogLevel {
 
 impl CliOpts {
     pub fn run_mode(&mut self) -> Result<RunMode> {
-        if self.args.len() == 0 {
+        if self.args.is_empty() {
             return Err(ToteError::NoArgumentsGiven);
         }
         if self.mode == RunMode::Auto {

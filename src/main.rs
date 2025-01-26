@@ -1,7 +1,7 @@
 use clap::Parser;
 use std::path::PathBuf;
 
-use cli::RunMode;
+use cli::{LogLevel, RunMode};
 use totebag::archiver::Archiver;
 use totebag::extractor::Extractor;
 use totebag::{Result, ToteError};
@@ -9,9 +9,9 @@ use totebag::{Result, ToteError};
 mod cli;
 mod list;
 
-fn update_loglevel(opts: &cli::CliOpts) {
+fn update_loglevel(level: LogLevel) {
     use env_logger;
-    match opts.level {
+    match level {
         cli::LogLevel::Error => std::env::set_var("RUST_LOG", "error"),
         cli::LogLevel::Warn => std::env::set_var("RUST_LOG", "warn"),
         cli::LogLevel::Info => std::env::set_var("RUST_LOG", "info"),
@@ -21,7 +21,7 @@ fn update_loglevel(opts: &cli::CliOpts) {
 }
 
 fn perform(mut opts: cli::CliOpts) -> Result<()> {
-    update_loglevel(&opts);
+    update_loglevel(opts.level);
     if cfg!(debug_assertions) {
         #[cfg(debug_assertions)]
         if opts.generate_completion {
@@ -51,9 +51,8 @@ where
     log::info!("args: {:?}", args);
     let mut errs = vec![];
     for arg in args {
-        match f(&opts, arg) {
-            Err(e) => errs.push(e),
-            Ok(_) => {}
+        if let Err(e) = f(&opts, arg) {
+            errs.push(e);
         }
     }
     if errs.is_empty() {
@@ -104,7 +103,7 @@ fn perform_archive(cliopts: cli::CliOpts) -> Result<()> {
             cliopts
                 .args
                 .iter()
-                .map(|s| PathBuf::from(s))
+                .map(PathBuf::from)
                 .collect::<Vec<PathBuf>>(),
         )
         .rebase_dir(cliopts.archivers.base_dir)
@@ -128,7 +127,7 @@ fn print_error(e: &ToteError) {
     match e {
         ToteError::Archiver(s) => println!("Archive error: {}", s),
         ToteError::Array(errs) => {
-            for err in errs.into_iter() {
+            for err in errs.iter() {
                 print_error(err);
             }
         }
@@ -213,5 +212,11 @@ mod tests {
         assert_eq!(opts.output, Some(PathBuf::from("test.zip")));
         assert_eq!(opts.args.len(), 4);
         assert_eq!(opts.args, vec!["src", "LICENSE", "README.md", "Cargo.toml"]);
+    }
+
+    #[test]
+    fn test_update_loglevel_error() {
+        update_loglevel(LogLevel::Error);
+        assert_eq!(std::env::var("RUST_LOG").unwrap(), "error");
     }
 }

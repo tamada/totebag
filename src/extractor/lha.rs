@@ -12,9 +12,9 @@ use crate::{Result, ToteError};
 pub(super) struct LhaExtractor {}
 
 impl ToteExtractor for LhaExtractor {
-    fn list(&self, archive_file: &PathBuf) -> Result<Vec<Entry>> {
+    fn list(&self, archive_file: PathBuf) -> Result<Vec<Entry>> {
         let mut result = vec![];
-        let mut reader = match delharc::parse_file(&archive_file) {
+        let mut reader = match delharc::parse_file(archive_file) {
             Err(e) => return Err(ToteError::IO(e)),
             Ok(h) => h,
         };
@@ -35,8 +35,8 @@ impl ToteExtractor for LhaExtractor {
         Ok(result)
     }
 
-    fn perform(&self, archive_file: &PathBuf, opts: PathUtils) -> Result<()> {
-        let mut reader = match delharc::parse_file(&archive_file) {
+    fn perform(&self, archive_file: PathBuf, opts: PathUtils) -> Result<()> {
+        let mut reader = match delharc::parse_file(archive_file) {
             Err(e) => return Err(ToteError::IO(e)),
             Ok(h) => h,
         };
@@ -123,7 +123,7 @@ mod tests {
     fn test_list_archives() {
         let file = PathBuf::from("testdata/test.lzh");
         let extractor = LhaExtractor {};
-        match extractor.list(&file) {
+        match extractor.list(file) {
             Ok(r) => {
                 let r = r.iter().map(|e| e.name.clone()).collect::<Vec<_>>();
                 assert_eq!(r.len(), 23);

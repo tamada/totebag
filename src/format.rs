@@ -1,5 +1,5 @@
 use std::fmt::Display;
-use std::{ffi::OsStr, path::PathBuf};
+use std::path::{Path, PathBuf};
 
 use super::{Result, ToteError};
 
@@ -19,20 +19,13 @@ pub fn is_archive_file(arg: &PathBuf) -> bool {
             return true;
         }
     }
-    return false;
+    false
 }
 
 /// Find the format of the given file name.
 /// If the given file name has an unknown extension for totebag, it returns an `Err(ToteErro::Unknown)`.
-pub fn find_format(path: &PathBuf) -> Result<Format> {
-    match find_format_impl(path.file_name()) {
-        Ok(f) => Ok(f),
-        Err(e) => Err(e),
-    }
-}
-
-fn find_format_impl(file_name: Option<&OsStr>) -> Result<Format> {
-    match file_name {
+pub fn find_format(path: &Path) -> Result<Format> {
+    match path.file_name() {
         Some(file_name) => {
             let name = file_name.to_str().unwrap().to_lowercase();
             for ext in exts().iter() {
@@ -40,9 +33,9 @@ fn find_format_impl(file_name: Option<&OsStr>) -> Result<Format> {
                     return Ok(ext.0.clone());
                 }
             }
-            return Err(ToteError::UnknownFormat(
+            Err(ToteError::UnknownFormat(
                 file_name.to_str().unwrap().to_string(),
-            ));
+            ))
         }
         None => Err(ToteError::NoArgumentsGiven),
     }
@@ -145,7 +138,7 @@ mod tests {
             assert_eq!(f, Format::SevenZ);
             assert_eq!(f.to_string(), "SevenZ".to_string());
         }
-        if let Err(e) = find_format_impl(None) {
+        if let Err(e) = find_format(&PathBuf::from(".")) {
             if let ToteError::NoArgumentsGiven = e {
                 assert!(true);
             } else {

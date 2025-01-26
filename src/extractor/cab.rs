@@ -10,19 +10,19 @@ use crate::{Result, ToteError};
 pub(super) struct CabExtractor {}
 
 impl ToteExtractor for CabExtractor {
-    fn list(&self, target: &PathBuf) -> Result<Vec<Entry>> {
-        list_impl(target, |file| convert(file))
+    fn list(&self, target: PathBuf) -> Result<Vec<Entry>> {
+        list_impl(&target, convert)
     }
 
-    fn perform(&self, target: &PathBuf, opts: PathUtils) -> Result<()> {
-        let list = match list_impl(target, |file| {
+    fn perform(&self, target: PathBuf, opts: PathUtils) -> Result<()> {
+        let list = match list_impl(&target, |file| {
             (file.name().to_string(), file.uncompressed_size())
         }) {
             Ok(l) => l,
             Err(e) => return Err(e),
         };
         let mut errs = vec![];
-        let mut cabinet = open_cabinet(target)?;
+        let mut cabinet = open_cabinet(&target)?;
         for file in list {
             if let Err(e) = write_file_impl(&mut cabinet, file, &opts) {
                 errs.push(e);
@@ -83,7 +83,7 @@ fn list_impl<F, T>(archive_file: &PathBuf, mapper: F) -> Result<Vec<T>>
 where
     F: Fn(&cab::FileEntry) -> T,
 {
-    let cabinet = open_cabinet(&archive_file)?;
+    let cabinet = open_cabinet(archive_file)?;
     let mut result = vec![];
     for folder in cabinet.folder_entries() {
         for file in folder.file_entries() {
@@ -96,7 +96,7 @@ where
 fn convert(f: &FileEntry) -> Entry {
     let name = f.name().to_string();
     let uncompressed_size = f.uncompressed_size();
-    let mtime = f.datetime().map(|t| to_naive_datetime(t));
+    let mtime = f.datetime().map(to_naive_datetime);
     Entry::new(name, None, Some(uncompressed_size as u64), None, mtime)
 }
 
@@ -116,7 +116,7 @@ mod tests {
     fn test_list_archives() {
         let file = PathBuf::from("testdata/test.cab");
         let extractor = CabExtractor {};
-        match extractor.list(&file) {
+        match extractor.list(file) {
             Ok(r) => {
                 let r = r.iter().map(|e| e.name.clone()).collect::<Vec<_>>();
                 assert_eq!(r.len(), 16);

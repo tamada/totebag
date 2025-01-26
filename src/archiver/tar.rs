@@ -83,18 +83,16 @@ fn write_tar<W: Write>(tps: Vec<TargetPath>, f: W) -> Result<()> {
     let mut builder = tar::Builder::new(f);
     let mut errs = vec![];
     for tp in tps {
-        for entry in tp.walker() {
-            if let Ok(t) = entry {
-                let path = t.into_path();
-                let dest_dir = tp.dest_path(&path);
-                if path.is_file() {
-                    if let Err(e) = process_file(&mut builder, &path, &dest_dir) {
-                        errs.push(e);
-                    }
-                } else if path.is_dir() {
-                    if let Err(e) = builder.append_dir(&dest_dir, &path) {
-                        errs.push(ToteError::Archiver(e.to_string()));
-                    }
+        for t in tp.walker().flatten() {
+            let path = t.into_path();
+            let dest_dir = tp.dest_path(&path);
+            if path.is_file() {
+                if let Err(e) = process_file(&mut builder, &path, &dest_dir) {
+                    errs.push(e);
+                }
+            } else if path.is_dir() {
+                if let Err(e) = builder.append_dir(&dest_dir, &path) {
+                    errs.push(ToteError::Archiver(e.to_string()));
                 }
             }
         }
