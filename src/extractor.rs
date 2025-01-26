@@ -87,7 +87,7 @@ impl PathUtils<'_> {
         self.e.base_dir()
     }
 
-    fn destination(&self, target: PathBuf) -> Result<PathBuf> {
+    fn destination<P: AsRef<Path>>(&self, target: P) -> Result<PathBuf> {
         self.e.destination(target)
     }
 }
@@ -121,7 +121,7 @@ impl Extractor {
             Ok(e) => e,
             Err(e) => return Err(e),
         };
-        extractor.list(&self.archive_file)
+        extractor.list(self.archive_file.clone())
     }
 
     /// Execute extraction of the archive file.
@@ -131,7 +131,7 @@ impl Extractor {
             Err(e) => return Err(e),
         };
         match self.can_extract() {
-            Ok(_) => extractor.perform(&self.archive_file, PathUtils { e: self }),
+            Ok(_) => extractor.perform(self.archive_file.clone(), PathUtils { e: &self }),
             Err(e) => Err(e),
         }
     }
@@ -151,8 +151,7 @@ impl Extractor {
     fn base_dir(&self) -> PathBuf {
         if self.use_archive_name_dir {
             if let Some(stem) = self.archive_file.file_stem() {
-                let dir_name = stem.to_str().unwrap();
-                self.destination.join(dir_name)
+                self.destination.join(stem)
             } else {
                 self.destination.clone()
             }
@@ -162,7 +161,7 @@ impl Extractor {
     }
 
     /// Return the path of the `target` file for output.
-    fn destination(&self, target: PathBuf) -> Result<PathBuf> {
+    fn destination<P: AsRef<Path>>(&self, target: P) -> Result<PathBuf> {
         let base = self.base_dir();
         let dest = base.join(target);
         if dest.exists() && !self.overwrite {
@@ -187,9 +186,9 @@ impl Extractor {
 /// The trait for extracting the archive file.
 pub(crate) trait ToteExtractor {
     /// returns the entry list of the given archive file.
-    fn list(&self, archive_file: &PathBuf) -> Result<Vec<Entry>>;
+    fn list(&self, archive_file: PathBuf) -> Result<Vec<Entry>>;
     /// extract the given archive file into the specified directory with the given options.
-    fn perform(&self, archive_file: &PathBuf, opts: PathUtils) -> Result<()>;
+    fn perform(&self, archive_file: PathBuf, opts: PathUtils) -> Result<()>;
     #[cfg(test)]
     /// returns the supported format of the extractor.
     fn format(&self) -> Format;
@@ -232,17 +231,17 @@ mod tests {
             .use_archive_name_dir(true)
             .build();
         assert_eq!(opts1.base_dir(), PathBuf::from("./archive"));
-        if let Ok(t) = opts1.destination("text1.txt".into()) {
+        if let Ok(t) = opts1.destination("text1.txt") {
             assert_eq!(t, PathBuf::from("./archive/text1.txt"));
         }
-        if let Ok(t) = opts1.destination("text2.txt".into()) {
+        if let Ok(t) = opts1.destination("text2.txt") {
             assert_eq!(t, PathBuf::from("./archive/text2.txt"));
         }
 
         let archive_file = PathBuf::from("/tmp/archive.zip");
         let opts2 = Extractor::builder().archive_file(archive_file).build();
         assert_eq!(opts2.base_dir(), PathBuf::from("."));
-        if let Ok(t) = opts2.destination("./text1.txt".into()) {
+        if let Ok(t) = opts2.destination("./text1.txt") {
             assert_eq!(t, PathBuf::from("./text1.txt"));
         }
     }

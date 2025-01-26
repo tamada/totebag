@@ -11,7 +11,7 @@ use crate::extractor::{Entry, PathUtils, ToteExtractor};
 pub(super) struct RarExtractor {}
 
 impl ToteExtractor for RarExtractor {
-    fn list(&self, archive_file: &PathBuf) -> Result<Vec<Entry>> {
+    fn list(&self, archive_file: PathBuf) -> Result<Vec<Entry>> {
         let mut r = vec![];
         for entry in unrar::Archive::new(&archive_file)
             .open_for_listing()
@@ -23,7 +23,7 @@ impl ToteExtractor for RarExtractor {
         Ok(r)
     }
 
-    fn perform(&self, archive_file: &PathBuf, opts: PathUtils) -> Result<()> {
+    fn perform(&self, archive_file: PathBuf, opts: PathUtils) -> Result<()> {
         let archive = unrar::Archive::new(&archive_file);
         let mut file = archive.open_for_processing().unwrap();
         while let Some(header) = file.read_header().unwrap() {
@@ -79,7 +79,7 @@ mod tests {
     fn test_list_archives() {
         let extractor = RarExtractor {};
         let file = PathBuf::from("testdata/test.rar");
-        match extractor.list(&file) {
+        match extractor.list(file) {
             Ok(r) => {
                 let r = r.iter().map(|e| e.name.clone()).collect::<Vec<_>>();
                 assert_eq!(r.len(), 18);

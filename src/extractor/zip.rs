@@ -11,7 +11,7 @@ use crate::Result;
 pub(super) struct ZipExtractor {}
 
 impl ToteExtractor for ZipExtractor {
-    fn list(&self, archive_file: &PathBuf) -> Result<Vec<Entry>> {
+    fn list(&self, archive_file: PathBuf) -> Result<Vec<Entry>> {
         let zip_file = File::open(archive_file).unwrap();
         let mut zip = zip::ZipArchive::new(zip_file).unwrap();
 
@@ -23,7 +23,7 @@ impl ToteExtractor for ZipExtractor {
         Ok(result)
     }
 
-    fn perform(&self, archive_file: &PathBuf, opts: PathUtils) -> Result<()> {
+    fn perform(&self, archive_file: PathBuf, opts: PathUtils) -> Result<()> {
         let zip_file = File::open(archive_file).unwrap();
         let mut zip = zip::ZipArchive::new(zip_file).unwrap();
         for i in 0..zip.len() {
@@ -89,7 +89,7 @@ mod tests {
     fn test_list_archives() {
         let file = PathBuf::from("testdata/test.zip");
         let extractor = ZipExtractor {};
-        match extractor.list(&file) {
+        match extractor.list(file) {
             Ok(r) => {
                 assert_eq!(r.len(), 19);
                 assert_eq!(

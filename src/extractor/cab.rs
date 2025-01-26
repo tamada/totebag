@@ -10,19 +10,19 @@ use crate::{Result, ToteError};
 pub(super) struct CabExtractor {}
 
 impl ToteExtractor for CabExtractor {
-    fn list(&self, target: &PathBuf) -> Result<Vec<Entry>> {
-        list_impl(target, convert)
+    fn list(&self, target: PathBuf) -> Result<Vec<Entry>> {
+        list_impl(&target, convert)
     }
 
-    fn perform(&self, target: &PathBuf, opts: PathUtils) -> Result<()> {
-        let list = match list_impl(target, |file| {
+    fn perform(&self, target: PathBuf, opts: PathUtils) -> Result<()> {
+        let list = match list_impl(&target, |file| {
             (file.name().to_string(), file.uncompressed_size())
         }) {
             Ok(l) => l,
             Err(e) => return Err(e),
         };
         let mut errs = vec![];
-        let mut cabinet = open_cabinet(target)?;
+        let mut cabinet = open_cabinet(&target)?;
         for file in list {
             if let Err(e) = write_file_impl(&mut cabinet, file, &opts) {
                 errs.push(e);
@@ -116,7 +116,7 @@ mod tests {
     fn test_list_archives() {
         let file = PathBuf::from("testdata/test.cab");
         let extractor = CabExtractor {};
-        match extractor.list(&file) {
+        match extractor.list(file) {
             Ok(r) => {
                 let r = r.iter().map(|e| e.name.clone()).collect::<Vec<_>>();
                 assert_eq!(r.len(), 16);

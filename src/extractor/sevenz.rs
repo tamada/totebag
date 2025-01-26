@@ -10,7 +10,7 @@ use crate::extractor::{Entry, PathUtils, ToteExtractor};
 pub(super) struct SevenZExtractor {}
 
 impl ToteExtractor for SevenZExtractor {
-    fn list(&self, archive_file: &PathBuf) -> Result<Vec<Entry>> {
+    fn list(&self, archive_file: PathBuf) -> Result<Vec<Entry>> {
         let mut reader = File::open(archive_file).unwrap();
         let len = reader.metadata().unwrap().len();
         match Archive::read(&mut reader, len, Password::empty().as_ref()) {
@@ -25,7 +25,7 @@ impl ToteExtractor for SevenZExtractor {
         }
     }
 
-    fn perform(&self, archive_file: &PathBuf, opts: PathUtils) -> Result<()> {
+    fn perform(&self, archive_file: PathBuf, opts: PathUtils) -> Result<()> {
         let file = match File::open(archive_file) {
             Ok(file) => file,
             Err(e) => return Err(ToteError::IO(e)),
@@ -83,7 +83,7 @@ mod tests {
     fn test_list() {
         let file = PathBuf::from("testdata/test.7z");
         let extractor = SevenZExtractor {};
-        match extractor.list(&file) {
+        match extractor.list(file) {
             Ok(r) => {
                 let r = r.iter().map(|e| e.name.clone()).collect::<Vec<_>>();
                 assert_eq!(r.len(), 21);
