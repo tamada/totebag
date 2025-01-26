@@ -14,7 +14,7 @@ pub(super) struct LhaExtractor {}
 impl ToteExtractor for LhaExtractor {
     fn list(&self, archive_file: &PathBuf) -> Result<Vec<Entry>> {
         let mut result = vec![];
-        let mut reader = match delharc::parse_file(&archive_file) {
+        let mut reader = match delharc::parse_file(archive_file) {
             Err(e) => return Err(ToteError::IO(e)),
             Ok(h) => h,
         };
@@ -36,7 +36,7 @@ impl ToteExtractor for LhaExtractor {
     }
 
     fn perform(&self, archive_file: &PathBuf, opts: PathUtils) -> Result<()> {
-        let mut reader = match delharc::parse_file(&archive_file) {
+        let mut reader = match delharc::parse_file(archive_file) {
             Err(e) => return Err(ToteError::IO(e)),
             Ok(h) => h,
         };

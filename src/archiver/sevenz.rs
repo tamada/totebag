@@ -18,13 +18,11 @@ impl ToteArchiver for SevenZArchiver {
         };
         let mut errs = vec![];
         for tp in tps {
-            for entry in tp.walker() {
-                if let Ok(t) = entry {
-                    let path = t.into_path();
-                    if path.is_file() {
-                        if let Err(e) = process_file(&mut w, &path, &tp.dest_path(&path)) {
-                            errs.push(e);
-                        }
+            for t in tp.walker().flatten() {
+                let path = t.into_path();
+                if path.is_file() {
+                    if let Err(e) = process_file(&mut w, &path, &tp.dest_path(&path)) {
+                        errs.push(e);
                     }
                 }
             }
@@ -51,7 +49,7 @@ impl ToteArchiver for SevenZArchiver {
 fn process_file(szw: &mut SevenZWriter<File>, target: &PathBuf, dest_path: &PathBuf) -> Result<()> {
     let name = &dest_path.to_str().unwrap();
     if let Err(e) = szw.push_archive_entry(
-        SevenZArchiveEntry::from_path(&dest_path, name.to_string()),
+        SevenZArchiveEntry::from_path(dest_path, name.to_string()),
         Some(File::open(target).unwrap()),
     ) {
         return Err(ToteError::Archiver(e.to_string()));

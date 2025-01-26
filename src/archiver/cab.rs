@@ -61,12 +61,10 @@ fn write_entry(writer: &mut CabinetWriter<File>, path: PathBuf) -> Result<()> {
 fn collect_entries<'a>(tps: &'a Vec<TargetPath>) -> Vec<(PathBuf, &'a TargetPath<'a>)> {
     let mut r = vec![];
     for tp in tps {
-        for entry in tp.walker() {
-            if let Ok(t) = entry {
-                let path = t.into_path();
-                if path.is_file() {
-                    r.push((path, tp));
-                }
+        for t in tp.walker().flatten() {
+            let path = t.into_path();
+            if path.is_file() {
+                r.push((path, tp));
             }
         }
     }

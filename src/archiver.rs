@@ -83,13 +83,13 @@ impl<'a> TargetPath<'a> {
 
     /// Returns the directory traversing walker for the given path of this instance.
     pub fn walker(&self) -> Walk {
-        let mut builder = WalkBuilder::new(&self.base_path);
+        let mut builder = WalkBuilder::new(self.base_path);
         build_walker_impl(self.opts, &mut builder);
         builder.build()
     }
 }
 
-impl<'a> Archiver {
+impl Archiver {
     pub fn perform(&self) -> Result<()> {
         let archiver = match create_archiver(&self.archive_file) {
             Ok(a) => a,
@@ -104,7 +104,7 @@ impl<'a> Archiver {
         let paths = self
             .targets
             .iter()
-            .map(|item| TargetPath::new(item, &self))
+            .map(|item| TargetPath::new(item, self))
             .collect::<Vec<TargetPath>>();
 
         log::info!("{:?}: {}", self.archive_file, self.archive_file.exists());
@@ -188,7 +188,7 @@ impl<'a> Archiver {
                     r.insert(IgnoreType::GitGlobal);
                     r.insert(IgnoreType::GitExclude);
                 } else {
-                    r.insert(it.clone());
+                    r.insert(it);
                 }
             }
             r.into_iter().collect()
@@ -225,21 +225,19 @@ fn create_archiver(dest: &PathBuf) -> Result<Box<dyn ToteArchiver>> {
 
     let format = find_format(dest);
     match format {
-        Ok(format) => {
-            return match format {
-                Format::Cab => Ok(Box::new(CabArchiver {})),
-                Format::LHA => Ok(Box::new(LhaArchiver {})),
-                Format::Rar => Ok(Box::new(RarArchiver {})),
-                Format::SevenZ => Ok(Box::new(SevenZArchiver {})),
-                Format::Tar => Ok(Box::new(TarArchiver {})),
-                Format::TarBz2 => Ok(Box::new(TarBz2Archiver {})),
-                Format::TarGz => Ok(Box::new(TarGzArchiver {})),
-                Format::TarXz => Ok(Box::new(TarXzArchiver {})),
-                Format::TarZstd => Ok(Box::new(TarZstdArchiver {})),
-                Format::Zip => Ok(Box::new(ZipArchiver::new())),
-                _ => Err(ToteError::UnknownFormat(format.to_string())),
-            }
-        }
+        Ok(format) => match format {
+            Format::Cab => Ok(Box::new(CabArchiver {})),
+            Format::LHA => Ok(Box::new(LhaArchiver {})),
+            Format::Rar => Ok(Box::new(RarArchiver {})),
+            Format::SevenZ => Ok(Box::new(SevenZArchiver {})),
+            Format::Tar => Ok(Box::new(TarArchiver {})),
+            Format::TarBz2 => Ok(Box::new(TarBz2Archiver {})),
+            Format::TarGz => Ok(Box::new(TarGzArchiver {})),
+            Format::TarXz => Ok(Box::new(TarXzArchiver {})),
+            Format::TarZstd => Ok(Box::new(TarZstdArchiver {})),
+            Format::Zip => Ok(Box::new(ZipArchiver::new())),
+            _ => Err(ToteError::UnknownFormat(format.to_string())),
+        },
         Err(msg) => Err(msg),
     }
 }

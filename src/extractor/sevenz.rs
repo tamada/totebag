@@ -11,7 +11,7 @@ pub(super) struct SevenZExtractor {}
 
 impl ToteExtractor for SevenZExtractor {
     fn list(&self, archive_file: &PathBuf) -> Result<Vec<Entry>> {
-        let mut reader = File::open(&archive_file).unwrap();
+        let mut reader = File::open(archive_file).unwrap();
         let len = reader.metadata().unwrap().len();
         match Archive::read(&mut reader, len, Password::empty().as_ref()) {
             Ok(archive) => {
@@ -26,11 +26,11 @@ impl ToteExtractor for SevenZExtractor {
     }
 
     fn perform(&self, archive_file: &PathBuf, opts: PathUtils) -> Result<()> {
-        let mut file = match File::open(&archive_file) {
+        let file = match File::open(archive_file) {
             Ok(file) => file,
             Err(e) => return Err(ToteError::IO(e)),
         };
-        extract(&mut file, opts)
+        extract(&file, opts)
     }
 
     #[cfg(test)]

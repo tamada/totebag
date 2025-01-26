@@ -44,13 +44,11 @@ impl ToteArchiver for ZipArchiver {
         let mut errs = vec![];
         let mut zw = zip::ZipWriter::new(file);
         for tp in tps {
-            for entry in tp.walker() {
-                if let Ok(t) = entry {
-                    let path = t.into_path();
-                    if path.is_file() {
-                        if let Err(e) = self.process_file(&mut zw, path, &tp) {
-                            errs.push(e);
-                        }
+            for t in tp.walker().flatten() {
+                let path = t.into_path();
+                if path.is_file() {
+                    if let Err(e) = self.process_file(&mut zw, path, &tp) {
+                        errs.push(e);
                     }
                 }
             }

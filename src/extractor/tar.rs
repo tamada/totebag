@@ -22,13 +22,13 @@ pub(super) struct TarZstdExtractor {}
 
 impl ToteExtractor for TarExtractor {
     fn list(&self, archive_file: &PathBuf) -> Result<Vec<ToteEntry>> {
-        match open_tar_file(&archive_file, |f| f) {
+        match open_tar_file(archive_file, |f| f) {
             Ok(archive) => list_tar(archive),
             Err(e) => Err(e),
         }
     }
     fn perform(&self, archive_file: &PathBuf, opts: PathUtils) -> Result<()> {
-        match open_tar_file(&archive_file, |f| f) {
+        match open_tar_file(archive_file, |f| f) {
             Err(e) => Err(e),
             Ok(archive) => extract_tar(archive, opts),
         }
@@ -41,13 +41,13 @@ impl ToteExtractor for TarExtractor {
 
 impl ToteExtractor for TarGzExtractor {
     fn list(&self, archive_file: &PathBuf) -> Result<Vec<ToteEntry>> {
-        match open_tar_file(&archive_file, |f| flate2::read::GzDecoder::new(f)) {
+        match open_tar_file(archive_file, flate2::read::GzDecoder::new) {
             Ok(archive) => list_tar(archive),
             Err(e) => Err(e),
         }
     }
     fn perform(&self, archive_file: &PathBuf, opts: PathUtils) -> Result<()> {
-        match open_tar_file(&archive_file, |f| flate2::read::GzDecoder::new(f)) {
+        match open_tar_file(archive_file, flate2::read::GzDecoder::new) {
             Ok(archive) => extract_tar(archive, opts),
             Err(e) => Err(e),
         }
@@ -60,13 +60,13 @@ impl ToteExtractor for TarGzExtractor {
 
 impl ToteExtractor for TarBz2Extractor {
     fn list(&self, archive_file: &PathBuf) -> Result<Vec<ToteEntry>> {
-        match open_tar_file(&archive_file, |f| bzip2::read::BzDecoder::new(f)) {
+        match open_tar_file(archive_file, bzip2::read::BzDecoder::new) {
             Ok(archive) => list_tar(archive),
             Err(e) => Err(e),
         }
     }
     fn perform(&self, archive_file: &PathBuf, opts: PathUtils) -> Result<()> {
-        match open_tar_file(&archive_file, |f| bzip2::read::BzDecoder::new(f)) {
+        match open_tar_file(archive_file, bzip2::read::BzDecoder::new) {
             Err(e) => Err(e),
             Ok(archive) => extract_tar(archive, opts),
         }
@@ -79,13 +79,13 @@ impl ToteExtractor for TarBz2Extractor {
 
 impl ToteExtractor for TarXzExtractor {
     fn list(&self, archive_file: &PathBuf) -> Result<Vec<ToteEntry>> {
-        match open_tar_file(&archive_file, |f| XzDecoder::new(f)) {
+        match open_tar_file(archive_file, XzDecoder::new) {
             Err(e) => Err(e),
             Ok(archive) => list_tar(archive),
         }
     }
     fn perform(&self, archive_file: &PathBuf, opts: PathUtils) -> Result<()> {
-        match open_tar_file(&archive_file, |f| XzDecoder::new(f)) {
+        match open_tar_file(archive_file, XzDecoder::new) {
             Err(e) => Err(e),
             Ok(archive) => extract_tar(archive, opts),
         }
@@ -98,13 +98,13 @@ impl ToteExtractor for TarXzExtractor {
 
 impl ToteExtractor for TarZstdExtractor {
     fn list(&self, archive_file: &PathBuf) -> Result<Vec<ToteEntry>> {
-        match open_tar_file(&archive_file, |f| zstd::Decoder::new(f).unwrap()) {
+        match open_tar_file(archive_file, |f| zstd::Decoder::new(f).unwrap()) {
             Err(e) => Err(e),
             Ok(archive) => list_tar(archive),
         }
     }
     fn perform(&self, archive_file: &PathBuf, opts: PathUtils) -> Result<()> {
-        match open_tar_file(&archive_file, |f| zstd::Decoder::new(f).unwrap()) {
+        match open_tar_file(archive_file, |f| zstd::Decoder::new(f).unwrap()) {
             Err(e) => Err(e),
             Ok(archive) => extract_tar(archive, opts),
         }

@@ -31,7 +31,7 @@
  */
 use chrono::NaiveDateTime;
 use std::fmt::Display;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use typed_builder::TypedBuilder;
 
 use super::format::{find_format, Format};
@@ -82,7 +82,7 @@ pub struct PathUtils<'a> {
     e: &'a Extractor,
 }
 
-impl<'a> PathUtils<'a> {
+impl PathUtils<'_> {
     pub fn base_dir(&self) -> PathBuf {
         self.e.base_dir()
     }
@@ -197,27 +197,25 @@ pub(crate) trait ToteExtractor {
 
 /// Returns the extractor for the given archive file.
 /// The supported format is `cab`, `lha`, `rar`, `7z`, `tar`, `tar.gz`, `tar.bz2`, `tar.xz`, `tar.zst`, and `zip`.
-fn create(file: &PathBuf) -> Result<Box<dyn ToteExtractor>> {
-    let format = find_format(&file);
+fn create(file: &Path) -> Result<Box<dyn ToteExtractor>> {
+    let format = find_format(file);
     match format {
-        Ok(format) => {
-            return match format {
-                Format::Cab => Ok(Box::new(cab::CabExtractor {})),
-                Format::LHA => Ok(Box::new(lha::LhaExtractor {})),
-                Format::Rar => Ok(Box::new(rar::RarExtractor {})),
-                Format::SevenZ => Ok(Box::new(sevenz::SevenZExtractor {})),
-                Format::Tar => Ok(Box::new(tar::TarExtractor {})),
-                Format::TarBz2 => Ok(Box::new(tar::TarBz2Extractor {})),
-                Format::TarGz => Ok(Box::new(tar::TarGzExtractor {})),
-                Format::TarXz => Ok(Box::new(tar::TarXzExtractor {})),
-                Format::TarZstd => Ok(Box::new(tar::TarZstdExtractor {})),
-                Format::Zip => Ok(Box::new(zip::ZipExtractor {})),
-                Format::Unknown(s) => Err(ToteError::UnknownFormat(format!(
-                    "{}: unsupported format",
-                    s
-                ))),
-            }
-        }
+        Ok(format) => match format {
+            Format::Cab => Ok(Box::new(cab::CabExtractor {})),
+            Format::LHA => Ok(Box::new(lha::LhaExtractor {})),
+            Format::Rar => Ok(Box::new(rar::RarExtractor {})),
+            Format::SevenZ => Ok(Box::new(sevenz::SevenZExtractor {})),
+            Format::Tar => Ok(Box::new(tar::TarExtractor {})),
+            Format::TarBz2 => Ok(Box::new(tar::TarBz2Extractor {})),
+            Format::TarGz => Ok(Box::new(tar::TarGzExtractor {})),
+            Format::TarXz => Ok(Box::new(tar::TarXzExtractor {})),
+            Format::TarZstd => Ok(Box::new(tar::TarZstdExtractor {})),
+            Format::Zip => Ok(Box::new(zip::ZipExtractor {})),
+            Format::Unknown(s) => Err(ToteError::UnknownFormat(format!(
+                "{}: unsupported format",
+                s
+            ))),
+        },
         Err(msg) => Err(msg),
     }
 }

@@ -12,7 +12,7 @@ pub(super) struct ZipExtractor {}
 
 impl ToteExtractor for ZipExtractor {
     fn list(&self, archive_file: &PathBuf) -> Result<Vec<Entry>> {
-        let zip_file = File::open(&archive_file).unwrap();
+        let zip_file = File::open(archive_file).unwrap();
         let mut zip = zip::ZipArchive::new(zip_file).unwrap();
 
         let mut result = vec![];
@@ -24,7 +24,7 @@ impl ToteExtractor for ZipExtractor {
     }
 
     fn perform(&self, archive_file: &PathBuf, opts: PathUtils) -> Result<()> {
-        let zip_file = File::open(&archive_file).unwrap();
+        let zip_file = File::open(archive_file).unwrap();
         let mut zip = zip::ZipArchive::new(zip_file).unwrap();
         for i in 0..zip.len() {
             let mut file = zip.by_index(i).unwrap();

@@ -11,7 +11,7 @@ pub(super) struct CabExtractor {}
 
 impl ToteExtractor for CabExtractor {
     fn list(&self, target: &PathBuf) -> Result<Vec<Entry>> {
-        list_impl(target, |file| convert(file))
+        list_impl(target, convert)
     }
 
     fn perform(&self, target: &PathBuf, opts: PathUtils) -> Result<()> {
@@ -83,7 +83,7 @@ fn list_impl<F, T>(archive_file: &PathBuf, mapper: F) -> Result<Vec<T>>
 where
     F: Fn(&cab::FileEntry) -> T,
 {
-    let cabinet = open_cabinet(&archive_file)?;
+    let cabinet = open_cabinet(archive_file)?;
     let mut result = vec![];
     for folder in cabinet.folder_entries() {
         for file in folder.file_entries() {
@@ -96,7 +96,7 @@ where
 fn convert(f: &FileEntry) -> Entry {
     let name = f.name().to_string();
     let uncompressed_size = f.uncompressed_size();
-    let mtime = f.datetime().map(|t| to_naive_datetime(t));
+    let mtime = f.datetime().map(to_naive_datetime);
     Entry::new(name, None, Some(uncompressed_size as u64), None, mtime)
 }
 
