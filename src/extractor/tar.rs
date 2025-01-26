@@ -2,105 +2,114 @@ use std::fs::create_dir_all;
 use std::io::Read;
 use std::{fs::File, path::PathBuf};
 
+use crate::{Result, ToteError};
 use tar::Archive;
 use xz2::read::XzDecoder;
-use crate::{Result, ToteError};
 
-use crate::extractor::{ToteExtractor as Extractor, ExtractorOpts};
+use crate::extractor::{Entry as ToteEntry, PathUtils, ToteExtractor};
+#[cfg(test)]
 use crate::format::Format;
 
 pub(super) struct TarExtractor {}
+
 pub(super) struct TarGzExtractor {}
+
 pub(super) struct TarBz2Extractor {}
+
 pub(super) struct TarXzExtractor {}
+
 pub(super) struct TarZstdExtractor {}
 
-impl Extractor for TarExtractor {
-    fn list_archives(&self, archive_file: &PathBuf) -> Result<Vec<String>> {
+impl ToteExtractor for TarExtractor {
+    fn list(&self, archive_file: &PathBuf) -> Result<Vec<ToteEntry>> {
         match open_tar_file(&archive_file, |f| f) {
             Ok(archive) => list_tar(archive),
             Err(e) => Err(e),
         }
     }
-    fn perform(&self, archive_file: &PathBuf, opts: &ExtractorOpts) -> Result<()> {
+    fn perform(&self, archive_file: &PathBuf, opts: PathUtils) -> Result<()> {
         match open_tar_file(&archive_file, |f| f) {
             Err(e) => Err(e),
-            Ok(archive) => extract_tar(archive, archive_file, opts),
+            Ok(archive) => extract_tar(archive, opts),
         }
     }
+    #[cfg(test)]
     fn format(&self) -> Format {
         Format::Tar
     }
 }
 
-impl Extractor for TarGzExtractor {
-    fn list_archives(&self, archive_file: &PathBuf) -> Result<Vec<String>> {
+impl ToteExtractor for TarGzExtractor {
+    fn list(&self, archive_file: &PathBuf) -> Result<Vec<ToteEntry>> {
         match open_tar_file(&archive_file, |f| flate2::read::GzDecoder::new(f)) {
             Ok(archive) => list_tar(archive),
             Err(e) => Err(e),
         }
     }
-    fn perform(&self, archive_file: &PathBuf, opts: &ExtractorOpts) -> Result<()> {
+    fn perform(&self, archive_file: &PathBuf, opts: PathUtils) -> Result<()> {
         match open_tar_file(&archive_file, |f| flate2::read::GzDecoder::new(f)) {
-            Ok(archive) => extract_tar(archive, archive_file, opts),
+            Ok(archive) => extract_tar(archive, opts),
             Err(e) => Err(e),
         }
     }
+    #[cfg(test)]
     fn format(&self) -> Format {
         Format::TarGz
     }
 }
 
-impl Extractor for TarBz2Extractor {
-    fn list_archives(&self, archive_file: &PathBuf) -> Result<Vec<String>> {
+impl ToteExtractor for TarBz2Extractor {
+    fn list(&self, archive_file: &PathBuf) -> Result<Vec<ToteEntry>> {
         match open_tar_file(&archive_file, |f| bzip2::read::BzDecoder::new(f)) {
             Ok(archive) => list_tar(archive),
             Err(e) => Err(e),
         }
     }
-    fn perform(&self, archive_file: &PathBuf, opts: &ExtractorOpts) -> Result<()> {
+    fn perform(&self, archive_file: &PathBuf, opts: PathUtils) -> Result<()> {
         match open_tar_file(&archive_file, |f| bzip2::read::BzDecoder::new(f)) {
             Err(e) => Err(e),
-            Ok(archive) => extract_tar(archive, archive_file, opts),
+            Ok(archive) => extract_tar(archive, opts),
         }
     }
+    #[cfg(test)]
     fn format(&self) -> Format {
         Format::TarBz2
     }
 }
 
-impl Extractor for TarXzExtractor {
-    fn list_archives(&self, archive_file: &PathBuf) -> Result<Vec<String>> {
+impl ToteExtractor for TarXzExtractor {
+    fn list(&self, archive_file: &PathBuf) -> Result<Vec<ToteEntry>> {
         match open_tar_file(&archive_file, |f| XzDecoder::new(f)) {
             Err(e) => Err(e),
             Ok(archive) => list_tar(archive),
         }
     }
-    fn perform(&self, archive_file: &PathBuf, opts: &ExtractorOpts) -> Result<()> {
+    fn perform(&self, archive_file: &PathBuf, opts: PathUtils) -> Result<()> {
         match open_tar_file(&archive_file, |f| XzDecoder::new(f)) {
             Err(e) => Err(e),
-            Ok(archive) => extract_tar(archive, archive_file, opts),
+            Ok(archive) => extract_tar(archive, opts),
         }
     }
+    #[cfg(test)]
     fn format(&self) -> Format {
         Format::TarXz
     }
 }
 
-impl Extractor for TarZstdExtractor {
-    fn list_archives(&self, archive_file: &PathBuf) -> Result<Vec<String>> {
+impl ToteExtractor for TarZstdExtractor {
+    fn list(&self, archive_file: &PathBuf) -> Result<Vec<ToteEntry>> {
         match open_tar_file(&archive_file, |f| zstd::Decoder::new(f).unwrap()) {
             Err(e) => Err(e),
             Ok(archive) => list_tar(archive),
         }
     }
-
-    fn perform(&self, archive_file: &PathBuf, opts: &ExtractorOpts) -> Result<()> {
+    fn perform(&self, archive_file: &PathBuf, opts: PathUtils) -> Result<()> {
         match open_tar_file(&archive_file, |f| zstd::Decoder::new(f).unwrap()) {
             Err(e) => Err(e),
-            Ok(archive) => extract_tar(archive, archive_file, opts),
+            Ok(archive) => extract_tar(archive, opts),
         }
     }
+    #[cfg(test)]
     fn format(&self) -> Format {
         Format::TarZstd
     }
@@ -118,11 +127,7 @@ where
     Ok(Archive::new(writer))
 }
 
-fn extract_tar<R: Read>(
-    mut archive: tar::Archive<R>,
-    original: &PathBuf,
-    opts: &ExtractorOpts,
-) -> Result<()> {
+fn extract_tar<R: Read>(mut archive: tar::Archive<R>, opts: PathUtils) -> Result<()> {
     for entry in archive.entries().unwrap() {
         let mut entry = entry.unwrap();
         let path = entry.header().path().unwrap();
@@ -133,7 +138,7 @@ fn extract_tar<R: Read>(
         let size = entry.header().size().unwrap();
         log::info!("extracting {:?} ({} bytes)", path, size);
 
-        let dest = opts.destination(&original)?.join(path);
+        let dest = opts.destination(path.to_path_buf())?;
         if entry.header().entry_type().is_file() {
             create_dir_all(dest.parent().unwrap()).unwrap();
             entry.unpack(dest).unwrap();
@@ -147,26 +152,43 @@ fn is_filename_mac_finder_file(path: PathBuf) -> bool {
     filename == ".DS_Store" || filename.starts_with("._")
 }
 
-fn list_tar<R: Read>(mut archive: tar::Archive<R>) -> Result<Vec<String>> {
-    let mut result = Vec::<String>::new();
+fn list_tar<R: Read>(mut archive: tar::Archive<R>) -> Result<Vec<ToteEntry>> {
+    let mut result = vec![];
     for entry in archive.entries().unwrap() {
         let entry = entry.unwrap();
-        let path = entry.header().path().unwrap();
-        result.push(format!("{}", path.to_str().unwrap()));
+        result.push(tar_entry_to_entry(entry));
     }
     Ok(result)
+}
+
+fn tar_entry_to_entry<R: Read>(e: tar::Entry<R>) -> ToteEntry {
+    let header = e.header();
+    let path = header.path().unwrap().to_str().unwrap().to_string();
+    let size = header.size();
+    let mode = header.mode().unwrap();
+    let mtime = header.mtime().unwrap();
+    let datetime = chrono::DateTime::from_timestamp_millis(mtime as i64);
+    ToteEntry::new(
+        path,
+        None,
+        size.ok(),
+        Some(mode),
+        datetime.map(|dt| dt.naive_local()),
+    )
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::extractor::Extractor;
 
     #[test]
     fn test_list_tar_file() {
-        let extractor = TarExtractor {};
         let file = PathBuf::from("testdata/test.tar");
-        match extractor.list_archives(&file) {
+        let extractor = TarExtractor {};
+        match extractor.list(&file) {
             Ok(r) => {
+                let r = r.iter().map(|e| e.name.clone()).collect::<Vec<_>>();
                 assert_eq!(r.len(), 16);
                 assert_eq!(r.get(0), Some("Cargo.toml".to_string()).as_ref());
                 assert_eq!(r.get(1), Some("build.rs".to_string()).as_ref());
@@ -179,14 +201,12 @@ mod tests {
 
     #[test]
     fn test_extract_archive() {
-        let e = TarExtractor {};
-        let file = PathBuf::from("testdata/test.tar");
-        let opts = ExtractorOpts {
-            dest: PathBuf::from("results/tar"),
-            use_archive_name_dir: false,
-            overwrite: true,
-        };
-        match e.perform(&file, &opts) {
+        let archive_file = PathBuf::from("testdata/test.tar");
+        let opts = Extractor::builder()
+            .archive_file(archive_file)
+            .destination("results/tar")
+            .build();
+        match opts.perform() {
             Ok(_) => {
                 assert!(true);
                 assert!(PathBuf::from("results/tar/Cargo.toml").exists());
@@ -198,10 +218,11 @@ mod tests {
 
     #[test]
     fn test_list_tarbz2_file() {
-        let extractor = TarBz2Extractor {};
         let file = PathBuf::from("testdata/test.tar.bz2");
-        match extractor.list_archives(&file) {
+        let extractor = TarBz2Extractor {};
+        match extractor.list(&file) {
             Ok(r) => {
+                let r = r.iter().map(|e| e.name.clone()).collect::<Vec<_>>();
                 assert_eq!(r.len(), 16);
                 assert_eq!(r.get(0), Some("Cargo.toml".to_string()).as_ref());
                 assert_eq!(r.get(1), Some("build.rs".to_string()).as_ref());
@@ -214,10 +235,11 @@ mod tests {
 
     #[test]
     fn test_list_targz_file() {
-        let extractor = TarGzExtractor {};
         let file = PathBuf::from("testdata/test.tar.gz");
-        match extractor.list_archives(&file) {
+        let extractor = TarGzExtractor {};
+        match extractor.list(&file) {
             Ok(r) => {
+                let r = r.iter().map(|e| e.name.clone()).collect::<Vec<_>>();
                 assert_eq!(r.len(), 16);
                 assert_eq!(r.get(0), Some("Cargo.toml".to_string()).as_ref());
                 assert_eq!(r.get(1), Some("build.rs".to_string()).as_ref());
@@ -230,10 +252,11 @@ mod tests {
 
     #[test]
     fn test_list_tarzstd_file() {
-        let extractor = TarZstdExtractor {};
         let file = PathBuf::from("testdata/test.tar.zst");
-        match extractor.list_archives(&file) {
+        let extractor = TarZstdExtractor {};
+        match extractor.list(&file) {
             Ok(r) => {
+                let r = r.iter().map(|e| e.name.clone()).collect::<Vec<_>>();
                 assert_eq!(r.len(), 16);
                 assert_eq!(r.get(0), Some("Cargo.toml".to_string()).as_ref());
                 assert_eq!(r.get(1), Some("build.rs".to_string()).as_ref());
@@ -243,7 +266,6 @@ mod tests {
             Err(_) => assert!(false),
         }
     }
-
 
     #[test]
     fn test_format() {
@@ -255,5 +277,11 @@ mod tests {
 
         let e3 = TarBz2Extractor {};
         assert_eq!(e3.format(), Format::TarBz2);
+
+        let e4 = TarXzExtractor {};
+        assert_eq!(e4.format(), Format::TarXz);
+
+        let e5 = TarZstdExtractor {};
+        assert_eq!(e5.format(), Format::TarZstd);
     }
 }

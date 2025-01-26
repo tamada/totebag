@@ -1,12 +1,12 @@
 use std::collections::HashSet;
 use std::fs::{create_dir_all, File};
 use std::path::PathBuf;
-use std::slice::Iter;
 
 use ignore::{Walk, WalkBuilder};
+use typed_builder::TypedBuilder;
 
+use crate::format::{find_format, Format};
 use crate::{IgnoreType, Result, ToteError};
-use crate::format::{find_format, is_archive_file, Format};
 
 mod cab;
 mod lha;
@@ -16,48 +16,63 @@ mod sevenz;
 mod tar;
 mod zip;
 
-pub trait ToteArchiver {
-    fn perform(&self, file: File, tps: Vec<TargetPath>, opts: &ArchiverOpts) -> Result<()>;
+pub(crate) trait ToteArchiver {
+    /// Perform the archiving operation.
+    /// - `file` is the destination file for the archive.
+    /// - `tps` is the list of files to be archived.
+    fn perform(&self, file: File, tps: Vec<TargetPath>) -> Result<()>;
+
+    /// Returns the format object of this archiver.
     fn format(&self) -> Format;
+    /// Returns true if this archiver is enabled.
     fn enable(&self) -> bool;
 }
 
+/// Archiver is a struct to handle the archiving operation.
+/// ```
+/// let archiver = Archiver::builder()
+///     .archive_file(PathBuf::from("results/test.zip"))
+///     .targets(vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")])
+///     .overwrite(true)      // default is false
+/// //    .no_recursive(true)  // default is false
+/// //    .ignore_types(vec![IgnoreType::Ignore])  // default is [IgnoreType::Default]
+///    .build();
+/// match archiver.perform() {
+///    Ok(_)  => println!("archiving is done"),
+///    Err(e) => eprintln!("error: {:?}", e),
+/// }
+/// ```
+#[derive(Debug, TypedBuilder)]
 pub struct Archiver {
-    pub dest: PathBuf,
-    pub froms: Vec<PathBuf>,
-    pub opts: ArchiverOpts,
-    pub archiver: Box<dyn ToteArchiver>,
+    #[builder(setter(into))]
+    pub archive_file: PathBuf,
+    pub targets: Vec<PathBuf>,
+    #[builder(default = None, setter(strip_option, into))]
+    pub rebase_dir: Option<PathBuf>,
+    #[builder(default = false)]
+    pub overwrite: bool,
+    #[builder(default = false)]
+    pub no_recursive: bool,
+    #[builder(default = vec![IgnoreType::Default])]
+    pub ignore_types: Vec<IgnoreType>,
 }
 
-pub struct TargetPath<'a> {
+/// TargetPath is a helper struct to handle the target path for the archiving operation.
+pub(crate) struct TargetPath<'a> {
     base_path: &'a PathBuf,
-    opts: &'a ArchiverOpts,
+    opts: &'a Archiver,
 }
 
 impl<'a> TargetPath<'a> {
-    pub fn new(target: &'a PathBuf, opts: &'a ArchiverOpts) -> Self {
+    pub fn new(target: &'a PathBuf, archiver: &'a Archiver) -> Self {
         Self {
             base_path: target,
-            opts: opts,
+            opts: archiver,
         }
     }
 
+    /// Returns the destination path for the target file.
     pub fn dest_path(&self, target: &PathBuf) -> PathBuf {
-        // let target_path = if self.base_path.is_dir() {
-        //     match target.strip_prefix(&self.base_path) {
-        //         Ok(p) => p,
-        //         Err(_) => target,
-        //     }
-        // } else {
-        //     if let Some(basedir) = self.base_path.parent() {
-        //         match target.strip_prefix(basedir) {
-        //             Ok(p) => p,
-        //             Err(_) => target,
-        //         }
-        //     } else {
-        //         target
-        //     }
-        // };
         let target_path = target;
         if let Some(rebase) = &self.opts.rebase_dir {
             rebase.join(target_path)
@@ -66,6 +81,7 @@ impl<'a> TargetPath<'a> {
         }
     }
 
+    /// Returns the directory traversing walker for the given path of this instance.
     pub fn walker(&self) -> Walk {
         let mut builder = WalkBuilder::new(&self.base_path);
         build_walker_impl(self.opts, &mut builder);
@@ -73,48 +89,42 @@ impl<'a> TargetPath<'a> {
     }
 }
 
-impl Archiver {
-    pub fn create(args: Vec<String>, output: Option<PathBuf>, opts: ArchiverOpts) -> Result<Self> {
-        let (dest, froms) = find_dest_and_args(args, output);
-        match create_archiver(&dest) {
-            Ok(archiver) => Ok(Self {
-                dest,
-                froms,
-                opts,
-                archiver,
-            }),
-            Err(e) => Err(e),
-        }
-    }
-
-    pub fn new(dest: PathBuf, froms: Vec<PathBuf>, opts: ArchiverOpts) -> Result<Self> {
-        match create_archiver(&dest) {
-            Ok(archiver) => Ok(Self {
-                dest,
-                froms,
-                opts,
-                archiver,
-            }),
-            Err(e) => Err(e),
-        }
-    }
-
-    pub fn format(&self) -> Format {
-        self.archiver.format()
-    }
-
+impl<'a> Archiver {
     pub fn perform(&self) -> Result<()> {
-        if self.archiver.enable() {
-            let paths = self.froms.iter()
-                .map(|item| TargetPath::new(item, &self.opts))
-                .collect::<Vec<TargetPath>>();
+        let archiver = match create_archiver(&self.archive_file) {
+            Ok(a) => a,
+            Err(e) => return Err(e),
+        };
+        if !archiver.enable() {
+            return Err(ToteError::UnsupportedFormat(format!(
+                "{:?}: not support archiving",
+                archiver.format()
+            )));
+        }
+        let paths = self
+            .targets
+            .iter()
+            .map(|item| TargetPath::new(item, &self))
+            .collect::<Vec<TargetPath>>();
 
-            match self.destination() {
-                Ok(file) => self.archiver.perform(file, paths, &self.opts),
-                Err(e) => Err(e),
+        log::info!("{:?}: {}", self.archive_file, self.archive_file.exists());
+        if self.archive_file.exists() {
+            if self.archive_file.is_dir() {
+                return Err(ToteError::DestIsDir(self.archive_file.clone()));
+            } else if self.archive_file.is_file() && !self.overwrite {
+                return Err(ToteError::FileExists(self.archive_file.clone()));
             }
-        } else {
-            Err(ToteError::UnsupportedFormat(self.format().to_string()))
+        }
+        if let Some(parent) = self.archive_file.parent() {
+            if !parent.exists() {
+                if let Err(e) = create_dir_all(parent) {
+                    return Err(ToteError::IO(e));
+                }
+            }
+        }
+        match File::create(&self.archive_file) {
+            Ok(f) => archiver.perform(f, paths),
+            Err(e) => Err(ToteError::IO(e)),
         }
     }
 
@@ -122,12 +132,12 @@ impl Archiver {
     /// If the path for destination is a directory or exists and overwrite is false,
     /// this function returns an error.
     pub fn destination(&self) -> Result<File> {
-        let p = self.dest.as_path();
+        let p = self.archive_file.as_path();
         log::info!("{:?}: {}", p, p.exists());
         if p.exists() {
             if p.is_dir() {
                 return Err(ToteError::DestIsDir(p.to_path_buf()));
-            } else if p.is_file() && !self.opts.overwrite {
+            } else if p.is_file() && !self.overwrite {
                 return Err(ToteError::FileExists(p.to_path_buf()));
             }
         }
@@ -138,52 +148,82 @@ impl Archiver {
                 }
             }
         }
-        match File::create(self.dest.as_path()) {
+        match File::create(&self.archive_file) {
             Ok(f) => Ok(f),
             Err(e) => Err(ToteError::IO(e)),
         }
     }
 
+    pub fn format(&self) -> Format {
+        find_format(&self.archive_file).unwrap()
+    }
+
     pub fn info(&self) -> String {
         format!(
-            "Format: {:?}\nDestination: {:?}\nTargets: {:?}",
-            self.archiver.format(),
-            self.dest,
-            self.froms.iter()
+            "Format: {:?}\nArchive File: {:?}\nTargets: {:?}",
+            find_format(&self.archive_file),
+            self.archive_file,
+            self.targets
+                .iter()
                 .map(|item| item.to_str().unwrap())
                 .collect::<Vec<_>>()
                 .join(", ")
         )
     }
+
+    fn ignore_types(&self) -> Vec<IgnoreType> {
+        if self.ignore_types.is_empty() {
+            vec![
+                IgnoreType::Ignore,
+                IgnoreType::GitIgnore,
+                IgnoreType::GitGlobal,
+                IgnoreType::GitExclude,
+            ]
+        } else {
+            let mut r = HashSet::<IgnoreType>::new();
+            for &it in &self.ignore_types {
+                if it == IgnoreType::Default {
+                    r.insert(IgnoreType::Ignore);
+                    r.insert(IgnoreType::GitIgnore);
+                    r.insert(IgnoreType::GitGlobal);
+                    r.insert(IgnoreType::GitExclude);
+                } else {
+                    r.insert(it.clone());
+                }
+            }
+            r.into_iter().collect()
+        }
+    }
 }
 
-fn build_walker_impl(opts: &ArchiverOpts, w: &mut WalkBuilder) {
+fn build_walker_impl(opts: &Archiver, w: &mut WalkBuilder) {
     for it in opts.ignore_types() {
         match it {
-            IgnoreType::Ignore => w.ignore(true),
+            IgnoreType::Default => w
+                .ignore(true)
+                .git_ignore(true)
+                .git_global(true)
+                .git_exclude(true),
             IgnoreType::GitIgnore => w.git_ignore(true),
             IgnoreType::GitGlobal => w.git_global(true),
             IgnoreType::GitExclude => w.git_exclude(true),
-            IgnoreType::Default => {
-                w.ignore(true)
-                    .git_ignore(true)
-                    .git_global(true)
-                    .git_exclude(true)
-            },
             IgnoreType::Hidden => w.hidden(true),
+            IgnoreType::Ignore => w.ignore(true),
         };
     }
 }
 
-pub fn create_archiver(dest: &PathBuf) -> Result<Box<dyn ToteArchiver>> {
+fn create_archiver(dest: &PathBuf) -> Result<Box<dyn ToteArchiver>> {
     use crate::archiver::cab::CabArchiver;
     use crate::archiver::lha::LhaArchiver;
     use crate::archiver::rar::RarArchiver;
     use crate::archiver::sevenz::SevenZArchiver;
-    use crate::archiver::tar::{TarArchiver, TarBz2Archiver, TarGzArchiver, TarXzArchiver, TarZstdArchiver};
+    use crate::archiver::tar::{
+        TarArchiver, TarBz2Archiver, TarGzArchiver, TarXzArchiver, TarZstdArchiver,
+    };
     use crate::archiver::zip::ZipArchiver;
 
-    let format = find_format(dest.file_name());
+    let format = find_format(dest);
     match format {
         Ok(format) => {
             return match format {
@@ -204,117 +244,59 @@ pub fn create_archiver(dest: &PathBuf) -> Result<Box<dyn ToteArchiver>> {
     }
 }
 
-pub struct ArchiverOpts {
-    pub rebase_dir: Option<PathBuf>,
-    pub overwrite: bool,
-    pub recursive: bool,
-    pub its: Vec<IgnoreType>,
-}
-
-fn map_to_path_buf(iter: Iter<String>) -> Vec<PathBuf> {
-    iter.map(|item| PathBuf::from(item)).collect()
-}
-
-fn find_dest_and_args(args: Vec<String>, output: Option<PathBuf>) -> (PathBuf, Vec<PathBuf>) {
-    match output {
-        Some(o) => (o.clone(), map_to_path_buf(args.iter())),
-        None => {
-            let dest = PathBuf::from(&args[0]);
-            if is_archive_file(&dest) {
-                (dest, map_to_path_buf(args[1..].to_vec().iter()))
-            } else {
-                (PathBuf::from("totebag.zip"), map_to_path_buf(args.iter()))
-            }
-        }
-    }
-}
-
-impl ArchiverOpts {
-    pub fn new(rebase_dir: Option<PathBuf>, overwrite: bool, recursive: bool, its: Vec<IgnoreType>) -> Self {
-        ArchiverOpts {
-            rebase_dir: rebase_dir,
-            overwrite: overwrite,
-            recursive: recursive,
-            its: its,
-        }
-    }
-
-    #[cfg(test)]
-    pub fn create(
-        rebase_dir: Option<PathBuf>,
-        overwrite: bool,
-        recursive: bool,
-        its: Vec<IgnoreType>,
-    ) -> Self {
-        let its = if its.is_empty() {
-            vec![IgnoreType::Default]
-        } else {
-            its
-        };
-        ArchiverOpts {
-            rebase_dir,
-            overwrite,
-            recursive,
-            its: its,
-        }
-    }
-
-    pub fn ignore_types(&self) -> Vec<IgnoreType> {
-        if self.its.is_empty() {
-            vec![IgnoreType::Ignore, IgnoreType::GitIgnore, IgnoreType::GitGlobal, IgnoreType::GitExclude]
-        } else {
-            let mut r = HashSet::<IgnoreType>::new();
-            for &it in &self.its {
-                if it == IgnoreType::Default {
-                    r.insert(IgnoreType::Ignore);
-                    r.insert(IgnoreType::GitIgnore);
-                    r.insert(IgnoreType::GitGlobal);
-                    r.insert(IgnoreType::GitExclude);
-                } else {
-                    r.insert(it.clone());
-                }
-            }
-            r.into_iter().collect()
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn test_target_path() {
-        let opts = ArchiverOpts::create(
-            Some(PathBuf::from("new")),
-        true, true, vec![]);
+        let archiver = Archiver::builder()
+            .archive_file(PathBuf::from("results/test.zip"))
+            .rebase_dir(PathBuf::from("new"))
+            .overwrite(true)
+            .targets(vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")])
+            .build();
         let base = PathBuf::from("testdata/sample");
-        let tp = TargetPath::new(&base, &opts);
+        let tp = TargetPath::new(&base, &archiver);
 
-        assert_eq!(PathBuf::from("new/testdata/sample/src/archiver.rs").as_path(), 
-                tp.dest_path(&PathBuf::from("testdata/sample/src/archiver.rs")));
+        assert_eq!(
+            PathBuf::from("new/testdata/sample/src/archiver.rs").as_path(),
+            tp.dest_path(&PathBuf::from("testdata/sample/src/archiver.rs"))
+        );
     }
 
     #[test]
     fn test_target_path2() {
-        let opts = ArchiverOpts::create(
-            None, true, true, vec![]);
+        let archiver = Archiver::builder()
+            .archive_file(PathBuf::from("results/test.zip"))
+            //            .rebase_dir(None)
+            .overwrite(true)
+            .targets(vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")])
+            .build();
         let base = PathBuf::from("testdata/sample");
-        let tp = TargetPath::new(&base, &opts);
+        let tp = TargetPath::new(&base, &archiver);
 
-        assert_eq!(PathBuf::from("testdata/sample/Cargo.toml").as_path(), 
-                tp.dest_path(&PathBuf::from("testdata/sample/Cargo.toml")));
+        assert_eq!(
+            PathBuf::from("testdata/sample/Cargo.toml").as_path(),
+            tp.dest_path(&PathBuf::from("testdata/sample/Cargo.toml"))
+        );
     }
 
     #[test]
     fn test_target_path3() {
-        let opts = ArchiverOpts::create(
-            Some(PathBuf::from("new")), true, true, vec![]);
+        let archiver = Archiver::builder()
+            .archive_file(PathBuf::from("results/test.zip"))
+            .rebase_dir(PathBuf::from("new"))
+            .overwrite(true)
+            .targets(vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")])
+            .build();
         let base = PathBuf::from("testdata/sample/Cargo.toml");
-        let tp = TargetPath::new(&base, &opts);
+        let tp = TargetPath::new(&base, &archiver);
 
-        assert_eq!(PathBuf::from("new/testdata/sample/Cargo.toml").as_path(), 
-                tp.dest_path(&PathBuf::from("testdata/sample/Cargo.toml")));
+        assert_eq!(
+            PathBuf::from("new/testdata/sample/Cargo.toml").as_path(),
+            tp.dest_path(&PathBuf::from("testdata/sample/Cargo.toml"))
+        );
     }
 
     #[test]
@@ -364,12 +346,10 @@ mod tests {
 
         let ae = create_archiver(&PathBuf::from("results/test.unknown"));
         assert!(ae.is_err());
-        if let Err(e) = ae {
-            if let ToteError::UnknownFormat(msg) = e {
-                assert_eq!(msg, "test.unknown: unknown format".to_string());
-            } else {
-                assert!(false);
-            }
+        match ae {
+            Err(ToteError::UnknownFormat(msg)) => assert_eq!(msg, "test.unknown".to_string()),
+            Err(e) => panic!("unexpected error: {:?}", e),
+            Ok(_) => panic!("unexpected result"),
         }
     }
 }

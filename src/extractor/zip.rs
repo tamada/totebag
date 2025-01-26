@@ -1,38 +1,38 @@
-use std::fs::{File, create_dir_all};
+use std::fs::{create_dir_all, File};
 use std::io::copy;
 use std::path::PathBuf;
 
+use chrono::NaiveDateTime;
+use zip::read::ZipFile;
+
+use crate::extractor::{Entry, PathUtils, ToteExtractor};
 use crate::Result;
-use crate::format::Format;
-use crate::extractor::{ExtractorOpts, ToteExtractor as Extractor};
 
+pub(super) struct ZipExtractor {}
 
-pub(super) struct ZipExtractor {
-}
-
-impl Extractor for  ZipExtractor {
-    fn list_archives(&self, archive_file: &PathBuf) -> Result<Vec<String>> {
-        let zip_file = File::open(archive_file).unwrap();
+impl ToteExtractor for ZipExtractor {
+    fn list(&self, archive_file: &PathBuf) -> Result<Vec<Entry>> {
+        let zip_file = File::open(&archive_file).unwrap();
         let mut zip = zip::ZipArchive::new(zip_file).unwrap();
 
-        let mut result = Vec::<String>::new();
+        let mut result = vec![];
         for i in 0..zip.len() {
             let file = zip.by_index(i).unwrap();
-            result.push(file.name().to_string());
-            // std::io::copy(&mut file, &mut std::io::stdout()).unwrap();
+            result.push(convert(file));
         }
         Ok(result)
     }
 
-    fn perform(&self, archive_file: &PathBuf, opts: &ExtractorOpts) -> Result<()> {
+    fn perform(&self, archive_file: &PathBuf, opts: PathUtils) -> Result<()> {
         let zip_file = File::open(&archive_file).unwrap();
         let mut zip = zip::ZipArchive::new(zip_file).unwrap();
-        let dest_base = opts.destination(&archive_file)?;
         for i in 0..zip.len() {
             let mut file = zip.by_index(i).unwrap();
             if file.is_file() {
                 log::info!("extracting {} ({} bytes)", file.name(), file.size());
-                let dest = dest_base.join(PathBuf::from(file.name().to_string()));
+                let dest = opts
+                    .destination(PathBuf::from(file.name().to_string()))
+                    .unwrap();
                 create_dir_all(dest.parent().unwrap()).unwrap();
                 let mut out = File::create(dest).unwrap();
                 copy(&mut file, &mut out).unwrap();
@@ -41,55 +41,98 @@ impl Extractor for  ZipExtractor {
         Ok(())
     }
 
-    fn format(&self) -> Format {
-        Format::Zip
+    #[cfg(test)]
+    fn format(&self) -> crate::format::Format {
+        crate::format::Format::Zip
     }
+}
+
+fn convert(zfile: ZipFile) -> Entry {
+    let name = zfile.name().to_string();
+    let compressed_size = zfile.compressed_size();
+    let uncompresseed_size = zfile.size();
+    let mode = zfile.unix_mode();
+    let mtime = match zfile.last_modified() {
+        Some(t) => convert_to_datetime(t),
+        None => None,
+    };
+    Entry::new(
+        name,
+        Some(compressed_size),
+        Some(uncompresseed_size),
+        mode,
+        mtime,
+    )
+}
+
+fn convert_to_datetime(t: zip::DateTime) -> Option<NaiveDateTime> {
+    use chrono::NaiveDate;
+
+    let year = t.year() as i32;
+    let month = t.month() as u32;
+    let day = t.day() as u32;
+    let hour = t.hour() as u32;
+    let minute = t.minute() as u32;
+    let second = t.second() as u32;
+    NaiveDate::from_ymd_opt(year, month, day)
+        .unwrap()
+        .and_hms_opt(hour, minute, second)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::extractor::Extractor;
     use std::path::PathBuf;
 
     #[test]
     fn test_list_archives() {
-        let extractor = ZipExtractor{};
         let file = PathBuf::from("testdata/test.zip");
-        match extractor.list_archives(&file) {
+        let extractor = ZipExtractor {};
+        match extractor.list(&file) {
             Ok(r) => {
                 assert_eq!(r.len(), 19);
-                assert_eq!(r.get(0), Some("Cargo.toml".to_string()).as_ref());
-                assert_eq!(r.get(1), Some("build.rs".to_string()).as_ref());
-                assert_eq!(r.get(2), Some("LICENSE".to_string()).as_ref());
-                assert_eq!(r.get(3), Some("README.md".to_string()).as_ref());
-            },
+                assert_eq!(
+                    r.get(0).map(|t| &t.name),
+                    Some("Cargo.toml".to_string()).as_ref()
+                );
+                assert_eq!(
+                    r.get(1).map(|t| &t.name),
+                    Some("build.rs".to_string()).as_ref()
+                );
+                assert_eq!(
+                    r.get(2).map(|t| &t.name),
+                    Some("LICENSE".to_string()).as_ref()
+                );
+                assert_eq!(
+                    r.get(3).map(|t| &t.name),
+                    Some("README.md".to_string()).as_ref()
+                );
+            }
             Err(_) => assert!(false),
         }
     }
 
     #[test]
     fn test_extract_archive() {
-        let e = ZipExtractor{};
-        let file = PathBuf::from("testdata/test.zip");
-        let opts = ExtractorOpts {
-            dest: PathBuf::from("results/zip"),
-            use_archive_name_dir: false,
-            overwrite: true,
-        };
-        match e.perform(&file, &opts) {
+        let archive_file = PathBuf::from("testdata/test.zip");
+        let opts = Extractor::builder()
+            .archive_file(archive_file)
+            .destination("results/zip")
+            .build();
+        match opts.perform() {
             Ok(_) => {
                 assert!(true);
                 assert!(PathBuf::from("results/zip/Cargo.toml").exists());
                 std::fs::remove_dir_all(PathBuf::from("results/zip")).unwrap();
-            },
+            }
             Err(_) => assert!(false),
         };
     }
 
     #[test]
     fn test_format() {
-        let e = ZipExtractor{};
-        assert_eq!(e.format(), Format::Zip);
+        let e = ZipExtractor {};
+        assert_eq!(e.format(), crate::format::Format::Zip);
     }
-    
 }

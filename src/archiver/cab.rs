@@ -3,20 +3,19 @@ use std::path::PathBuf;
 
 use cab::{CabinetBuilder, CabinetWriter};
 
-use crate::archiver::{ToteArchiver, ArchiverOpts, TargetPath};
-use crate::{ToteError, Result};
+use crate::archiver::{TargetPath, ToteArchiver};
 use crate::format::Format;
+use crate::{Result, ToteError};
 
-pub(super) struct CabArchiver {
-}
+pub(super) struct CabArchiver {}
 
 impl ToteArchiver for CabArchiver {
-    fn perform(&self, file: File, tps: Vec<TargetPath>, _opts: &ArchiverOpts) -> Result<()> {
+    fn perform(&self, file: File, tps: Vec<TargetPath>) -> Result<()> {
         let mut errs = vec![];
         let mut builder = CabinetBuilder::new();
         let folder = builder.add_folder(cab::CompressionType::MsZip);
         let list = collect_entries(&tps);
-        for (path, tp) in  list.clone(){
+        for (path, tp) in list.clone() {
             folder.add_file(tp.dest_path(&path).to_str().unwrap().to_string());
         }
         let mut writer = match builder.build(file) {
@@ -45,15 +44,15 @@ impl ToteArchiver for CabArchiver {
 
 fn write_entry(writer: &mut CabinetWriter<File>, path: PathBuf) -> Result<()> {
     match (File::open(path), writer.next_file()) {
-        (Ok(mut reader), Ok(Some(mut w))) => 
-            match std::io::copy(&mut reader, &mut w) {
-                Ok(_) => Ok(()),
-                Err(e) => Err(ToteError::IO(e)),
-            },
-        (_, Ok(None)) => 
-            Err(ToteError::Archiver("cab writer error".to_string())),
-        (Err(e1), Err(e2)) =>
-            Err(ToteError::Array(vec![ToteError::IO(e1), ToteError::Fatal(Box::new(e2))])),
+        (Ok(mut reader), Ok(Some(mut w))) => match std::io::copy(&mut reader, &mut w) {
+            Ok(_) => Ok(()),
+            Err(e) => Err(ToteError::IO(e)),
+        },
+        (_, Ok(None)) => Err(ToteError::Archiver("cab writer error".to_string())),
+        (Err(e1), Err(e2)) => Err(ToteError::Array(vec![
+            ToteError::IO(e1),
+            ToteError::Fatal(Box::new(e2)),
+        ])),
         (Err(e), _) => Err(ToteError::IO(e)),
         (_, Err(e)) => Err(ToteError::Archiver(e.to_string())),
     }
@@ -78,8 +77,8 @@ fn collect_entries<'a>(tps: &'a Vec<TargetPath>) -> Vec<(PathBuf, &'a TargetPath
 mod tests {
     use super::*;
 
-    use std::path::PathBuf;
     use crate::archiver::Archiver;
+    use std::path::PathBuf;
 
     fn run_test<F>(f: F)
     where
@@ -96,24 +95,19 @@ mod tests {
 
     #[test]
     fn test_format() {
-        let archiver = CabArchiver{};
+        let archiver = CabArchiver {};
         assert_eq!(archiver.format(), Format::Cab);
     }
 
     #[test]
     fn test_archive() {
         run_test(|| {
-            let opts = ArchiverOpts {
-                rebase_dir: None,
-                overwrite: false,
-                recursive: false,
-                its: vec![],
-            };
-            let archiver = Archiver::new(
-                PathBuf::from("results/test.cab"),
-                vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")],
-                opts,
-            ).unwrap();
+            let archiver = Archiver::builder()
+                .archive_file(PathBuf::from("results/test.cab"))
+                .targets(vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")])
+                .overwrite(false)
+                .no_recursive(true)
+                .build();
             let r = archiver.perform();
             assert!(r.is_ok());
         });

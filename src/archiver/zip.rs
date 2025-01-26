@@ -5,23 +5,26 @@ use crate::archiver::os::windows::*;
 use crate::archiver::os::linux::*;
 
 use std::fs::File;
-use std::path::PathBuf;
 use std::io::BufReader;
+use std::path::PathBuf;
 use zip::ZipWriter;
 
-use crate::archiver::{ToteArchiver, Format, ArchiverOpts};
-use crate::{ToteError, Result};
+use crate::archiver::{TargetPath, ToteArchiver};
+use crate::format::Format;
+use crate::{Result, ToteError};
 
-use super::TargetPath;
-
-pub(super) struct ZipArchiver {
-}
+pub(super) struct ZipArchiver {}
 
 impl ZipArchiver {
     pub fn new() -> Self {
-        Self { }
+        Self {}
     }
-    fn process_file(&self, zw: &mut ZipWriter<File>, target: PathBuf, tp: &TargetPath) -> Result<()> {
+    fn process_file(
+        &self,
+        zw: &mut ZipWriter<File>,
+        target: PathBuf,
+        tp: &TargetPath,
+    ) -> Result<()> {
         let opts = create_file_opts(&target);
         let dest_path = tp.dest_path(&target);
         let name = dest_path.to_str().unwrap();
@@ -31,13 +34,13 @@ impl ZipArchiver {
         let mut file = BufReader::new(File::open(target).unwrap());
         match std::io::copy(&mut file, zw) {
             Ok(_) => Ok(()),
-            Err(e) => Err(ToteError::IO(e))
+            Err(e) => Err(ToteError::IO(e)),
         }
     }
 }
 
 impl ToteArchiver for ZipArchiver {
-    fn perform(&self, file: File, tps: Vec<TargetPath>, _opts: &ArchiverOpts) -> Result<()> {
+    fn perform(&self, file: File, tps: Vec<TargetPath>) -> Result<()> {
         let mut errs = vec![];
         let mut zw = zip::ZipWriter::new(file);
         for tp in tps {
@@ -64,7 +67,7 @@ impl ToteArchiver for ZipArchiver {
     fn enable(&self) -> bool {
         true
     }
-    
+
     fn format(&self) -> Format {
         Format::Zip
     }
@@ -73,7 +76,7 @@ impl ToteArchiver for ZipArchiver {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::archiver::{Archiver, ArchiverOpts};
+    use crate::archiver::Archiver;
 
     fn run_test<F>(f: F)
     where
@@ -82,17 +85,21 @@ mod tests {
         // setup(); // 予めやりたい処理
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(f));
         teardown(); // 後片付け処理
-    
+
         if let Err(err) = result {
             std::panic::resume_unwind(err);
         }
     }
-    
+
     #[test]
     fn test_zip() {
         run_test(|| {
-            let opts = ArchiverOpts::create(None, true, true, vec![]);
-            let archiver = Archiver::new(PathBuf::from("results/test.zip"), vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")], opts).unwrap();
+            let archiver = Archiver::builder()
+                .archive_file(PathBuf::from("results/test.zip"))
+                .targets(vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")])
+                .overwrite(true)
+                .build();
+
             let result = archiver.perform();
             assert!(result.is_ok());
             assert_eq!(archiver.format(), Format::Zip);

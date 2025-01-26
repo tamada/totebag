@@ -1,0 +1,23 @@
+complete -c totebag -s C -l dir -d 'Specify the base directory for archiving or extracting.' -r -F
+complete -c totebag -s i -l ignore-types -d 'Specify the ignore type.' -r -f -a "default\t''
+hidden\t''
+git-ignore\t''
+git-global\t''
+git-exclude\t''
+ignore\t''"
+complete -c totebag -l level -d 'Specify the log level' -r -f -a "error\t''
+warn\t''
+info\t''
+debug\t''"
+complete -c totebag -s m -l mode -d 'Mode of operation.' -r -f -a "auto\t''
+archive\t''
+extract\t''
+list\t''"
+complete -c totebag -s o -l output -d 'Output file in archive mode, or output directory in extraction mode' -r -F
+complete -c totebag -l to-archive-name-dir -d 'extract files to DEST/ARCHIVE_NAME directory (extract mode).'
+complete -c totebag -s n -l no-recursive -d 'No recursive directory (archive mode).'
+complete -c totebag -s l -l long -d 'List entries in the archive file with long format.'
+complete -c totebag -l generate-completion -d 'Generate the completion files'
+complete -c totebag -l overwrite -d 'Overwrite existing files.'
+complete -c totebag -s h -l help -d 'Print help'
+complete -c totebag -s V -l version -d 'Print version'

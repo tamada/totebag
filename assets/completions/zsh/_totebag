@@ -1,0 +1,55 @@
+#compdef totebag
+
+autoload -U is-at-least
+
+_totebag() {
+    typeset -A opt_args
+    typeset -a _arguments_options
+    local ret=1
+
+    if is-at-least 5.2; then
+        _arguments_options=(-s -S -C)
+    else
+        _arguments_options=(-s -C)
+    fi
+
+    local context curcontext="$curcontext" state line
+    _arguments "${_arguments_options[@]}" : \
+'-C+[Specify the base directory for archiving or extracting.]:DIR:_files' \
+'--dir=[Specify the base directory for archiving or extracting.]:DIR:_files' \
+'*-i+[Specify the ignore type.]:IGNORE_TYPES:(default hidden git-ignore git-global git-exclude ignore)' \
+'*--ignore-types=[Specify the ignore type.]:IGNORE_TYPES:(default hidden git-ignore git-global git-exclude ignore)' \
+'--level=[Specify the log level]:LEVEL:(error warn info debug)' \
+'-m+[Mode of operation.]:MODE:(auto archive extract list)' \
+'--mode=[Mode of operation.]:MODE:(auto archive extract list)' \
+'-o+[Output file in archive mode, or output directory in extraction mode]:DEST:_files' \
+'--output=[Output file in archive mode, or output directory in extraction mode]:DEST:_files' \
+'--to-archive-name-dir[extract files to DEST/ARCHIVE_NAME directory (extract mode).]' \
+'-n[No recursive directory (archive mode).]' \
+'--no-recursive[No recursive directory (archive mode).]' \
+'-l[List entries in the archive file with long format.]' \
+'--long[List entries in the archive file with long format.]' \
+'--generate-completion[Generate the completion files]' \
+'--overwrite[Overwrite existing files.]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+'*::args -- List of files or directories to be processed.
+If archive mode, the archive file name can specify at the first argument.
+If the frist argument was not the archive name, the default archive name `totebag.zip` is applied.
+:_default' \
+&& ret=0
+}
+
+(( $+functions[_totebag_commands] )) ||
+_totebag_commands() {
+    local commands; commands=()
+    _describe -t commands 'totebag commands' commands "$@"
+}
+
+if [ "$funcstack[1]" = "_totebag" ]; then
+    _totebag "$@"
+else
+    compdef _totebag totebag
+fi

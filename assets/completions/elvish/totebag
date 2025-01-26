@@ -1,0 +1,44 @@
+
+use builtin;
+use str;
+
+set edit:completion:arg-completer[totebag] = {|@words|
+    fn spaces {|n|
+        builtin:repeat $n ' ' | str:join ''
+    }
+    fn cand {|text desc|
+        edit:complex-candidate $text &display=$text' '(spaces (- 14 (wcswidth $text)))$desc
+    }
+    var command = 'totebag'
+    for word $words[1..-1] {
+        if (str:has-prefix $word '-') {
+            break
+        }
+        set command = $command';'$word
+    }
+    var completions = [
+        &'totebag'= {
+            cand -C 'Specify the base directory for archiving or extracting.'
+            cand --dir 'Specify the base directory for archiving or extracting.'
+            cand -i 'Specify the ignore type.'
+            cand --ignore-types 'Specify the ignore type.'
+            cand --level 'Specify the log level'
+            cand -m 'Mode of operation.'
+            cand --mode 'Mode of operation.'
+            cand -o 'Output file in archive mode, or output directory in extraction mode'
+            cand --output 'Output file in archive mode, or output directory in extraction mode'
+            cand --to-archive-name-dir 'extract files to DEST/ARCHIVE_NAME directory (extract mode).'
+            cand -n 'No recursive directory (archive mode).'
+            cand --no-recursive 'No recursive directory (archive mode).'
+            cand -l 'List entries in the archive file with long format.'
+            cand --long 'List entries in the archive file with long format.'
+            cand --generate-completion 'Generate the completion files'
+            cand --overwrite 'Overwrite existing files.'
+            cand -h 'Print help'
+            cand --help 'Print help'
+            cand -V 'Print version'
+            cand --version 'Print version'
+        }
+    ]
+    $completions[$command]
+}
