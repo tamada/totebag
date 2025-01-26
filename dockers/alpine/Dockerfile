@@ -1,6 +1,6 @@
 FROM alpine:3.16 AS builder
 
-ARG VERSION=0.7.0
+ARG VERSION=0.7.1
 ARG TARGETPLATFORM
 ARG PLATFORM=${TARGETPLATFORM#linux/}
 
@@ -12,7 +12,7 @@ RUN apk add --no-cache curl tar gzip \
 
 FROM alpine:3.16
 
-ARG VERSION=0.7.0
+ARG VERSION=0.7.1
 
 LABEL org.opencontainers.image.source https://github.com/tamada/totebag
 
