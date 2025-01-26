@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 use std::fs::{create_dir_all, File};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use ignore::{Walk, WalkBuilder};
 use typed_builder::TypedBuilder;
@@ -46,6 +46,7 @@ pub(crate) trait ToteArchiver {
 pub struct Archiver {
     #[builder(setter(into))]
     pub archive_file: PathBuf,
+    #[builder(setter(into))]
     pub targets: Vec<PathBuf>,
     #[builder(default = None, setter(strip_option, into))]
     pub rebase_dir: Option<PathBuf>,
@@ -53,7 +54,7 @@ pub struct Archiver {
     pub overwrite: bool,
     #[builder(default = false)]
     pub no_recursive: bool,
-    #[builder(default = vec![IgnoreType::Default])]
+    #[builder(default = vec![IgnoreType::Default], setter(into))]
     pub ignore_types: Vec<IgnoreType>,
 }
 
@@ -213,7 +214,7 @@ fn build_walker_impl(opts: &Archiver, w: &mut WalkBuilder) {
     }
 }
 
-fn create_archiver(dest: &PathBuf) -> Result<Box<dyn ToteArchiver>> {
+fn create_archiver<P: AsRef<Path>>(dest: P) -> Result<Box<dyn ToteArchiver>> {
     use crate::archiver::cab::CabArchiver;
     use crate::archiver::lha::LhaArchiver;
     use crate::archiver::rar::RarArchiver;
@@ -223,6 +224,7 @@ fn create_archiver(dest: &PathBuf) -> Result<Box<dyn ToteArchiver>> {
     };
     use crate::archiver::zip::ZipArchiver;
 
+    let dest = dest.as_ref();
     let format = find_format(dest);
     match format {
         Ok(format) => match format {
