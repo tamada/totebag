@@ -22,7 +22,7 @@ jobs:
         run: |
           sed "s/^version = \".*\"/version = \"${{ steps.vars.outputs.tag }}\"/" Cargo.toml > a ; mv a Cargo.toml
           sed "s/\$VERSION/${{ steps.vars.outputs.tag }}/g" templates/README.md > a ; mv a README.md
-          for i in Dockerfile $(find dockers -name 'Dockerfile*''); do
+          for i in Dockerfile $(find dockers -name 'Dockerfile*'); do
               sed "s/ARG VERSION=.*/ARG VERSION=${{ steps.vars.outputs.tag }}/g" $i > a ; mv a $i
           done
 
