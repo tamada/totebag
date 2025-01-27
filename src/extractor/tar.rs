@@ -7,9 +7,6 @@ use tar::Archive;
 use xz2::read::XzDecoder;
 
 use crate::extractor::{Entry as ToteEntry, PathUtils, ToteExtractor};
-#[cfg(test)]
-use crate::format::Format;
-
 pub(super) struct TarExtractor {}
 
 pub(super) struct TarGzExtractor {}
@@ -33,10 +30,6 @@ impl ToteExtractor for TarExtractor {
             Ok(archive) => extract_tar(archive, opts),
         }
     }
-    #[cfg(test)]
-    fn format(&self) -> Format {
-        Format::Tar
-    }
 }
 
 impl ToteExtractor for TarGzExtractor {
@@ -51,10 +44,6 @@ impl ToteExtractor for TarGzExtractor {
             Ok(archive) => extract_tar(archive, opts),
             Err(e) => Err(e),
         }
-    }
-    #[cfg(test)]
-    fn format(&self) -> Format {
-        Format::TarGz
     }
 }
 
@@ -71,10 +60,6 @@ impl ToteExtractor for TarBz2Extractor {
             Ok(archive) => extract_tar(archive, opts),
         }
     }
-    #[cfg(test)]
-    fn format(&self) -> Format {
-        Format::TarBz2
-    }
 }
 
 impl ToteExtractor for TarXzExtractor {
@@ -90,10 +75,6 @@ impl ToteExtractor for TarXzExtractor {
             Ok(archive) => extract_tar(archive, opts),
         }
     }
-    #[cfg(test)]
-    fn format(&self) -> Format {
-        Format::TarXz
-    }
 }
 
 impl ToteExtractor for TarZstdExtractor {
@@ -108,10 +89,6 @@ impl ToteExtractor for TarZstdExtractor {
             Err(e) => Err(e),
             Ok(archive) => extract_tar(archive, opts),
         }
-    }
-    #[cfg(test)]
-    fn format(&self) -> Format {
-        Format::TarZstd
     }
 }
 
@@ -265,23 +242,5 @@ mod tests {
             }
             Err(_) => assert!(false),
         }
-    }
-
-    #[test]
-    fn test_format() {
-        let e1 = TarExtractor {};
-        assert_eq!(e1.format(), Format::Tar);
-
-        let e2 = TarGzExtractor {};
-        assert_eq!(e2.format(), Format::TarGz);
-
-        let e3 = TarBz2Extractor {};
-        assert_eq!(e3.format(), Format::TarBz2);
-
-        let e4 = TarXzExtractor {};
-        assert_eq!(e4.format(), Format::TarXz);
-
-        let e5 = TarZstdExtractor {};
-        assert_eq!(e5.format(), Format::TarZstd);
     }
 }

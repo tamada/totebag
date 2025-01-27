@@ -1,8 +1,8 @@
 #[cfg(target_os = "windows")]
-use crate::archiver::os::windows::*;
+use crate::archiver::os;
 
 #[cfg(any(target_os = "linux", target_os = "macos"))]
-use crate::archiver::os::linux::*;
+use crate::archiver::os;
 
 use std::fs::File;
 use std::io::BufReader;
@@ -10,7 +10,6 @@ use std::path::PathBuf;
 use zip::ZipWriter;
 
 use crate::archiver::{TargetPath, ToteArchiver};
-use crate::format::Format;
 use crate::{Result, ToteError};
 
 pub(super) struct ZipArchiver {}
@@ -25,7 +24,7 @@ impl ZipArchiver {
         target: PathBuf,
         tp: &TargetPath,
     ) -> Result<()> {
-        let opts = create_file_opts(&target);
+        let opts = os::create_file_opts(&target);
         let dest_path = tp.dest_path(&target);
         let name = dest_path.to_str().unwrap();
         if let Err(e) = zw.start_file(name, opts) {
@@ -65,10 +64,6 @@ impl ToteArchiver for ZipArchiver {
     fn enable(&self) -> bool {
         true
     }
-
-    fn format(&self) -> Format {
-        Format::Zip
-    }
 }
 
 #[cfg(test)]
@@ -100,7 +95,6 @@ mod tests {
 
             let result = archiver.perform();
             assert!(result.is_ok());
-            assert_eq!(archiver.format(), Format::Zip);
         });
     }
 

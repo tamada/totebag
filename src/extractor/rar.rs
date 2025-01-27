@@ -48,11 +48,6 @@ impl ToteExtractor for RarExtractor {
         }
         Ok(())
     }
-
-    #[cfg(test)]
-    fn format(&self) -> crate::format::Format {
-        crate::format::Format::Rar
-    }
 }
 
 fn convert(fh: FileHeader) -> Entry {
@@ -109,11 +104,5 @@ mod tests {
             }
             Err(e) => panic!("unexpected error: {:?}", e),
         };
-    }
-
-    #[test]
-    fn test_format() {
-        let e = RarExtractor {};
-        assert_eq!(e.format(), crate::format::Format::Rar);
     }
 }

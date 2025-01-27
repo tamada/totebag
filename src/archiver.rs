@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use ignore::{Walk, WalkBuilder};
 use typed_builder::TypedBuilder;
 
-use crate::format::{find_format, Format};
+use crate::format::{self, ArchiveFormat};
 use crate::{IgnoreType, Result, ToteError};
 
 mod cab;
@@ -16,14 +16,12 @@ mod sevenz;
 mod tar;
 mod zip;
 
-pub(crate) trait ToteArchiver {
+/// The trait for creating an archive file.
+pub trait ToteArchiver {
     /// Perform the archiving operation.
     /// - `file` is the destination file for the archive.
     /// - `tps` is the list of files to be archived.
     fn perform(&self, file: File, tps: Vec<TargetPath>) -> Result<()>;
-
-    /// Returns the format object of this archiver.
-    fn format(&self) -> Format;
     /// Returns true if this archiver is enabled.
     fn enable(&self) -> bool;
 }
@@ -44,28 +42,37 @@ pub(crate) trait ToteArchiver {
 /// ```
 #[derive(Debug, TypedBuilder)]
 pub struct Archiver {
+    #[builder(default = format::Manager::default())]
+    pub manager: format::Manager,
+    /// The destination file for archiving.
     #[builder(setter(into))]
     pub archive_file: PathBuf,
+    /// The list of files to be archived.
     #[builder(setter(into))]
     pub targets: Vec<PathBuf>,
+    /// the prefix directory for the each file into the archive files when `Some`
     #[builder(default = None, setter(strip_option, into))]
     pub rebase_dir: Option<PathBuf>,
+    /// Overwrite flag for archive file. Default is false.
     #[builder(default = false)]
     pub overwrite: bool,
+    /// By default (`false`), read files by traversing the each `targets`.
+    /// If `true`, it archives the specified files in `targets`.
     #[builder(default = false)]
     pub no_recursive: bool,
+    /// specifies the ignore types for traversing.
     #[builder(default = vec![IgnoreType::Default], setter(into))]
     pub ignore_types: Vec<IgnoreType>,
 }
 
 /// TargetPath is a helper struct to handle the target path for the archiving operation.
-pub(crate) struct TargetPath<'a> {
+pub struct TargetPath<'a> {
     base_path: &'a PathBuf,
     opts: &'a Archiver,
 }
 
 impl<'a> TargetPath<'a> {
-    pub fn new(target: &'a PathBuf, archiver: &'a Archiver) -> Self {
+    pub(crate) fn new(target: &'a PathBuf, archiver: &'a Archiver) -> Self {
         Self {
             base_path: target,
             opts: archiver,
@@ -92,14 +99,18 @@ impl<'a> TargetPath<'a> {
 
 impl Archiver {
     pub fn perform(&self) -> Result<()> {
-        let archiver = match create_archiver(&self.archive_file) {
+        let archiver = match create_archiver(&self.manager, &self.archive_file) {
             Ok(a) => a,
             Err(e) => return Err(e),
         };
+        self.perform_with(archiver)
+    }
+
+    pub fn perform_with(&self, archiver: Box<dyn ToteArchiver>) -> Result<()> {
         if !archiver.enable() {
             return Err(ToteError::UnsupportedFormat(format!(
-                "{:?}: not support archiving",
-                archiver.format()
+                "{}: not support archiving",
+                self.format().unwrap()
             )));
         }
         let paths = self
@@ -155,14 +166,14 @@ impl Archiver {
         }
     }
 
-    pub fn format(&self) -> Format {
-        find_format(&self.archive_file).unwrap()
+    pub fn format(&self) -> Option<&ArchiveFormat> {
+        self.manager.find(&self.archive_file)
     }
 
     pub fn info(&self) -> String {
         format!(
             "Format: {:?}\nArchive File: {:?}\nTargets: {:?}",
-            find_format(&self.archive_file),
+            self.format(),
             self.archive_file,
             self.targets
                 .iter()
@@ -214,7 +225,7 @@ fn build_walker_impl(opts: &Archiver, w: &mut WalkBuilder) {
     }
 }
 
-fn create_archiver<P: AsRef<Path>>(dest: P) -> Result<Box<dyn ToteArchiver>> {
+fn create_archiver<P: AsRef<Path>>(m: &format::Manager, dest: P) -> Result<Box<dyn ToteArchiver>> {
     use crate::archiver::cab::CabArchiver;
     use crate::archiver::lha::LhaArchiver;
     use crate::archiver::rar::RarArchiver;
@@ -225,22 +236,25 @@ fn create_archiver<P: AsRef<Path>>(dest: P) -> Result<Box<dyn ToteArchiver>> {
     use crate::archiver::zip::ZipArchiver;
 
     let dest = dest.as_ref();
-    let format = find_format(dest);
+    let format = m.find(dest);
     match format {
-        Ok(format) => match format {
-            Format::Cab => Ok(Box::new(CabArchiver {})),
-            Format::LHA => Ok(Box::new(LhaArchiver {})),
-            Format::Rar => Ok(Box::new(RarArchiver {})),
-            Format::SevenZ => Ok(Box::new(SevenZArchiver {})),
-            Format::Tar => Ok(Box::new(TarArchiver {})),
-            Format::TarBz2 => Ok(Box::new(TarBz2Archiver {})),
-            Format::TarGz => Ok(Box::new(TarGzArchiver {})),
-            Format::TarXz => Ok(Box::new(TarXzArchiver {})),
-            Format::TarZstd => Ok(Box::new(TarZstdArchiver {})),
-            Format::Zip => Ok(Box::new(ZipArchiver::new())),
+        Some(format) => match format.name.as_str() {
+            "Cab" => Ok(Box::new(CabArchiver {})),
+            "Lha" => Ok(Box::new(LhaArchiver {})),
+            "Rar" => Ok(Box::new(RarArchiver {})),
+            "SevenZ" => Ok(Box::new(SevenZArchiver {})),
+            "Tar" => Ok(Box::new(TarArchiver {})),
+            "TarBz2" => Ok(Box::new(TarBz2Archiver {})),
+            "TarGz" => Ok(Box::new(TarGzArchiver {})),
+            "TarXz" => Ok(Box::new(TarXzArchiver {})),
+            "TarZstd" => Ok(Box::new(TarZstdArchiver {})),
+            "Zip" => Ok(Box::new(ZipArchiver::new())),
             _ => Err(ToteError::UnknownFormat(format.to_string())),
         },
-        Err(msg) => Err(msg),
+        None => Err(ToteError::Archiver(format!(
+            "{:?}: no suitable archiver",
+            dest.file_name().unwrap()
+        ))),
     }
 }
 
@@ -297,59 +311,5 @@ mod tests {
             PathBuf::from("new/testdata/sample/Cargo.toml").as_path(),
             tp.dest_path(&PathBuf::from("testdata/sample/Cargo.toml"))
         );
-    }
-
-    #[test]
-    fn test_archiver() {
-        let a1 = create_archiver(&PathBuf::from("results/test.tar"));
-        if let Ok(f) = a1 {
-            assert_eq!(f.format(), Format::Tar);
-        } else {
-            assert!(false);
-        }
-
-        let a2 = create_archiver(&PathBuf::from("results/test.tar.gz"));
-        assert!(a2.is_ok());
-        assert_eq!(a2.unwrap().format(), Format::TarGz);
-
-        let a3 = create_archiver(&PathBuf::from("results/test.tar.bz2"));
-        assert!(a3.is_ok());
-        assert_eq!(a3.unwrap().format(), Format::TarBz2);
-
-        let a4 = create_archiver(&PathBuf::from("results/test.zip"));
-        assert!(a4.is_ok());
-        assert_eq!(a4.unwrap().format(), Format::Zip);
-
-        let a5 = create_archiver(&PathBuf::from("results/test.rar"));
-        assert!(a5.is_ok());
-        assert_eq!(a5.unwrap().format(), Format::Rar);
-
-        let a6 = create_archiver(&PathBuf::from("results/test.tar.xz"));
-        assert!(a6.is_ok());
-        assert_eq!(a6.unwrap().format(), Format::TarXz);
-
-        let a7 = create_archiver(&PathBuf::from("results/test.7z"));
-        assert!(a7.is_ok());
-        assert_eq!(a7.unwrap().format(), Format::SevenZ);
-
-        let a8 = create_archiver(&PathBuf::from("results/test.tar.zst"));
-        assert!(a8.is_ok());
-        assert_eq!(a8.unwrap().format(), Format::TarZstd);
-
-        let a9 = create_archiver(&PathBuf::from("results/test.lha"));
-        assert!(a9.is_ok());
-        assert_eq!(a9.unwrap().format(), Format::LHA);
-
-        let a10 = create_archiver(&PathBuf::from("results/test.cab"));
-        assert!(a10.is_ok());
-        assert_eq!(a10.unwrap().format(), Format::Cab);
-
-        let ae = create_archiver(&PathBuf::from("results/test.unknown"));
-        assert!(ae.is_err());
-        match ae {
-            Err(ToteError::UnknownFormat(msg)) => assert_eq!(msg, "test.unknown".to_string()),
-            Err(e) => panic!("unexpected error: {:?}", e),
-            Ok(_) => panic!("unexpected result"),
-        }
     }
 }

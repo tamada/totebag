@@ -34,11 +34,6 @@ impl ToteExtractor for CabExtractor {
             Err(ToteError::Array(errs))
         }
     }
-
-    #[cfg(test)]
-    fn format(&self) -> crate::format::Format {
-        crate::format::Format::Cab
-    }
 }
 
 fn write_file_impl(
@@ -147,11 +142,5 @@ mod tests {
             }
             Err(_) => assert!(false),
         };
-    }
-
-    #[test]
-    fn test_format() {
-        let e = CabExtractor {};
-        assert_eq!(e.format(), crate::format::Format::Cab);
     }
 }

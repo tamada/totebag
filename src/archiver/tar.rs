@@ -7,7 +7,6 @@ use tar::Builder;
 use xz2::write::XzEncoder;
 
 use crate::archiver::{TargetPath, ToteArchiver};
-use crate::format::Format;
 use crate::{Result, ToteError};
 
 pub(super) struct TarArchiver {}
@@ -20,9 +19,6 @@ impl ToteArchiver for TarArchiver {
     fn perform(&self, file: File, tps: Vec<TargetPath>) -> Result<()> {
         write_tar(tps, file)
     }
-    fn format(&self) -> Format {
-        Format::Tar
-    }
     fn enable(&self) -> bool {
         true
     }
@@ -31,9 +27,6 @@ impl ToteArchiver for TarArchiver {
 impl ToteArchiver for TarGzArchiver {
     fn perform(&self, file: File, tps: Vec<TargetPath>) -> Result<()> {
         write_tar(tps, GzEncoder::new(file, flate2::Compression::default()))
-    }
-    fn format(&self) -> Format {
-        Format::TarGz
     }
     fn enable(&self) -> bool {
         true
@@ -44,9 +37,6 @@ impl ToteArchiver for TarBz2Archiver {
     fn perform(&self, file: File, tps: Vec<TargetPath>) -> Result<()> {
         write_tar(tps, BzEncoder::new(file, bzip2::Compression::best()))
     }
-    fn format(&self) -> Format {
-        Format::TarBz2
-    }
     fn enable(&self) -> bool {
         true
     }
@@ -55,10 +45,6 @@ impl ToteArchiver for TarBz2Archiver {
 impl ToteArchiver for TarXzArchiver {
     fn perform(&self, file: File, tps: Vec<TargetPath>) -> Result<()> {
         write_tar(tps, XzEncoder::new(file, 9))
-    }
-
-    fn format(&self) -> Format {
-        Format::TarXz
     }
     fn enable(&self) -> bool {
         true
@@ -69,10 +55,6 @@ impl ToteArchiver for TarZstdArchiver {
     fn perform(&self, file: File, tps: Vec<TargetPath>) -> Result<()> {
         let encoder = zstd::Encoder::new(file, 9).unwrap();
         write_tar(tps, encoder.auto_finish())
-    }
-
-    fn format(&self) -> Format {
-        Format::TarZstd
     }
     fn enable(&self) -> bool {
         true
@@ -121,10 +103,8 @@ fn process_file<W: Write>(
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
-
     use crate::archiver::Archiver;
-    use crate::format::Format;
+    use std::path::PathBuf;
 
     fn run_test<F>(f: F)
     where
@@ -153,7 +133,6 @@ mod tests {
             }
             assert!(result.is_ok());
             assert!(path.exists());
-            assert_eq!(archiver.format(), Format::Tar);
             path
         });
     }
@@ -170,7 +149,6 @@ mod tests {
             let path = PathBuf::from("results/test.tar.gz");
             assert!(result.is_ok());
             assert!(path.exists());
-            assert_eq!(archiver.format(), Format::TarGz);
             path
         });
     }
@@ -187,7 +165,6 @@ mod tests {
             let path = PathBuf::from("results/test.tar.bz2");
             assert!(result.is_ok());
             assert!(path.exists());
-            assert_eq!(archiver.format(), Format::TarBz2);
             path
         });
     }
@@ -204,7 +181,6 @@ mod tests {
             let path = PathBuf::from("results/test.tar.xz");
             assert!(result.is_ok());
             assert!(path.exists());
-            assert_eq!(archiver.format(), Format::TarXz);
             path
         });
     }
@@ -221,7 +197,6 @@ mod tests {
             let path = PathBuf::from("results/test.tar.zst");
             assert!(result.is_ok());
             assert!(path.exists());
-            assert_eq!(archiver.format(), Format::TarZstd);
             path
         });
     }

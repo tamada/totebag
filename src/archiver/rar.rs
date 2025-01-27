@@ -1,6 +1,6 @@
 use std::fs::File;
 
-use crate::archiver::{Format, ToteArchiver};
+use crate::archiver::ToteArchiver;
 use crate::{Result, ToteError};
 
 use super::TargetPath;
@@ -16,25 +16,13 @@ impl ToteArchiver for RarArchiver {
     fn enable(&self) -> bool {
         false
     }
-
-    fn format(&self) -> Format {
-        Format::Rar
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::archiver::Archiver;
-
-    use super::*;
-
+    use crate::ToteError;
     use std::path::PathBuf;
-
-    #[test]
-    fn test_format() {
-        let archiver = RarArchiver {};
-        assert_eq!(archiver.format(), Format::Rar);
-    }
 
     #[test]
     fn test_rar_archive() {
