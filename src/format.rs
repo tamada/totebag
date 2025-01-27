@@ -1,100 +1,99 @@
 use std::fmt::Display;
 use std::path::Path;
 
-use super::{Result, ToteError};
-
-/// return `true` if all of `args` is an acceptable archive file name for totebag.
-/// ```
-/// args.iter().all(is_archive_file)
-/// ```
-pub fn is_all_args_archives<P: AsRef<Path>>(args: &[P]) -> bool {
-    args.iter().all(is_archive_file)
+#[derive(Debug, Clone)]
+pub struct Manager {
+    formats: Vec<ArchiveFormat>,
 }
 
-/// returns `true`` when the given path is an acceptable archive file name for totebag.
-pub fn is_archive_file<P: AsRef<Path>>(arg: P) -> bool {
-    let arg = arg.as_ref();
-    let name = arg.to_str().unwrap().to_lowercase();
-    for (_, ext) in exts().iter() {
-        if name.ends_with(ext) {
-            return true;
+impl Manager {
+    pub fn default() -> Self {
+        Self {
+            formats: vec![
+                ArchiveFormat::new("Cab", vec![".cab"]),
+                ArchiveFormat::new("Lha", vec![".lha", ".lzh"]),
+                ArchiveFormat::new("SevenZ", vec![".7z"]),
+                ArchiveFormat::new("Rar", vec![".rar"]),
+                ArchiveFormat::new("Tar", vec![".tar"]),
+                ArchiveFormat::new("TarGz", vec![".tar.gz", ".tgz"]),
+                ArchiveFormat::new("TarBz2", vec![".tar.bz2", ".tbz2"]),
+                ArchiveFormat::new("TarXz", vec![".tar.xz", ".txz"]),
+                ArchiveFormat::new("TarZstd", vec![".tar.zst", ".tzst", ".tar.zstd", ".tzstd"]),
+                ArchiveFormat::new("Zip", vec![".zip", ".jar", ".war", ".ear"]),
+            ],
         }
     }
-    false
-}
 
-/// Find the format of the given file name.
-/// If the given file name has an unknown extension for totebag, it returns an `Err(ToteErro::Unknown)`.
-pub fn find_format<P: AsRef<Path>>(path: P) -> Result<Format> {
-    match path.as_ref().file_name() {
-        Some(file_name) => {
-            let name = file_name.to_str().unwrap().to_lowercase();
-            for ext in exts().iter() {
-                if name.ends_with(&ext.1) {
-                    return Ok(ext.0.clone());
-                }
+    pub fn new(formats: Vec<ArchiveFormat>) -> Self {
+        Self { formats }
+    }
+
+    pub fn match_all<P: AsRef<Path>>(&self, args: &[P]) -> bool {
+        args.iter().all(|p| self.find(p).is_some())
+    }
+
+    /// Find the format of the given file name.
+    /// If the given file name has an unknown extension for totebag, it returns an `Err(ToteErro::Unknown)`.
+    pub fn find<P: AsRef<Path>>(&self, path: P) -> Option<&ArchiveFormat> {
+        let name = path.as_ref().to_str().unwrap().to_lowercase();
+        for format in &self.formats {
+            if format.is_match(&name) {
+                return Some(&format);
             }
-            Err(ToteError::UnknownFormat(
-                file_name.to_str().unwrap().to_string(),
-            ))
         }
-        None => Err(ToteError::NoArgumentsGiven),
+        None
+    }
+
+    pub fn add(&mut self, format: ArchiveFormat) {
+        self.formats.push(format);
+    }
+
+    pub fn remove(&mut self, format: ArchiveFormat) {
+        self.formats.retain(|f| f != &format);
     }
 }
 
-fn exts() -> Vec<(Format, String)> {
-    vec![
-        (Format::Cab, String::from(".cab")),
-        (Format::LHA, String::from(".lha")),
-        (Format::LHA, String::from(".lzh")),
-        (Format::SevenZ, String::from(".7z")),
-        (Format::Rar, String::from(".rar")),
-        (Format::Tar, String::from(".tar")),
-        (Format::TarGz, String::from(".tar.gz")),
-        (Format::TarGz, String::from(".tgz")),
-        (Format::TarBz2, String::from(".tar.bz2")),
-        (Format::TarBz2, String::from(".tbz2")),
-        (Format::TarXz, String::from(".tar.xz")),
-        (Format::TarXz, String::from(".txz")),
-        (Format::TarZstd, String::from(".tar.zst")),
-        (Format::TarZstd, String::from(".tzst")),
-        (Format::Zip, String::from(".zip")),
-        (Format::Zip, String::from(".jar")),
-        (Format::Zip, String::from(".war")),
-        (Format::Zip, String::from(".ear")),
-    ]
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct ArchiveFormat {
+    pub name: String,
+    exts: Vec<String>,
 }
 
-#[derive(Debug, PartialEq, Clone)]
-pub enum Format {
-    Cab,
-    LHA,
-    SevenZ,
-    Rar,
-    Tar,
-    TarGz,
-    TarBz2,
-    TarXz,
-    TarZstd,
-    Zip,
-    Unknown(String),
-}
-
-impl Display for Format {
+impl Display for ArchiveFormat {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Format::Cab => write!(f, "Cab"),
-            Format::LHA => write!(f, "LHA"),
-            Format::SevenZ => write!(f, "SevenZ"),
-            Format::Rar => write!(f, "Rar"),
-            Format::Tar => write!(f, "Tar"),
-            Format::TarBz2 => write!(f, "TarBz2"),
-            Format::TarGz => write!(f, "TarGz"),
-            Format::TarXz => write!(f, "TarXz"),
-            Format::TarZstd => write!(f, "TarZstd"),
-            Format::Zip => write!(f, "Zip"),
-            Format::Unknown(s) => write!(f, "{}: unknown format", s),
+        write!(f, "{}", self.name)
+    }
+}
+
+impl AsRef<str> for ArchiveFormat {
+    fn as_ref(&self) -> &str {
+        &self.name
+    }
+}
+
+impl Into<String> for ArchiveFormat {
+    fn into(self) -> String {
+        self.name
+    }
+}
+
+impl ArchiveFormat {
+    pub fn new<T: Into<String>>(name: T, exts: Vec<T>) -> Self {
+        Self {
+            name: name.into(),
+            exts: exts.into_iter().map(|e| e.into().to_lowercase()).collect(),
         }
+    }
+
+    pub fn is_match<P: AsRef<Path>>(&self, p: P) -> bool {
+        let p = p.as_ref();
+        let name = p.to_str().unwrap().to_lowercase();
+        for ext in &self.exts {
+            if name.ends_with(ext) {
+                return true;
+            }
+        }
+        false
     }
 }
 
@@ -104,53 +103,34 @@ mod tests {
 
     #[test]
     fn test_format() {
-        if let Err(e) = find_format("hoge.unknown") {
-            if let ToteError::UnknownFormat(s) = e {
-                assert_eq!(s, "hoge.unknown".to_string());
-            } else {
-                assert!(false);
-            }
-        }
-        if let Ok(f) = find_format("hoge.zip") {
-            assert_eq!(f, Format::Zip);
-            assert_eq!(f.to_string(), "Zip".to_string());
-        }
-        if let Ok(f) = find_format("hoge.tar") {
-            assert_eq!(f, Format::Tar);
-            assert_eq!(f.to_string(), "Tar".to_string());
-        }
-        if let Ok(f) = find_format("hoge.rar") {
-            assert_eq!(f, Format::Rar);
-            assert_eq!(f.to_string(), "Rar".to_string());
-        }
-        if let Ok(f) = find_format("hoge.tar.gz") {
-            assert_eq!(f, Format::TarGz);
-            assert_eq!(f.to_string(), "TarGz".to_string());
-        }
-        if let Ok(f) = find_format("hoge.tar.bz2") {
-            assert_eq!(f, Format::TarBz2);
-            assert_eq!(f.to_string(), "TarBz2".to_string());
-        }
-        if let Ok(f) = find_format("hoge.tar.xz") {
-            assert_eq!(f, Format::TarXz);
-            assert_eq!(f.to_string(), "TarXz".to_string());
-        }
-        if let Ok(f) = find_format("hoge.7z") {
-            assert_eq!(f, Format::SevenZ);
-            assert_eq!(f.to_string(), "SevenZ".to_string());
-        }
-        if let Err(e) = find_format(".") {
-            if let ToteError::NoArgumentsGiven = e {
-                assert!(true);
-            } else {
-                assert!(false);
-            }
-        }
+        let manager = Manager::default();
+        assert_eq!(manager.find("hoge.unknown"), None);
+        assert_eq!(manager.find("test.cab"), Some(&manager.formats[0]));
+        assert_eq!(manager.find("test.lha"), Some(&manager.formats[1]));
+        assert_eq!(manager.find("test.lzh"), Some(&manager.formats[1]));
+        assert_eq!(manager.find("test.7z"), Some(&manager.formats[2]));
+        assert_eq!(manager.find("test.rar"), Some(&manager.formats[3]));
+        assert_eq!(manager.find("test.tar"), Some(&manager.formats[4]));
+        assert_eq!(manager.find("test.tar.gz"), Some(&manager.formats[5]));
+        assert_eq!(manager.find("test.tgz"), Some(&manager.formats[5]));
+        assert_eq!(manager.find("test.tar.bz2"), Some(&manager.formats[6]));
+        assert_eq!(manager.find("test.tbz2"), Some(&manager.formats[6]));
+        assert_eq!(manager.find("test.tar.xz"), Some(&manager.formats[7]));
+        assert_eq!(manager.find("test.txz"), Some(&manager.formats[7]));
+        assert_eq!(manager.find("test.tar.zst"), Some(&manager.formats[8]));
+        assert_eq!(manager.find("test.tzst"), Some(&manager.formats[8]));
+        assert_eq!(manager.find("test.tar.zstd"), Some(&manager.formats[8]));
+        assert_eq!(manager.find("test.tzstd"), Some(&manager.formats[8]));
+        assert_eq!(manager.find("test.zip"), Some(&manager.formats[9]));
+        assert_eq!(manager.find("test.jar"), Some(&manager.formats[9]));
+        assert_eq!(manager.find("test.ear"), Some(&manager.formats[9]));
+        assert_eq!(manager.find("test.war"), Some(&manager.formats[9]));
     }
 
     #[test]
     fn test_is_all_args_archives() {
-        assert!(is_all_args_archives(&[
+        let manager = Manager::default();
+        assert!(manager.match_all(&[
             "test.zip",
             "test.tar",
             "test.tar.gz",

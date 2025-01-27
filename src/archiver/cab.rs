@@ -4,7 +4,6 @@ use std::path::PathBuf;
 use cab::{CabinetBuilder, CabinetWriter};
 
 use crate::archiver::{TargetPath, ToteArchiver};
-use crate::format::Format;
 use crate::{Result, ToteError};
 
 pub(super) struct CabArchiver {}
@@ -31,10 +30,6 @@ impl ToteArchiver for CabArchiver {
             Ok(_) => Ok(()),
             Err(e) => Err(ToteError::Archiver(e.to_string())),
         }
-    }
-
-    fn format(&self) -> Format {
-        Format::Cab
     }
 
     fn enable(&self) -> bool {
@@ -73,8 +68,6 @@ fn collect_entries<'a>(tps: &'a Vec<TargetPath>) -> Vec<(PathBuf, &'a TargetPath
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     use crate::archiver::Archiver;
     use std::path::PathBuf;
 
@@ -89,12 +82,6 @@ mod tests {
         if let Err(err) = result {
             std::panic::resume_unwind(err);
         }
-    }
-
-    #[test]
-    fn test_format() {
-        let archiver = CabArchiver {};
-        assert_eq!(archiver.format(), Format::Cab);
     }
 
     #[test]

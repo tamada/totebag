@@ -40,11 +40,6 @@ impl ToteExtractor for ZipExtractor {
         }
         Ok(())
     }
-
-    #[cfg(test)]
-    fn format(&self) -> crate::format::Format {
-        crate::format::Format::Zip
-    }
 }
 
 fn convert(zfile: ZipFile) -> Entry {
@@ -128,11 +123,5 @@ mod tests {
             }
             Err(_) => assert!(false),
         };
-    }
-
-    #[test]
-    fn test_format() {
-        let e = ZipExtractor {};
-        assert_eq!(e.format(), crate::format::Format::Zip);
     }
 }

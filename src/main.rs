@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use cli::{LogLevel, RunMode};
 use totebag::archiver::Archiver;
 use totebag::extractor::Extractor;
+use totebag::format::Manager as FormatManager;
 use totebag::{Result, ToteError};
 
 mod cli;
@@ -15,22 +16,25 @@ fn update_loglevel(level: LogLevel) {
         cli::LogLevel::Warn => std::env::set_var("RUST_LOG", "warn"),
         cli::LogLevel::Info => std::env::set_var("RUST_LOG", "info"),
         cli::LogLevel::Debug => std::env::set_var("RUST_LOG", "debug"),
+        cli::LogLevel::Trace => std::env::set_var("RUST_LOG", "trace"),
     }
     env_logger::init();
+    log::info!("set log level to {:?}", level);
 }
 
 fn perform(mut opts: cli::CliOpts) -> Result<()> {
     update_loglevel(opts.level);
+    let manager = FormatManager::default();
     if cfg!(debug_assertions) {
         #[cfg(debug_assertions)]
         if opts.generate_completion {
             return gencomp::generate(PathBuf::from("target/completions"));
         }
     }
-    match opts.run_mode() {
-        Ok(RunMode::Archive) => perform_archive(opts),
-        Ok(RunMode::Extract) => perform_extract_or_list(opts, perform_extract_each),
-        Ok(RunMode::List) => perform_extract_or_list(opts, perform_list_each),
+    match opts.run_mode(&manager) {
+        Ok(RunMode::Archive) => perform_archive(opts, manager),
+        Ok(RunMode::Extract) => perform_extract_or_list(opts, manager, perform_extract_each),
+        Ok(RunMode::List) => perform_extract_or_list(opts, manager, perform_list_each),
         Ok(RunMode::Auto) => Err(ToteError::Unknown(
             "cannot distinguish archiving and extracting".to_string(),
         )),
@@ -38,9 +42,9 @@ fn perform(mut opts: cli::CliOpts) -> Result<()> {
     }
 }
 
-fn perform_extract_or_list<F>(opts: cli::CliOpts, f: F) -> Result<()>
+fn perform_extract_or_list<F>(opts: cli::CliOpts, m: FormatManager, f: F) -> Result<()>
 where
-    F: Fn(&cli::CliOpts, PathBuf) -> Result<()>,
+    F: Fn(&cli::CliOpts, FormatManager, PathBuf) -> Result<()>,
 {
     let args = opts
         .args
@@ -50,7 +54,7 @@ where
     log::info!("args: {:?}", args);
     let mut errs = vec![];
     for arg in args {
-        if let Err(e) = f(&opts, arg) {
+        if let Err(e) = f(&opts, m.clone(), arg) {
             errs.push(e);
         }
     }
@@ -61,9 +65,14 @@ where
     }
 }
 
-fn perform_extract_each(opts: &cli::CliOpts, archive_file: PathBuf) -> Result<()> {
+fn perform_extract_each(
+    opts: &cli::CliOpts,
+    fm: FormatManager,
+    archive_file: PathBuf,
+) -> Result<()> {
     let extractor = Extractor::builder()
         .archive_file(archive_file)
+        .manager(fm)
         .destination(opts.output.clone().unwrap_or_else(|| PathBuf::from(".")))
         .use_archive_name_dir(opts.extractors.to_archive_name_dir)
         .overwrite(opts.overwrite)
@@ -72,9 +81,10 @@ fn perform_extract_each(opts: &cli::CliOpts, archive_file: PathBuf) -> Result<()
     extractor.perform()
 }
 
-fn perform_list_each(opts: &cli::CliOpts, archive_file: PathBuf) -> Result<()> {
+fn perform_list_each(opts: &cli::CliOpts, fm: FormatManager, archive_file: PathBuf) -> Result<()> {
     let extractor = Extractor::builder()
         .archive_file(archive_file)
+        .manager(fm)
         .destination(opts.output.clone().unwrap_or_else(|| PathBuf::from(".")))
         .use_archive_name_dir(opts.extractors.to_archive_name_dir)
         .overwrite(opts.overwrite)
@@ -95,9 +105,10 @@ fn perform_list_each(opts: &cli::CliOpts, archive_file: PathBuf) -> Result<()> {
     }
 }
 
-fn perform_archive(cliopts: cli::CliOpts) -> Result<()> {
+fn perform_archive(cliopts: cli::CliOpts, fm: FormatManager) -> Result<()> {
     let archiver = Archiver::builder()
         .archive_file(cliopts.output.unwrap())
+        .manager(fm.clone())
         .targets(
             cliopts
                 .args
@@ -132,6 +143,7 @@ fn print_error(e: &ToteError) {
         }
         ToteError::DestIsDir(p) => println!("{}: destination is a directory", p.to_str().unwrap()),
         ToteError::DirExists(p) => println!("{}: directory already exists", p.to_str().unwrap()),
+        ToteError::Extractor(s) => println!("Extractor error: {}", s),
         ToteError::Fatal(e) => println!("Error: {}", e),
         ToteError::FileNotFound(p) => println!("{}: file not found", p.to_str().unwrap()),
         ToteError::FileExists(p) => println!("{}: file already exists", p.to_str().unwrap()),

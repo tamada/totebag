@@ -1,11 +1,10 @@
 use clap::{Parser, ValueEnum};
 use std::path::PathBuf;
 
-use totebag::format::is_all_args_archives;
 use totebag::{IgnoreType, Result, ToteError};
 
 #[derive(Debug, Clone, ValueEnum, PartialEq, Copy)]
-pub enum RunMode {
+pub(crate) enum RunMode {
     Auto,
     Archive,
     Extract,
@@ -14,7 +13,7 @@ pub enum RunMode {
 
 #[derive(Parser, Debug)]
 #[clap(version, author, about, arg_required_else_help = true)]
-pub struct CliOpts {
+pub(crate) struct CliOpts {
     #[clap(flatten)]
     pub extractors: ExtractorOpts,
 
@@ -112,21 +111,29 @@ pub struct ExtractorOpts {
     pub to_archive_name_dir: bool,
 }
 
+/// The log level.
 #[derive(Parser, Debug, ValueEnum, Clone, PartialEq, Copy)]
 pub enum LogLevel {
+    /// The error level.
     Error,
+    /// The warning level.
     Warn,
+    /// The info level.
     Info,
+    /// The debug level.
     Debug,
+    /// The trace level.
+    Trace,
 }
 
 impl CliOpts {
-    pub fn run_mode(&mut self) -> Result<RunMode> {
+    /// Find the mode of operation.
+    pub(crate) fn run_mode(&mut self, m: &totebag::format::Manager) -> Result<RunMode> {
         if self.args.is_empty() {
             return Err(ToteError::NoArgumentsGiven);
         }
         if self.mode == RunMode::Auto {
-            if is_all_args_archives(
+            if m.match_all(
                 &self
                     .args
                     .iter()
@@ -153,17 +160,18 @@ mod tests {
 
     #[test]
     fn test_find_mode() {
+        let manager = totebag::format::Manager::default();
         let mut cli1 =
             CliOpts::parse_from(&["totebag_test", "src", "LICENSE", "README.md", "Cargo.toml"]);
-        let r1 = cli1.run_mode();
+        let r1 = cli1.run_mode(&manager);
         assert!(r1.is_ok());
         assert_eq!(r1.unwrap(), RunMode::Archive);
 
         let mut cli2 =
             CliOpts::parse_from(&["totebag_test", "src", "LICENSE", "README.md", "hoge.zip"]);
-        let r2 = cli2.run_mode();
+        let r2 = cli2.run_mode(&manager);
         assert!(r2.is_ok());
-        assert_eq!(cli2.run_mode().unwrap(), RunMode::Archive);
+        assert_eq!(r2.unwrap(), RunMode::Archive);
 
         let mut cli3 = CliOpts::parse_from(&[
             "totebag_test",
@@ -172,9 +180,9 @@ mod tests {
             "README.tar.bz2",
             "hoge.rar",
         ]);
-        let r3 = cli3.run_mode();
+        let r3 = cli3.run_mode(&manager);
         assert!(r3.is_ok());
-        assert_eq!(cli3.run_mode().unwrap(), RunMode::Extract);
+        assert_eq!(r3.unwrap(), RunMode::Extract);
 
         let mut cli4 = CliOpts::parse_from(&[
             "totebag_test",
@@ -185,9 +193,9 @@ mod tests {
             "--mode",
             "list",
         ]);
-        let r4 = cli4.run_mode();
+        let r4 = cli4.run_mode(&manager);
         assert!(r4.is_ok());
-        assert_eq!(cli4.run_mode().unwrap(), RunMode::List);
+        assert_eq!(r4.unwrap(), RunMode::List);
 
         let r = CliOpts::try_parse_from(&["totebag_test"]);
         assert!(r.is_err());

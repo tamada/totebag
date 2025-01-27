@@ -60,11 +60,6 @@ impl ToteExtractor for LhaExtractor {
             Err(ToteError::Array(errs))
         }
     }
-
-    #[cfg(test)]
-    fn format(&self) -> crate::format::Format {
-        crate::format::Format::LHA
-    }
 }
 
 fn write_data_impl(reader: &mut LhaDecodeReader<File>, opts: &PathUtils) -> Result<()> {
@@ -117,7 +112,6 @@ fn convert(h: &LhaHeader) -> Entry {
 mod tests {
     use super::*;
     use crate::extractor::Extractor;
-    use crate::format::Format;
 
     #[test]
     fn test_list_archives() {
@@ -156,11 +150,5 @@ mod tests {
                 assert!(false);
             }
         };
-    }
-
-    #[test]
-    fn test_format() {
-        let e = LhaExtractor {};
-        assert_eq!(e.format(), Format::LHA);
     }
 }

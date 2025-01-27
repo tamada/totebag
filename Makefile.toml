@@ -1,3 +1,6 @@
+[env]
+VERSION = { script = [ "grep '^version = ' Cargo.toml | sed 's/version = \"\\(.*\\)\"/\\1/g'" ] }
+
 [tasks.format]
 install_crate = "rustfmt"
 command = "cargo"
@@ -11,6 +14,12 @@ dependencies = ["format"]
 [tasks.test]
 command = "cargo"
 args = ["llvm-cov", "--html"]
+
+[tasks.generate-completion]
+script = [
+    "cargo run -- --generate-completion",
+    "cp -r target/completions ./assets"
+]
 
 # [tasks.post-build]
 # description = "Generate completion files after build"
@@ -29,12 +38,10 @@ script = ["hugo -s site"]
 
 [tasks.docker]
 description = "Build the docker image for the current arch"
-script = [
-    "docker build -t ghcr.io/tamada/totebag:latest -t ghcr.io/tamada/totebag:${CARGO_MAKE_WORKSPACE_PACKAGE_VERSION}."
-]
+command = "docker build -t ghcr.io/tamada/totebag:latest -t ghcr.io/tamada/totebag:${VERSION} ."
 
 [tasks.docker_buildx]
 description = "Build the docker image for multi-arch"
 script = [
-    "docker buildx build --platform linux/arm64/v8,linux/amd64 --output=type=image,push=true -t ghcr.io/tamada/totebag:latest -t ghcr.io/tamada/totebag:${CARGO_MAKE_WORKSPACE_PACKAGE_VERSION} ."
+    "docker buildx build --platform linux/arm64/v8,linux/amd64 --output=type=image,push=true -t ghcr.io/tamada/totebag:latest -t ghcr.io/tamada/totebag:${VERSION} ."
 ]

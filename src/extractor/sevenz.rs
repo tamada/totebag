@@ -32,11 +32,6 @@ impl ToteExtractor for SevenZExtractor {
         };
         extract(&file, opts)
     }
-
-    #[cfg(test)]
-    fn format(&self) -> crate::format::Format {
-        crate::format::Format::SevenZ
-    }
 }
 
 fn convert(e: &SevenZArchiveEntry) -> Entry {
@@ -111,11 +106,5 @@ mod tests {
             }
             Err(_) => assert!(false),
         };
-    }
-
-    #[test]
-    fn test_format() {
-        let e = SevenZExtractor {};
-        assert_eq!(e.format(), crate::format::Format::SevenZ);
     }
 }

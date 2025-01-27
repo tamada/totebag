@@ -1,6 +1,6 @@
 use std::fs::File;
 
-use crate::archiver::{Format, ToteArchiver};
+use crate::archiver::ToteArchiver;
 use crate::{Result, ToteError};
 
 use super::TargetPath;
@@ -16,9 +16,6 @@ impl ToteArchiver for LhaArchiver {
     fn enable(&self) -> bool {
         false
     }
-    fn format(&self) -> Format {
-        Format::LHA
-    }
 }
 
 #[cfg(test)]
@@ -30,12 +27,6 @@ mod tests {
     use std::path::PathBuf;
 
     #[test]
-    fn test_format() {
-        let archiver = LhaArchiver {};
-        assert_eq!(archiver.format(), Format::LHA);
-    }
-
-    #[test]
     fn test_lha_archive() {
         let archiver = Archiver::builder()
             .archive_file(PathBuf::from("results/test.lzh"))
@@ -44,7 +35,7 @@ mod tests {
         let r = archiver.perform();
         assert!(r.is_err());
         if let Err(ToteError::UnsupportedFormat(e)) = r {
-            assert_eq!(e, "LHA: not support archiving");
+            assert_eq!(e, "Lha: not support archiving");
         } else {
             panic!("unexpected result: {:?}", r);
         }

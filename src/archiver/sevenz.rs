@@ -5,7 +5,6 @@ use sevenz_rust::{SevenZArchiveEntry, SevenZWriter};
 
 use crate::archiver::TargetPath;
 use crate::archiver::ToteArchiver;
-use crate::format::Format;
 use crate::{Result, ToteError};
 
 pub(super) struct SevenZArchiver {}
@@ -37,10 +36,6 @@ impl ToteArchiver for SevenZArchiver {
         }
     }
 
-    fn format(&self) -> Format {
-        Format::SevenZ
-    }
-
     fn enable(&self) -> bool {
         true
     }
@@ -60,16 +55,7 @@ fn process_file(szw: &mut SevenZWriter<File>, target: &PathBuf, dest_path: &Path
 #[cfg(test)]
 mod tests {
     use crate::archiver::Archiver;
-
-    use super::*;
-
     use std::path::PathBuf;
-
-    #[test]
-    fn test_format() {
-        let archiver = SevenZArchiver {};
-        assert_eq!(archiver.format(), Format::SevenZ);
-    }
 
     fn run_test<F>(f: F)
     where
@@ -94,7 +80,6 @@ mod tests {
                 .build();
             let result = archiver.perform();
             assert!(result.is_ok());
-            assert_eq!(Format::SevenZ, archiver.format());
         });
     }
 
