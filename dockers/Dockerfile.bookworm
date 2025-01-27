@@ -1,6 +1,6 @@
 FROM rust:1-bookworm AS builder
 
-ARG VERSION=0.7.2
+ARG VERSION=0.7.3
 ARG TARGETPLATFORM
 
 WORKDIR /work/totebag
@@ -10,7 +10,7 @@ RUN cargo build --release
 
 FROM debian:bookworm-slim
 
-ARG VERSION=0.7.2
+ARG VERSION=0.7.3
 
 LABEL org.opencontainers.image.source=https://github.com/tamada/totebag \
       org.opencontainers.image.version=${VERSION} \
