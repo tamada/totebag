@@ -99,11 +99,17 @@ impl<'a> TargetPath<'a> {
 
     /// Returns the destination path for the target file.
     pub fn dest_path(&self, target: &PathBuf) -> PathBuf {
-        let target_path = target;
+        let t = target.clone();
+        let r = self.dest_path_impl(target);
+        log::debug!("dest_path({:?}) -> {:?}", t, r);
+        r
+    }
+
+    fn dest_path_impl(&self, target: &PathBuf) -> PathBuf {
         if let Some(rebase) = &self.opts.rebase_dir {
-            rebase.join(target_path)
+            rebase.join(target)
         } else {
-            target_path.to_path_buf()
+            target.to_path_buf()
         }
     }
 
@@ -190,9 +196,9 @@ impl Archiver {
 
     pub fn info(&self) -> String {
         format!(
-            "Format: {:?}\nArchive File: {:?}\nTargets: {:?}",
-            self.format(),
-            self.archive_file,
+            "Format: {}\nArchive File: {}\nTargets: {}",
+            self.format().unwrap().name,
+            self.archive_file.to_str().unwrap(),
             self.targets
                 .iter()
                 .map(|item| item.to_str().unwrap())
@@ -279,6 +285,31 @@ fn create_archiver<P: AsRef<Path>>(m: &format::Manager, dest: P) -> Result<Box<d
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_archiver() {
+        let archiver = Archiver::builder()
+            .archive_file(PathBuf::from("results/test.zip"))
+            .targets(vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")])
+            .rebase_dir("rebasedir")
+            .overwrite(true)
+            .build();
+        assert_eq!(PathBuf::from("results/test.zip"), archiver.archive_file);
+        assert_eq!(
+            vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")],
+            archiver.targets
+        );
+        assert_eq!(true, archiver.overwrite);
+        assert_eq!(false, archiver.no_recursive);
+        assert_eq!(1, archiver.ignore_types.len());
+        assert_eq!(
+            r#"Format: Zip
+Archive File: results/test.zip
+Targets: src, Cargo.toml"#,
+            archiver.info()
+        );
+        assert!(archiver.destination().is_ok())
+    }
 
     #[test]
     fn test_target_path() {

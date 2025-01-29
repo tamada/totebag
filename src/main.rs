@@ -106,6 +106,9 @@ fn perform_list_each(opts: &cli::CliOpts, fm: FormatManager, archive_file: PathB
 }
 
 fn perform_archive(cliopts: cli::CliOpts, fm: FormatManager) -> Result<()> {
+    if cliopts.output.is_none() {
+        return Err(ToteError::Archiver("output file is not specified".to_string()));
+    }
     let archiver = Archiver::builder()
         .archive_file(cliopts.output.unwrap())
         .manager(fm.clone())
