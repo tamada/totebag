@@ -1,6 +1,36 @@
+//! Archive format management module.
+//! This module provides a way to manage archive formats.
+//!
+//! ## Examples
+//!
+//! As default, [Manager] has the following formats:
+//! Cab, Lha, SevenZ, Rar, Tar, TarGz, TarBz2, TarXz, TarZstd, and Zip.
+//!
+//! ```
+//! let manager = Manager::default();
+//! let format = manager.find(PathBuf::from("test.zip"))
+//!      .expect("Unexpected error: test.zip");
+//! let format_name = format.name; // should be "Zip"
+//! ```
+//!
+//! ## Use your own format
+//!
+//! ```
+//! let mut manager = Manager::default();
+//! let additional_format = ArchiveFormat::new("Compact Pro", vec![".sea", ".cpt"]);
+//! manager.add(additional_format);
+//! let format = manager.find("test.cpt")
+//!     .expect("Unexpected error: test.cpt");
+//! let format_name = format.name; // should be "Compact Pro"
+//!
+//! // remove the format
+//! manager.remove(additional_format);
+//! let _ = manager.find("test.cpt"); // should be None
+//! ```
 use std::fmt::Display;
 use std::path::Path;
 
+/// Archive format manager.
 #[derive(Debug, Clone)]
 pub struct Manager {
     formats: Vec<ArchiveFormat>,
@@ -8,26 +38,25 @@ pub struct Manager {
 
 impl Manager {
     pub fn default() -> Self {
-        Self {
-            formats: vec![
-                ArchiveFormat::new("Cab", vec![".cab"]),
-                ArchiveFormat::new("Lha", vec![".lha", ".lzh"]),
-                ArchiveFormat::new("SevenZ", vec![".7z"]),
-                ArchiveFormat::new("Rar", vec![".rar"]),
-                ArchiveFormat::new("Tar", vec![".tar"]),
-                ArchiveFormat::new("TarGz", vec![".tar.gz", ".tgz"]),
-                ArchiveFormat::new("TarBz2", vec![".tar.bz2", ".tbz2"]),
-                ArchiveFormat::new("TarXz", vec![".tar.xz", ".txz"]),
-                ArchiveFormat::new("TarZstd", vec![".tar.zst", ".tzst", ".tar.zstd", ".tzstd"]),
-                ArchiveFormat::new("Zip", vec![".zip", ".jar", ".war", ".ear"]),
-            ],
-        }
+        Manager::new(vec![
+            ArchiveFormat::new("Cab", vec![".cab"]),
+            ArchiveFormat::new("Lha", vec![".lha", ".lzh"]),
+            ArchiveFormat::new("SevenZ", vec![".7z"]),
+            ArchiveFormat::new("Rar", vec![".rar"]),
+            ArchiveFormat::new("Tar", vec![".tar"]),
+            ArchiveFormat::new("TarGz", vec![".tar.gz", ".tgz"]),
+            ArchiveFormat::new("TarBz2", vec![".tar.bz2", ".tbz2"]),
+            ArchiveFormat::new("TarXz", vec![".tar.xz", ".txz"]),
+            ArchiveFormat::new("TarZstd", vec![".tar.zst", ".tzst", ".tar.zstd", ".tzstd"]),
+            ArchiveFormat::new("Zip", vec![".zip", ".jar", ".war", ".ear"]),
+        ])
     }
 
     pub fn new(formats: Vec<ArchiveFormat>) -> Self {
         Self { formats }
     }
 
+    /// Returns `true` if all of the given file names are Some by [method.find] method.
     pub fn match_all<P: AsRef<Path>>(&self, args: &[P]) -> bool {
         args.iter().all(|p| self.find(p).is_some())
     }
@@ -35,7 +64,11 @@ impl Manager {
     /// Find the format of the given file name.
     /// If the given file name has an unknown extension for totebag, it returns an `Err(ToteErro::Unknown)`.
     pub fn find<P: AsRef<Path>>(&self, path: P) -> Option<&ArchiveFormat> {
-        let name = path.as_ref().to_str().unwrap().to_lowercase();
+        let name = path
+            .as_ref()
+            .to_str()
+            .expect("unexpected error: invalid path")
+            .to_lowercase();
         for format in &self.formats {
             if format.is_match(&name) {
                 return Some(&format);

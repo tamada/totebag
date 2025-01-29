@@ -1,6 +1,4 @@
-FROM rust:1-alpine3.20 AS builder
-
-RUN apk --no-cache add musl-dev
+FROM rust:1-bookworm AS builder
 
 WORKDIR /app
 
@@ -14,10 +12,9 @@ RUN    touch src/main.rs \
     && cargo build --release \
     && strip target/release/totebag -o totebag
 
-FROM gcr.io/distroless/static-debian12:nonroot
-USER nonroot
+FROM debian:bookworm-slim AS runner
 
-ARG VERSION=0.7.3
+ARG VERSION=0.7.4
 
 LABEL org.opencontainers.image.authors="Haruaki Tamada <tamada@users.noreply.github.com>" \
     org.opencontainers.image.url="https://github.com/tamada/totebag" \
@@ -25,7 +22,10 @@ LABEL org.opencontainers.image.authors="Haruaki Tamada <tamada@users.noreply.git
     org.opencontainers.image.source="https://github.com/tamada/totebag/blob/main/Dockerfile" \
     org.opencontainers.image.version="${VERSION}"
 
+RUN useradd --home-dir /app nonroot
+
 WORKDIR /app
+USER nonroot
 
 ENV HOME=/app
 ENV BTMEISTER_HOME=/opt/totebag
