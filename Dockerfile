@@ -14,7 +14,7 @@ RUN    touch src/main.rs \
 
 FROM debian:bookworm-slim AS runner
 
-ARG VERSION=0.7.3
+ARG VERSION=0.7.4
 
 LABEL org.opencontainers.image.authors="Haruaki Tamada <tamada@users.noreply.github.com>" \
     org.opencontainers.image.url="https://github.com/tamada/totebag" \
