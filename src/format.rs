@@ -36,8 +36,8 @@ pub struct Manager {
     formats: Vec<ArchiveFormat>,
 }
 
-impl Manager {
-    pub fn default() -> Self {
+impl Default for Manager {
+    fn default() -> Self {
         Manager::new(vec![
             ArchiveFormat::new("Cab", vec![".cab"]),
             ArchiveFormat::new("Lha", vec![".lha", ".lzh"]),
@@ -51,7 +51,9 @@ impl Manager {
             ArchiveFormat::new("Zip", vec![".zip", ".jar", ".war", ".ear"]),
         ])
     }
+}
 
+impl Manager {
     pub fn new(formats: Vec<ArchiveFormat>) -> Self {
         Self { formats }
     }
@@ -69,12 +71,7 @@ impl Manager {
             .to_str()
             .expect("unexpected error: invalid path")
             .to_lowercase();
-        for format in &self.formats {
-            if format.is_match(&name) {
-                return Some(&format);
-            }
-        }
-        None
+        self.formats.iter().find(|f| f.is_match(&name))
     }
 
     pub fn add(&mut self, format: ArchiveFormat) {
@@ -104,9 +101,9 @@ impl AsRef<str> for ArchiveFormat {
     }
 }
 
-impl Into<String> for ArchiveFormat {
-    fn into(self) -> String {
-        self.name
+impl From<ArchiveFormat> for String {
+    fn from(f: ArchiveFormat) -> Self {
+        f.name
     }
 }
 

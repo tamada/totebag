@@ -144,11 +144,9 @@ impl CliOpts {
                 Ok(RunMode::Extract)
             } else {
                 self.mode = RunMode::Archive;
-                if m.find(&self.args[0]).is_some() {
-                    if self.output.is_none() {
-                        self.output = Some(self.args[0].clone().into());
-                        self.args = self.args[1..].to_vec();
-                    }
+                if m.find(&self.args[0]).is_some() && self.output.is_none() {
+                    self.output = Some(self.args[0].clone().into());
+                    self.args = self.args[1..].to_vec();
                 }
                 Ok(RunMode::Archive)
             }
