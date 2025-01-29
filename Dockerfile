@@ -1,35 +1,27 @@
-FROM rust:1-bookworm AS builder
+FROM rust:1-bullseye AS builder
 
-WORKDIR /app
+ARG VERSION=0.7.4
+ARG TARGETPLATFORM
 
-COPY Cargo.toml .
-RUN    mkdir src && echo "fn main() {}" > src/main.rs \
-    && cargo build --release
+WORKDIR /work/totebag
 
-COPY src    /app/src
-COPY assets /app/assets
-RUN    touch src/main.rs \
-    && cargo build --release \
-    && strip target/release/totebag -o totebag
+COPY . .
+RUN cargo build --release 
 
-FROM debian:bookworm-slim AS runner
+FROM debian:bullseye-slim
 
 ARG VERSION=0.7.4
 
-LABEL org.opencontainers.image.authors="Haruaki Tamada <tamada@users.noreply.github.com>" \
-    org.opencontainers.image.url="https://github.com/tamada/totebag" \
-    org.opencontainers.image.documentation="A tool for extracting/archiving files and directories in several formats." \
-    org.opencontainers.image.source="https://github.com/tamada/totebag/blob/main/Dockerfile" \
-    org.opencontainers.image.version="${VERSION}"
+LABEL org.opencontainers.image.source=https://github.com/tamada/totebag \
+      org.opencontainers.image.version=${VERSION} \
+      org.opencontainers.image.title=totebag \
+      org.opencontainers.image.description="totebag is a simple file transfer tool."
 
-RUN useradd --home-dir /app nonroot
+RUN adduser --disabled-password --disabled-login --home /workdir nonroot \
+  && mkdir -p /workdir
+COPY --from=builder /work/totebag/target/release/totebag /opt/totebag/totebag
 
-WORKDIR /app
+WORKDIR /workdir
 USER nonroot
-
-ENV HOME=/app
-ENV BTMEISTER_HOME=/opt/totebag
-
-COPY --from=builder /app/totebag /opt/totebag/totebag
 
 ENTRYPOINT [ "/opt/totebag/totebag" ]
