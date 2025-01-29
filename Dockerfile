@@ -3,7 +3,7 @@ FROM rust:1-bullseye AS builder
 ARG VERSION=0.7.4
 ARG TARGETPLATFORM
 
-WORKDIR /work/totebag
+WORKDIR /app
 
 COPY . .
 RUN cargo build --release 
@@ -15,13 +15,13 @@ ARG VERSION=0.7.4
 LABEL org.opencontainers.image.source=https://github.com/tamada/totebag \
       org.opencontainers.image.version=${VERSION} \
       org.opencontainers.image.title=totebag \
-      org.opencontainers.image.description="totebag is a simple file transfer tool."
+      org.opencontainers.image.description="A tool for extracting/archiving files and directories in multiple formats."
 
-RUN adduser --disabled-password --disabled-login --home /workdir nonroot \
-  && mkdir -p /workdir
-COPY --from=builder /work/totebag/target/release/totebag /opt/totebag/totebag
+RUN adduser --disabled-password --disabled-login --home /app nonroot \
+  && mkdir -p /app
+COPY --from=builder /app/target/release/totebag /opt/totebag/totebag
 
-WORKDIR /workdir
+WORKDIR /app
 USER nonroot
 
 ENTRYPOINT [ "/opt/totebag/totebag" ]
