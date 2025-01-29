@@ -1,3 +1,21 @@
+//! This module provides an interface and struct for archiving the files.
+//! The supported formats are: `cab`, `7z`, `tar`, `tar.gz`, `tar.bz2`, `tar.xz`, `tar.zst`, and `zip`.
+//! `lha` and `rar` formats are not supported for archiving.
+//!
+//! # Example: archiving the files
+//!
+//! ```
+//! let archiver = Archiver::builder()
+//!     .archive_file("destination/test.zip") // destination file.
+//!     .targets(vec!["src", "Cargo.toml"])   // files to be archived.
+//!     .rebase_dir(PathBuf::from("new"))     // rebased directory in the archive file.
+//!     .overwrite(true)                      // set overwrite flag of the destination file.
+//!     .build();
+//! match archiver.perform() {
+//!     Ok(_) => println!("archiving is done"),
+//!     Err(e) => eprintln!("error: {:?}", e),
+//! }
+//! ```
 use std::collections::HashSet;
 use std::fs::{create_dir_all, File};
 use std::path::{Path, PathBuf};
