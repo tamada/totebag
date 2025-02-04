@@ -34,7 +34,7 @@ use std::fmt::Display;
 use std::path::{Path, PathBuf};
 use typed_builder::TypedBuilder;
 
-use crate::format::ArchiveFormat;
+use crate::format::Format;
 use crate::{Result, ToteError};
 
 mod cab;
@@ -45,12 +45,28 @@ mod tar;
 mod zip;
 
 /// This struct represents an entry in the archive file.
-#[derive(Debug)]
+/// To build an instance of this struct, use [`Entry::new`] or [`Entry::builder`] methods.
+///
+/// # Example of builder
+///
+/// The required field is only [`name`](Entry::name), other fields are optional.
+///
+/// ```
+/// let entry = Entry::builder()
+///     .name("entry_name_extracted_from_archive_file")
+///     .build();
+/// ```
+#[derive(Debug, TypedBuilder)]
 pub struct Entry {
+    #[builder(setter(into))]
     pub name: String,
+    #[builder(setter(into, strip_option))]
     pub compressed_size: Option<u64>,
+    #[builder(setter(into, strip_option))]
     pub original_size: Option<u64>,
+    #[builder(setter(into, strip_option))]
     pub unix_mode: Option<u32>,
+    #[builder(setter(into, strip_option))]
     pub date: Option<NaiveDateTime>,
 }
 
@@ -128,6 +144,11 @@ impl Extractor {
             Ok(e) => e,
             Err(e) => return Err(e),
         };
+        self.list_with(extractor)
+    }
+
+    /// Returns the entries in the archive file with the given extractor.
+    pub fn list_with(&self, extractor: Box<dyn ToteExtractor>) -> Result<Vec<Entry>> {
         extractor.list(self.archive_file.clone())
     }
 
@@ -140,6 +161,7 @@ impl Extractor {
         self.perform_with(extractor)
     }
 
+    /// Execute extraction of the archive file with the given extractor.
     pub fn perform_with(&self, extractor: Box<dyn ToteExtractor>) -> Result<()> {
         match self.can_extract() {
             Ok(_) => extractor.perform(self.archive_file.clone(), PathUtils { e: self }),
@@ -157,7 +179,7 @@ impl Extractor {
         )
     }
 
-    pub fn format(&self) -> Option<&ArchiveFormat> {
+    pub fn format(&self) -> Option<&Format> {
         self.manager.find(&self.archive_file)
     }
 
@@ -199,6 +221,8 @@ impl Extractor {
 }
 
 /// The trait for extracting the archive file.
+/// If you want to support a new format for extraction, you need to implement the `ToteExtractor` trait.
+/// Then, the call [`perform_with`](Extractor::perform_with) and/or [`list_with`](Extractor::list_with) method of [`Extractor`].
 pub trait ToteExtractor {
     /// returns the entry list of the given archive file.
     fn list(&self, archive_file: PathBuf) -> Result<Vec<Entry>>;

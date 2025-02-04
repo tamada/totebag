@@ -17,7 +17,7 @@
 //!
 //! ```
 //! let mut manager = Manager::default();
-//! let additional_format = ArchiveFormat::new("Compact Pro", vec![".sea", ".cpt"]);
+//! let additional_format = Format::new("Compact Pro", vec![".sea", ".cpt"]);
 //! manager.add(additional_format);
 //! let format = manager.find("test.cpt")
 //!     .expect("Unexpected error: test.cpt");
@@ -33,28 +33,28 @@ use std::path::Path;
 /// Archive format manager.
 #[derive(Debug, Clone)]
 pub struct Manager {
-    formats: Vec<ArchiveFormat>,
+    formats: Vec<Format>,
 }
 
 impl Default for Manager {
     fn default() -> Self {
         Manager::new(vec![
-            ArchiveFormat::new("Cab", vec![".cab"]),
-            ArchiveFormat::new("Lha", vec![".lha", ".lzh"]),
-            ArchiveFormat::new("SevenZ", vec![".7z"]),
-            ArchiveFormat::new("Rar", vec![".rar"]),
-            ArchiveFormat::new("Tar", vec![".tar"]),
-            ArchiveFormat::new("TarGz", vec![".tar.gz", ".tgz"]),
-            ArchiveFormat::new("TarBz2", vec![".tar.bz2", ".tbz2"]),
-            ArchiveFormat::new("TarXz", vec![".tar.xz", ".txz"]),
-            ArchiveFormat::new("TarZstd", vec![".tar.zst", ".tzst", ".tar.zstd", ".tzstd"]),
-            ArchiveFormat::new("Zip", vec![".zip", ".jar", ".war", ".ear"]),
+            Format::new("Cab", vec![".cab"]),
+            Format::new("Lha", vec![".lha", ".lzh"]),
+            Format::new("SevenZ", vec![".7z"]),
+            Format::new("Rar", vec![".rar"]),
+            Format::new("Tar", vec![".tar"]),
+            Format::new("TarGz", vec![".tar.gz", ".tgz"]),
+            Format::new("TarBz2", vec![".tar.bz2", ".tbz2"]),
+            Format::new("TarXz", vec![".tar.xz", ".txz"]),
+            Format::new("TarZstd", vec![".tar.zst", ".tzst", ".tar.zstd", ".tzstd"]),
+            Format::new("Zip", vec![".zip", ".jar", ".war", ".ear"]),
         ])
     }
 }
 
 impl Manager {
-    pub fn new(formats: Vec<ArchiveFormat>) -> Self {
+    pub fn new(formats: Vec<Format>) -> Self {
         Self { formats }
     }
 
@@ -65,7 +65,7 @@ impl Manager {
 
     /// Find the format of the given file name.
     /// If the given file name has an unknown extension for totebag, it returns an `Err(ToteErro::Unknown)`.
-    pub fn find<P: AsRef<Path>>(&self, path: P) -> Option<&ArchiveFormat> {
+    pub fn find<P: AsRef<Path>>(&self, path: P) -> Option<&Format> {
         let name = path
             .as_ref()
             .to_str()
@@ -74,40 +74,40 @@ impl Manager {
         self.formats.iter().find(|f| f.is_match(&name))
     }
 
-    pub fn add(&mut self, format: ArchiveFormat) {
+    pub fn add(&mut self, format: Format) {
         self.formats.push(format);
     }
 
-    pub fn remove(&mut self, format: ArchiveFormat) {
+    pub fn remove(&mut self, format: Format) {
         self.formats.retain(|f| f != &format);
     }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub struct ArchiveFormat {
+pub struct Format {
     pub name: String,
     exts: Vec<String>,
 }
 
-impl Display for ArchiveFormat {
+impl Display for Format {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.name)
     }
 }
 
-impl AsRef<str> for ArchiveFormat {
+impl AsRef<str> for Format {
     fn as_ref(&self) -> &str {
         &self.name
     }
 }
 
-impl From<ArchiveFormat> for String {
-    fn from(f: ArchiveFormat) -> Self {
+impl From<Format> for String {
+    fn from(f: Format) -> Self {
         f.name
     }
 }
 
-impl ArchiveFormat {
+impl Format {
     pub fn new<T: Into<String>>(name: T, exts: Vec<T>) -> Self {
         Self {
             name: name.into(),

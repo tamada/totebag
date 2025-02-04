@@ -23,7 +23,7 @@ use std::path::{Path, PathBuf};
 use ignore::{Walk, WalkBuilder};
 use typed_builder::TypedBuilder;
 
-use crate::format::{self, ArchiveFormat};
+use crate::format::{self, Format};
 use crate::{IgnoreType, Result, ToteError};
 
 mod cab;
@@ -35,6 +35,8 @@ mod tar;
 mod zip;
 
 /// The trait for creating an archive file.
+/// If you want to support archiving for a new format, you need to implement the `ToteArchiver` trait.
+/// Then, the call [`perform_with`](Archiver::perform_with) method of [`Archiver`].
 pub trait ToteArchiver {
     /// Perform the archiving operation.
     /// - `file` is the destination file for the archive.
@@ -190,7 +192,7 @@ impl Archiver {
         }
     }
 
-    pub fn format(&self) -> Option<&ArchiveFormat> {
+    pub fn format(&self) -> Option<&Format> {
         self.manager.find(&self.archive_file)
     }
 
