@@ -83,6 +83,7 @@ impl Manager {
     }
 }
 
+/// Represents the archive format.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Format {
     pub name: String,
@@ -108,6 +109,7 @@ impl From<Format> for String {
 }
 
 impl Format {
+    /// Create an instanceof Format with the name and its extensions.
     pub fn new<T: Into<String>>(name: T, exts: Vec<T>) -> Self {
         Self {
             name: name.into(),
@@ -115,6 +117,7 @@ impl Format {
         }
     }
 
+    /// Returns `true` if the given file name has the extension of this format.
     pub fn is_match<P: AsRef<Path>>(&self, p: P) -> bool {
         let p = p.as_ref();
         let name = p.to_str().unwrap().to_lowercase();
