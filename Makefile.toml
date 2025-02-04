@@ -6,10 +6,15 @@ install_crate = "rustfmt"
 command = "cargo"
 args = ["fmt", "--", "--emit=files"]
 
+[tasks.clippy]
+install_crate = "clippy"
+command = "cargo"
+args = ["clippy", "--", "-D", "warnings"]
+
 [tasks.build]
 command = "cargo"
 args = ["build"]
-dependencies = ["format"]
+dependencies = ["format", "clippy"]
 
 [tasks.test]
 command = "cargo"
@@ -21,13 +26,6 @@ script = [
     "cp -r target/completions ./assets"
 ]
 
-# [tasks.post-build]
-# description = "Generate completion files after build"
-# script = [
-#     "mkdir -p target/completions",
-#     "cargo run -- --generate-completion-files --completion-out-dir target/completions"
-# ]
-
 [tasks.start]
 description = "Start the document server"
 script = ["hugo -s site server"]
@@ -38,7 +36,9 @@ script = ["hugo -s site"]
 
 [tasks.docker]
 description = "Build the docker image for the current arch"
-command = "docker build -t ghcr.io/tamada/totebag:latest -t ghcr.io/tamada/totebag:${VERSION} ."
+script = [
+    "docker build -t ghcr.io/tamada/totebag:latest -t ghcr.io/tamada/totebag:${VERSION} ."
+]
 
 [tasks.docker_buildx]
 description = "Build the docker image for multi-arch"

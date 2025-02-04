@@ -1,0 +1,4 @@
+# all of arguments are archive file.
+# Therefore, run mode should be extraction mode.
+testdata/test.cab
+testdata/test.tar

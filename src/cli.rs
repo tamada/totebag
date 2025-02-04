@@ -1,5 +1,5 @@
 use clap::{Parser, ValueEnum};
-use std::path::PathBuf;
+use std::{io::BufRead, path::PathBuf};
 
 use totebag::{IgnoreType, Result, ToteError};
 
@@ -53,12 +53,12 @@ pub(crate) struct CliOpts {
 
     #[clap(
         value_name = "ARGUMENTS",
-        help = r###"List of files or directories to be processed.
+        help = r###"List of files or directories to be processed. '-' reads form stdin, and '@<filename>' reads from a file.
 If archive mode, the archive file name can specify at the first argument.
 If the frist argument was not the archive name, the default archive name `totebag.zip` is applied.
 "###
     )]
-    pub args: Vec<String>,
+    args: Vec<String>,
 }
 
 #[derive(Parser, Debug)]
@@ -126,53 +126,181 @@ pub enum LogLevel {
     Trace,
 }
 
+#[derive(Parser, Debug)]
+struct ActualArgs {
+    args: Vec<String>,
+}
+
+impl ActualArgs {}
+
 impl CliOpts {
-    /// Find the mode of operation.
-    pub(crate) fn run_mode(&mut self, m: &totebag::format::Manager) -> Result<RunMode> {
-        if self.args.is_empty() {
+    pub fn args(&self) -> Vec<String> {
+        self.args.clone()
+    }
+
+    pub fn run_mode(&self) -> RunMode {
+        self.mode
+    }
+
+    pub fn archiver_output(&self) -> PathBuf {
+        self.output
+            .clone()
+            .unwrap_or_else(|| PathBuf::from("totebag.zip"))
+    }
+
+    pub fn extractor_output(&self) -> PathBuf {
+        self.output.clone().unwrap_or_else(|| PathBuf::from("."))
+    }
+
+    pub(crate) fn finalize(&mut self, m: &totebag::format::Manager) -> Result<()> {
+        let args = match normalize_args(self.args.clone()) {
+            Ok(args) => args,
+            Err(e) => return Err(e),
+        };
+        if args.is_empty() {
             return Err(ToteError::NoArgumentsGiven);
         }
         if self.mode == RunMode::Auto {
-            if m.match_all(
-                &self
-                    .args
-                    .iter()
-                    .map(PathBuf::from)
-                    .collect::<Vec<PathBuf>>(),
-            ) {
+            if m.match_all(&args) {
+                self.args = args;
                 self.mode = RunMode::Extract;
-                Ok(RunMode::Extract)
             } else {
                 self.mode = RunMode::Archive;
-                Ok(RunMode::Archive)
+                if m.find(&args[0]).is_some() && self.output.is_none() {
+                    self.output = Some(args[0].clone().into());
+                    self.args = args[1..].to_vec();
+                } else {
+                    self.args = args;
+                }
             }
         } else {
-            Ok(self.mode)
+            self.args = args;
         }
+        Ok(())
     }
+}
+
+pub(crate) fn normalize_args(args: Vec<String>) -> Result<Vec<String>> {
+    let results = args
+        .iter()
+        .map(reads_file_or_stdin_if_needed)
+        .collect::<Vec<Result<Vec<String>>>>();
+    if results.iter().any(|r| r.is_err()) {
+        let errs = results
+            .into_iter()
+            .filter(|r| r.is_err())
+            .flat_map(|r| r.err())
+            .collect::<Vec<ToteError>>();
+        Err(ToteError::Array(errs))
+    } else {
+        let results = results
+            .into_iter()
+            .filter(|r| r.is_ok())
+            .flat_map(|r| r.unwrap())
+            .collect::<Vec<String>>();
+        Ok(results)
+    }
+}
+
+fn reads_file_or_stdin_if_needed<S: AsRef<str>>(s: S) -> Result<Vec<String>> {
+    let s = s.as_ref();
+    if s == "-" {
+        reads_from_reader(std::io::stdin())
+    } else if let Some(stripped_str) = s.strip_prefix('@') {
+        reads_from_file(stripped_str)
+    } else {
+        Ok(vec![s.to_string()])
+    }
+}
+
+fn reads_from_file<S: AsRef<str>>(s: S) -> Result<Vec<String>> {
+    match std::fs::File::open(s.as_ref()) {
+        Ok(f) => reads_from_reader(f),
+        Err(e) => Err(ToteError::IO(e)),
+    }
+}
+
+fn reads_from_reader<R: std::io::Read>(r: R) -> Result<Vec<String>> {
+    let results = std::io::BufReader::new(r)
+        .lines()
+        .map_while(|r| r.ok())
+        .map(|line| line.trim().to_string())
+        .filter(|line| !line.is_empty() && !line.starts_with('#'))
+        .collect::<Vec<String>>();
+    Ok(results)
 }
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use clap::Parser;
 
-    use super::*;
+    #[test]
+    fn test_read_from_file1() {
+        let manager = totebag::format::Manager::default();
+        let mut cli = CliOpts::parse_from(&["totebag_test", "@testdata/files/archive_mode1.txt"]);
+        match cli.finalize(&manager) {
+            Ok(_) => {}
+            Err(e) => panic!("error: {:?}", e),
+        }
+        assert_eq!(cli.run_mode(), RunMode::Archive);
+        assert_eq!(
+            cli.args(),
+            vec!["src", "README.md", "LICENSE", "Cargo.toml", "Makefile.toml"]
+        );
+        assert_eq!(cli.output, Some(PathBuf::from("testdata/targets.tar.gz")));
+    }
 
     #[test]
-    fn test_find_mode() {
+    fn test_read_from_file2() {
+        let manager = totebag::format::Manager::default();
+        let mut cli = CliOpts::parse_from(&["totebag_test", "@testdata/files/archive_mode2.txt"]);
+        match cli.finalize(&manager) {
+            Ok(_) => {}
+            Err(e) => panic!("error: {:?}", e),
+        }
+        assert_eq!(cli.run_mode(), RunMode::Archive);
+        assert_eq!(
+            cli.args(),
+            vec!["src", "README.md", "LICENSE", "Cargo.toml", "Makefile.toml"]
+        );
+        assert!(cli.output.is_none());
+    }
+
+    #[test]
+    fn test_read_from_file3() {
+        let manager = totebag::format::Manager::default();
+        let mut cli = CliOpts::parse_from(&["totebag_test", "@testdata/files/extract_mode.txt"]);
+        match cli.finalize(&manager) {
+            Ok(_) => {}
+            Err(e) => panic!("error: {:?}", e),
+        }
+        assert_eq!(cli.run_mode(), RunMode::Extract);
+        assert_eq!(cli.args(), vec!["testdata/test.cab", "testdata/test.tar"]);
+        assert!(cli.output.is_none());
+    }
+
+    #[test]
+    fn test_find_mode_1() {
         let manager = totebag::format::Manager::default();
         let mut cli1 =
             CliOpts::parse_from(&["totebag_test", "src", "LICENSE", "README.md", "Cargo.toml"]);
-        let r1 = cli1.run_mode(&manager);
-        assert!(r1.is_ok());
-        assert_eq!(r1.unwrap(), RunMode::Archive);
+        assert!(cli1.finalize(&manager).is_ok());
+        assert_eq!(cli1.run_mode(), RunMode::Archive);
+    }
 
+    #[test]
+    fn test_find_mode_2() {
+        let manager = totebag::format::Manager::default();
         let mut cli2 =
             CliOpts::parse_from(&["totebag_test", "src", "LICENSE", "README.md", "hoge.zip"]);
-        let r2 = cli2.run_mode(&manager);
-        assert!(r2.is_ok());
-        assert_eq!(r2.unwrap(), RunMode::Archive);
+        assert!(cli2.finalize(&manager).is_ok());
+        assert_eq!(cli2.run_mode(), RunMode::Archive);
+    }
 
+    #[test]
+    fn test_find_mode_3() {
+        let manager = totebag::format::Manager::default();
         let mut cli3 = CliOpts::parse_from(&[
             "totebag_test",
             "src.zip",
@@ -180,10 +308,13 @@ mod tests {
             "README.tar.bz2",
             "hoge.rar",
         ]);
-        let r3 = cli3.run_mode(&manager);
-        assert!(r3.is_ok());
-        assert_eq!(r3.unwrap(), RunMode::Extract);
+        assert!(cli3.finalize(&manager).is_ok());
+        assert_eq!(cli3.run_mode(), RunMode::Extract);
+    }
 
+    #[test]
+    fn test_find_mode_4() {
+        let manager = totebag::format::Manager::default();
         let mut cli4 = CliOpts::parse_from(&[
             "totebag_test",
             "src.zip",
@@ -193,10 +324,12 @@ mod tests {
             "--mode",
             "list",
         ]);
-        let r4 = cli4.run_mode(&manager);
-        assert!(r4.is_ok());
-        assert_eq!(r4.unwrap(), RunMode::List);
+        assert!(cli4.finalize(&manager).is_ok());
+        assert_eq!(cli4.run_mode(), RunMode::List);
+    }
 
+    #[test]
+    fn test_cli_parse_error() {
         let r = CliOpts::try_parse_from(&["totebag_test"]);
         assert!(r.is_err());
     }

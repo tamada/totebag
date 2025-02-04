@@ -1,0 +1,9 @@
+# this is comment.
+testdata/targets.tar.gz
+src
+
+# blank line should be ignored.
+README.md
+LICENSE
+Cargo.toml
+Makefile.toml

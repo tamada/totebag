@@ -1,0 +1,10 @@
+# this is comment.
+# There are no archive file.
+# Therefore, run mode should be archive mode, and it archives files into totebag.zip file.
+src
+
+# blank line should be ignored.
+README.md
+LICENSE
+Cargo.toml
+Makefile.toml
