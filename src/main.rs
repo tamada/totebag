@@ -24,21 +24,21 @@ fn update_loglevel(level: LogLevel) {
 
 fn perform(mut opts: cli::CliOpts) -> Result<()> {
     update_loglevel(opts.level);
-    let manager = FormatManager::default();
     if cfg!(debug_assertions) {
         #[cfg(debug_assertions)]
         if opts.generate_completion {
             return gencomp::generate(PathBuf::from("target/completions"));
         }
     }
-    match opts.run_mode(&manager) {
-        Ok(RunMode::Archive) => perform_archive(opts, manager),
-        Ok(RunMode::Extract) => perform_extract_or_list(opts, manager, perform_extract_each),
-        Ok(RunMode::List) => perform_extract_or_list(opts, manager, perform_list_each),
-        Ok(RunMode::Auto) => Err(ToteError::Unknown(
+    let manager = FormatManager::default();
+    opts.finalize(&manager)?;
+    match opts.run_mode() {
+        RunMode::Archive => perform_archive(opts, manager),
+        RunMode::Extract => perform_extract_or_list(opts, manager, perform_extract_each),
+        RunMode::List => perform_extract_or_list(opts, manager, perform_list_each),
+        RunMode::Auto => Err(ToteError::Unknown(
             "cannot distinguish archiving and extracting".to_string(),
         )),
-        Err(e) => Err(e),
     }
 }
 
@@ -47,7 +47,7 @@ where
     F: Fn(&cli::CliOpts, FormatManager, PathBuf) -> Result<()>,
 {
     let args = opts
-        .args
+        .args()
         .iter()
         .map(PathBuf::from)
         .collect::<Vec<PathBuf>>();
@@ -73,7 +73,7 @@ fn perform_extract_each(
     let extractor = Extractor::builder()
         .archive_file(archive_file)
         .manager(fm)
-        .destination(opts.output.clone().unwrap_or_else(|| PathBuf::from(".")))
+        .destination(opts.extractor_output())
         .use_archive_name_dir(opts.extractors.to_archive_name_dir)
         .overwrite(opts.overwrite)
         .build();
@@ -85,7 +85,7 @@ fn perform_list_each(opts: &cli::CliOpts, fm: FormatManager, archive_file: PathB
     let extractor = Extractor::builder()
         .archive_file(archive_file)
         .manager(fm)
-        .destination(opts.output.clone().unwrap_or_else(|| PathBuf::from(".")))
+        .destination(opts.extractor_output())
         .use_archive_name_dir(opts.extractors.to_archive_name_dir)
         .overwrite(opts.overwrite)
         .build();
@@ -112,11 +112,11 @@ fn perform_archive(cliopts: cli::CliOpts, fm: FormatManager) -> Result<()> {
         ));
     }
     let archiver = Archiver::builder()
-        .archive_file(cliopts.output.unwrap())
+        .archive_file(cliopts.archiver_output())
         .manager(fm.clone())
         .targets(
             cliopts
-                .args
+                .args()
                 .iter()
                 .map(PathBuf::from)
                 .collect::<Vec<PathBuf>>(),
@@ -224,10 +224,11 @@ mod tests {
             "README.md",
             "Cargo.toml",
         ]);
+        let args = opts.args();
         assert_eq!(opts.mode, RunMode::Auto);
         assert_eq!(opts.output, Some(PathBuf::from("test.zip")));
-        assert_eq!(opts.args.len(), 4);
-        assert_eq!(opts.args, vec!["src", "LICENSE", "README.md", "Cargo.toml"]);
+        assert_eq!(args.len(), 4);
+        assert_eq!(args, vec!["src", "LICENSE", "README.md", "Cargo.toml"]);
     }
 
     #[test]
