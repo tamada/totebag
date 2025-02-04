@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use tar::Builder;
 use xz2::write::XzEncoder;
 
-use crate::archiver::{TargetPath, ToteArchiver};
+use crate::archiver::{ArchiveEntry, TargetPath, ToteArchiver};
 use crate::{Result, ToteError};
 
 pub(super) struct TarArchiver {}
@@ -16,7 +16,7 @@ pub(super) struct TarXzArchiver {}
 pub(super) struct TarZstdArchiver {}
 
 impl ToteArchiver for TarArchiver {
-    fn perform(&self, file: File, tps: Vec<TargetPath>) -> Result<()> {
+    fn perform(&self, file: File, tps: Vec<TargetPath>) -> Result<Vec<ArchiveEntry>> {
         write_tar(tps, file)
     }
     fn enable(&self) -> bool {
@@ -25,7 +25,7 @@ impl ToteArchiver for TarArchiver {
 }
 
 impl ToteArchiver for TarGzArchiver {
-    fn perform(&self, file: File, tps: Vec<TargetPath>) -> Result<()> {
+    fn perform(&self, file: File, tps: Vec<TargetPath>) -> Result<Vec<ArchiveEntry>> {
         write_tar(tps, GzEncoder::new(file, flate2::Compression::default()))
     }
     fn enable(&self) -> bool {
@@ -34,7 +34,7 @@ impl ToteArchiver for TarGzArchiver {
 }
 
 impl ToteArchiver for TarBz2Archiver {
-    fn perform(&self, file: File, tps: Vec<TargetPath>) -> Result<()> {
+    fn perform(&self, file: File, tps: Vec<TargetPath>) -> Result<Vec<ArchiveEntry>> {
         write_tar(tps, BzEncoder::new(file, bzip2::Compression::best()))
     }
     fn enable(&self) -> bool {
@@ -43,7 +43,7 @@ impl ToteArchiver for TarBz2Archiver {
 }
 
 impl ToteArchiver for TarXzArchiver {
-    fn perform(&self, file: File, tps: Vec<TargetPath>) -> Result<()> {
+    fn perform(&self, file: File, tps: Vec<TargetPath>) -> Result<Vec<ArchiveEntry>> {
         write_tar(tps, XzEncoder::new(file, 9))
     }
     fn enable(&self) -> bool {
@@ -52,7 +52,7 @@ impl ToteArchiver for TarXzArchiver {
 }
 
 impl ToteArchiver for TarZstdArchiver {
-    fn perform(&self, file: File, tps: Vec<TargetPath>) -> Result<()> {
+    fn perform(&self, file: File, tps: Vec<TargetPath>) -> Result<Vec<ArchiveEntry>> {
         let encoder = zstd::Encoder::new(file, 9).unwrap();
         write_tar(tps, encoder.auto_finish())
     }
@@ -61,12 +61,14 @@ impl ToteArchiver for TarZstdArchiver {
     }
 }
 
-fn write_tar<W: Write>(tps: Vec<TargetPath>, f: W) -> Result<()> {
+fn write_tar<W: Write>(tps: Vec<TargetPath>, f: W) -> Result<Vec<ArchiveEntry>> {
     let mut builder = tar::Builder::new(f);
     let mut errs = vec![];
+    let mut entries = vec![];
     for tp in tps {
         for t in tp.walker().flatten() {
             let path = t.into_path();
+            entries.push(ArchiveEntry::from(&path));
             let dest_dir = tp.dest_path(&path);
             if path.is_file() {
                 if let Err(e) = process_file(&mut builder, &path, &dest_dir) {
@@ -83,7 +85,7 @@ fn write_tar<W: Write>(tps: Vec<TargetPath>, f: W) -> Result<()> {
         errs.push(ToteError::Archiver(e.to_string()));
     }
     if errs.is_empty() {
-        Ok(())
+        Ok(entries)
     } else {
         Err(ToteError::Array(errs))
     }

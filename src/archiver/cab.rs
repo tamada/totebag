@@ -3,18 +3,20 @@ use std::path::PathBuf;
 
 use cab::{CabinetBuilder, CabinetWriter};
 
-use crate::archiver::{TargetPath, ToteArchiver};
+use crate::archiver::{ArchiveEntry, TargetPath, ToteArchiver};
 use crate::{Result, ToteError};
 
 pub(super) struct CabArchiver {}
 
 impl ToteArchiver for CabArchiver {
-    fn perform(&self, file: File, tps: Vec<TargetPath>) -> Result<()> {
+    fn perform(&self, file: File, tps: Vec<TargetPath>) -> Result<Vec<ArchiveEntry>> {
         let mut errs = vec![];
+        let mut entries = vec![];
         let mut builder = CabinetBuilder::new();
         let folder = builder.add_folder(cab::CompressionType::MsZip);
         let list = collect_entries(&tps);
         for (path, tp) in list.clone() {
+            entries.push(ArchiveEntry::from(&path));
             folder.add_file(tp.dest_path(&path).to_str().unwrap().to_string());
         }
         let mut writer = match builder.build(file) {
@@ -27,7 +29,7 @@ impl ToteArchiver for CabArchiver {
             }
         }
         match writer.finish() {
-            Ok(_) => Ok(()),
+            Ok(_) => Ok(entries),
             Err(e) => Err(ToteError::Archiver(e.to_string())),
         }
     }

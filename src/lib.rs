@@ -51,12 +51,12 @@ pub enum ToteError {
 mod tests {
     use std::path::PathBuf;
 
-    use crate::archiver::Archiver;
+    use crate::archiver::{ArchiveEntries, Archiver};
     use crate::extractor::Extractor;
     use crate::format::Format;
     use crate::Result;
 
-    fn archive_file(dest: PathBuf, sources: Vec<PathBuf>) -> Result<()> {
+    fn archive_file(dest: PathBuf, sources: Vec<PathBuf>) -> Result<ArchiveEntries> {
         let archiver = Archiver::builder()
             .archive_file(dest)
             .targets(sources)

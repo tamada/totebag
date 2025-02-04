@@ -9,7 +9,7 @@ use std::io::BufReader;
 use std::path::PathBuf;
 use zip::ZipWriter;
 
-use crate::archiver::{TargetPath, ToteArchiver};
+use crate::archiver::{ArchiveEntry, TargetPath, ToteArchiver};
 use crate::{Result, ToteError};
 
 pub(super) struct ZipArchiver {}
@@ -39,12 +39,14 @@ impl ZipArchiver {
 }
 
 impl ToteArchiver for ZipArchiver {
-    fn perform(&self, file: File, tps: Vec<TargetPath>) -> Result<()> {
+    fn perform(&self, file: File, tps: Vec<TargetPath>) -> Result<Vec<ArchiveEntry>> {
         let mut errs = vec![];
         let mut zw = zip::ZipWriter::new(file);
+        let mut entries = vec![];
         for tp in tps {
             for t in tp.walker().flatten() {
                 let path = t.into_path();
+                entries.push(ArchiveEntry::from(&path));
                 if path.is_file() {
                     if let Err(e) = self.process_file(&mut zw, path, &tp) {
                         errs.push(e);
@@ -53,7 +55,7 @@ impl ToteArchiver for ZipArchiver {
             }
         }
         match zw.finish() {
-            Ok(_) => Ok(()),
+            Ok(_) => Ok(entries),
             Err(e) => {
                 errs.push(ToteError::Archiver(e.to_string()));
                 Err(ToteError::Array(errs))

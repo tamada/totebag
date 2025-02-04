@@ -34,6 +34,62 @@ mod sevenz;
 mod tar;
 mod zip;
 
+/// Represents a set of entries for archiving into the resultant file.
+#[derive(Debug)]
+pub struct ArchiveEntries {
+    pub archive_file: PathBuf,
+    pub entries: Vec<ArchiveEntry>,
+    /// resultant file size (compressed size).
+    pub compressed: u64,
+}
+
+/// Represents each entry in the archive file.
+#[derive(Debug)]
+pub struct ArchiveEntry {
+    /// the source path of the entry.
+    pub path: PathBuf,
+    /// original file size.
+    pub size: u64,
+}
+
+impl ArchiveEntries {
+    pub fn new<P: AsRef<Path>>(path: P, entries: Vec<ArchiveEntry>, compressed: u64) -> Self {
+        Self {
+            archive_file: path.as_ref().to_path_buf(),
+            entries,
+            compressed,
+        }
+    }
+
+    /// Returns the total file size of the entries.
+    pub fn total(&self) -> u64 {
+        self.entries.iter().map(|e| e.size).sum()
+    }
+
+    /// the length of the entries.
+    pub fn len(&self) -> usize {
+        self.entries.len()
+    }
+
+    /// Returns `true` if the entries is empty.
+    pub fn is_empty(&self) -> bool {
+        self.entries.is_empty()
+    }
+}
+
+impl ArchiveEntry {
+    pub fn new(path: PathBuf, size: u64) -> Self {
+        Self { path, size }
+    }
+
+    /// Create an instance of ArchiveEntry from the given path by obtaining the file size.
+    pub fn from<P: AsRef<Path>>(p: P) -> Self {
+        let path = p.as_ref().to_path_buf();
+        let size = path.metadata().map(|m| m.len()).unwrap_or(0);
+        Self::new(path, size)
+    }
+}
+
 /// The trait for creating an archive file.
 /// If you want to support archiving for a new format, you need to implement the `ToteArchiver` trait.
 /// Then, the call [`perform_with`](Archiver::perform_with) method of [`Archiver`].
@@ -41,7 +97,7 @@ pub trait ToteArchiver {
     /// Perform the archiving operation.
     /// - `file` is the destination file for the archive.
     /// - `tps` is the list of files to be archived.
-    fn perform(&self, file: File, tps: Vec<TargetPath>) -> Result<()>;
+    fn perform(&self, file: File, tps: Vec<TargetPath>) -> Result<Vec<ArchiveEntry>>;
     /// Returns true if this archiver is enabled.
     fn enable(&self) -> bool;
 }
@@ -124,7 +180,7 @@ impl<'a> TargetPath<'a> {
 }
 
 impl Archiver {
-    pub fn perform(&self) -> Result<()> {
+    pub fn perform(&self) -> Result<ArchiveEntries> {
         let archiver = match create_archiver(&self.manager, &self.archive_file) {
             Ok(a) => a,
             Err(e) => return Err(e),
@@ -132,7 +188,7 @@ impl Archiver {
         self.perform_with(archiver)
     }
 
-    pub fn perform_with(&self, archiver: Box<dyn ToteArchiver>) -> Result<()> {
+    pub fn perform_with(&self, archiver: Box<dyn ToteArchiver>) -> Result<ArchiveEntries> {
         if !archiver.enable() {
             return Err(ToteError::UnsupportedFormat(format!(
                 "{}: not support archiving",
@@ -160,8 +216,22 @@ impl Archiver {
                 }
             }
         }
+        match self.archive_impl(archiver, paths) {
+            Ok(entries) => {
+                let compressed = self.archive_file.metadata().map(|m| m.len()).unwrap_or(0);
+                Ok(ArchiveEntries::new(&self.archive_file, entries, compressed))
+            }
+            Err(e) => Err(e),
+        }
+    }
+
+    fn archive_impl(
+        &self,
+        archiver: Box<dyn ToteArchiver>,
+        tps: Vec<TargetPath>,
+    ) -> Result<Vec<ArchiveEntry>> {
         match File::create(&self.archive_file) {
-            Ok(f) => archiver.perform(f, paths),
+            Ok(f) => archiver.perform(f, tps),
             Err(e) => Err(ToteError::IO(e)),
         }
     }

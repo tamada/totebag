@@ -3,22 +3,23 @@ use std::path::PathBuf;
 
 use sevenz_rust::{SevenZArchiveEntry, SevenZWriter};
 
-use crate::archiver::TargetPath;
-use crate::archiver::ToteArchiver;
+use crate::archiver::{ArchiveEntry, TargetPath, ToteArchiver};
 use crate::{Result, ToteError};
 
 pub(super) struct SevenZArchiver {}
 
 impl ToteArchiver for SevenZArchiver {
-    fn perform(&self, file: File, tps: Vec<TargetPath>) -> Result<()> {
+    fn perform(&self, file: File, tps: Vec<TargetPath>) -> Result<Vec<ArchiveEntry>> {
         let mut w = match SevenZWriter::new(file) {
             Ok(writer) => writer,
             Err(e) => return Err(ToteError::Archiver(e.to_string())),
         };
         let mut errs = vec![];
+        let mut entries = vec![];
         for tp in tps {
             for t in tp.walker().flatten() {
                 let path = t.into_path();
+                entries.push(ArchiveEntry::from(&path));
                 if path.is_file() {
                     if let Err(e) = process_file(&mut w, &path, &tp.dest_path(&path)) {
                         errs.push(e);
@@ -30,7 +31,7 @@ impl ToteArchiver for SevenZArchiver {
             errs.push(ToteError::Archiver(e.to_string()));
         }
         if errs.is_empty() {
-            Ok(())
+            Ok(entries)
         } else {
             Err(ToteError::Array(errs))
         }

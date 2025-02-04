@@ -1,6 +1,6 @@
 use std::fs::File;
 
-use crate::archiver::ToteArchiver;
+use crate::archiver::{ArchiveEntry, ToteArchiver};
 use crate::{Result, ToteError};
 
 use super::TargetPath;
@@ -8,7 +8,7 @@ use super::TargetPath;
 pub(super) struct RarArchiver {}
 
 impl ToteArchiver for RarArchiver {
-    fn perform(&self, _: File, _: Vec<TargetPath>) -> Result<()> {
+    fn perform(&self, _: File, _: Vec<TargetPath>) -> Result<Vec<ArchiveEntry>> {
         Err(ToteError::UnsupportedFormat(
             "only extraction support for rar".to_string(),
         ))
