@@ -42,7 +42,7 @@ pub enum ToteError {
     FileExists(PathBuf),
     IO(std::io::Error),
     NoArgumentsGiven,
-    Unknown(String),
+    Warn(String),
     UnknownFormat(String),
     UnsupportedFormat(String),
 }
@@ -51,12 +51,12 @@ pub enum ToteError {
 mod tests {
     use std::path::PathBuf;
 
-    use crate::archiver::Archiver;
+    use crate::archiver::{ArchiveEntries, Archiver};
     use crate::extractor::Extractor;
     use crate::format::Format;
     use crate::Result;
 
-    fn archive_file(dest: PathBuf, sources: Vec<PathBuf>) -> Result<()> {
+    fn archive_file(dest: PathBuf, sources: Vec<PathBuf>) -> Result<ArchiveEntries> {
         let archiver = Archiver::builder()
             .archive_file(dest)
             .targets(sources)
@@ -83,6 +83,7 @@ mod tests {
             .iter()
             .map(|e| e.name.clone())
             .collect::<Vec<String>>();
+        println!("{:?}", list);
         assert!(list.contains(&"testdata/sample/Cargo.toml".to_string()));
         assert!(list.contains(&"testdata/sample/LICENSE".to_string()));
         assert!(list.contains(&"testdata/sample/README.md".to_string()));

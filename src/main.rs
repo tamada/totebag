@@ -2,7 +2,7 @@ use clap::Parser;
 use std::path::PathBuf;
 
 use cli::{LogLevel, RunMode};
-use totebag::archiver::Archiver;
+use totebag::archiver::{ArchiveEntries, Archiver};
 use totebag::extractor::Extractor;
 use totebag::format::Manager as FormatManager;
 use totebag::{Result, ToteError};
@@ -23,7 +23,7 @@ fn update_loglevel(level: LogLevel) {
 }
 
 fn perform(mut opts: cli::CliOpts) -> Result<()> {
-    update_loglevel(opts.level);
+    update_loglevel(opts.loglevel);
     if cfg!(debug_assertions) {
         #[cfg(debug_assertions)]
         if opts.generate_completion {
@@ -33,10 +33,16 @@ fn perform(mut opts: cli::CliOpts) -> Result<()> {
     let manager = FormatManager::default();
     opts.finalize(&manager)?;
     match opts.run_mode() {
-        RunMode::Archive => perform_archive(opts, manager),
+        RunMode::Archive => match perform_archive(opts, manager) {
+            Ok(result) => {
+                print_archive_result(result);
+                Ok(())
+            }
+            Err(e) => Err(e),
+        },
         RunMode::Extract => perform_extract_or_list(opts, manager, perform_extract_each),
         RunMode::List => perform_extract_or_list(opts, manager, perform_list_each),
-        RunMode::Auto => Err(ToteError::Unknown(
+        RunMode::Auto => Err(ToteError::Warn(
             "cannot distinguish archiving and extracting".to_string(),
         )),
     }
@@ -105,7 +111,7 @@ fn perform_list_each(opts: &cli::CliOpts, fm: FormatManager, archive_file: PathB
     }
 }
 
-fn perform_archive(cliopts: cli::CliOpts, fm: FormatManager) -> Result<()> {
+fn perform_archive(cliopts: cli::CliOpts, fm: FormatManager) -> Result<ArchiveEntries> {
     if cliopts.output.is_none() {
         return Err(ToteError::Archiver(
             "output file is not specified".to_string(),
@@ -122,6 +128,7 @@ fn perform_archive(cliopts: cli::CliOpts, fm: FormatManager) -> Result<()> {
                 .collect::<Vec<PathBuf>>(),
         )
         .rebase_dir(cliopts.archivers.base_dir)
+        .level(cliopts.archivers.level)
         .overwrite(cliopts.overwrite)
         .no_recursive(cliopts.archivers.no_recursive)
         .ignore_types(cliopts.archivers.ignores)
@@ -136,6 +143,12 @@ fn main() -> Result<()> {
         std::process::exit(1);
     }
     Ok(())
+}
+
+fn print_archive_result(result: ArchiveEntries) {
+    if log::log_enabled!(log::Level::Info) {
+        list::print_archive_result(result);
+    }
 }
 
 fn print_error(e: &ToteError) {
@@ -154,7 +167,7 @@ fn print_error(e: &ToteError) {
         ToteError::FileExists(p) => println!("{}: file already exists", p.to_str().unwrap()),
         ToteError::IO(e) => println!("IO error: {}", e),
         ToteError::NoArgumentsGiven => println!("No arguments given. Use --help for usage."),
-        ToteError::Unknown(s) => println!("Unknown error: {}", s),
+        ToteError::Warn(s) => println!("Unknown error: {}", s),
         ToteError::UnknownFormat(f) => println!("{}: unknown format", f),
         ToteError::UnsupportedFormat(f) => println!("{}: unsupported format", f),
     }

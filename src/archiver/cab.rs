@@ -3,18 +3,21 @@ use std::path::PathBuf;
 
 use cab::{CabinetBuilder, CabinetWriter};
 
-use crate::archiver::{TargetPath, ToteArchiver};
+use crate::archiver::{ArchiveEntry, TargetPath, Targets, ToteArchiver};
 use crate::{Result, ToteError};
 
 pub(super) struct CabArchiver {}
 
 impl ToteArchiver for CabArchiver {
-    fn perform(&self, file: File, tps: Vec<TargetPath>) -> Result<()> {
+    fn perform(&self, file: File, tps: Targets) -> Result<Vec<ArchiveEntry>> {
         let mut errs = vec![];
+        let mut entries = vec![];
         let mut builder = CabinetBuilder::new();
-        let folder = builder.add_folder(cab::CompressionType::MsZip);
+        let ctype = compression_type(tps.level());
+        let folder = builder.add_folder(ctype);
         let list = collect_entries(&tps);
         for (path, tp) in list.clone() {
+            entries.push(ArchiveEntry::from(&path));
             folder.add_file(tp.dest_path(&path).to_str().unwrap().to_string());
         }
         let mut writer = match builder.build(file) {
@@ -27,13 +30,20 @@ impl ToteArchiver for CabArchiver {
             }
         }
         match writer.finish() {
-            Ok(_) => Ok(()),
+            Ok(_) => Ok(entries),
             Err(e) => Err(ToteError::Archiver(e.to_string())),
         }
     }
 
     fn enable(&self) -> bool {
         true
+    }
+}
+
+fn compression_type(level: u8) -> cab::CompressionType {
+    match level {
+        0 => cab::CompressionType::None,
+        _ => cab::CompressionType::MsZip,
     }
 }
 
@@ -53,10 +63,10 @@ fn write_entry(writer: &mut CabinetWriter<File>, path: PathBuf) -> Result<()> {
     }
 }
 
-fn collect_entries<'a>(tps: &'a Vec<TargetPath>) -> Vec<(PathBuf, &'a TargetPath<'a>)> {
+fn collect_entries<'a>(tps: &'a Targets) -> Vec<(PathBuf, &'a TargetPath<'a>)> {
     let mut r = vec![];
-    for tp in tps {
-        for t in tp.walker().flatten() {
+    for tp in tps.iter() {
+        for t in tp.iter() {
             let path = t.into_path();
             if path.is_file() {
                 r.push((path, tp));

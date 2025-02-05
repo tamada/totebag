@@ -1,14 +1,12 @@
 use std::fs::File;
 
-use crate::archiver::ToteArchiver;
+use crate::archiver::{ArchiveEntry, Targets, ToteArchiver};
 use crate::{Result, ToteError};
-
-use super::TargetPath;
 
 pub(super) struct LhaArchiver {}
 
 impl ToteArchiver for LhaArchiver {
-    fn perform(&self, _: File, _: Vec<TargetPath>) -> Result<()> {
+    fn perform(&self, _: File, _: Targets) -> Result<Vec<ArchiveEntry>> {
         Err(ToteError::UnsupportedFormat(
             "only extraction support for lha".to_string(),
         ))
