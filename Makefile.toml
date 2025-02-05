@@ -40,6 +40,16 @@ script = [
     "docker build -t ghcr.io/tamada/totebag:latest -t ghcr.io/tamada/totebag:${VERSION} ."
 ]
 
+[tasks.docker_arm64]
+script = [
+    "docker build --platform linux/arm64/v8 -t ghcr.io/tamada/totebag:latest -t ghcr.io/tamada/totebag:${VERSION} ."
+]
+
+[tasks.docker_amd4]
+script = [
+    "docker build --platform linux/amd64 -t ghcr.io/tamada/totebag:latest -t ghcr.io/tamada/totebag:${VERSION} ."
+]
+
 [tasks.docker_buildx]
 description = "Build the docker image for multi-arch"
 script = [

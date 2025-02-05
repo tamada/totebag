@@ -19,7 +19,7 @@ _totebag() {
 
     case "${cmd}" in
         totebag)
-            opts="-C -i -n -l -m -o -h -V --to-archive-name-dir --dir --ignore-types --no-recursive --long --level --mode --generate-completion --output --overwrite --help --version [ARGUMENTS]..."
+            opts="-C -i -L -n -l -m -o -h -V --to-archive-name-dir --dir --ignore-types --level --no-recursive --long --log --mode --generate-completion --output --overwrite --help --version [ARGUMENTS]..."
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -42,7 +42,15 @@ _totebag() {
                     return 0
                     ;;
                 --level)
-                    COMPREPLY=($(compgen -W "error warn info debug" -- "${cur}"))
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                -L)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --log)
+                    COMPREPLY=($(compgen -W "error warn info debug trace" -- "${cur}"))
                     return 0
                     ;;
                 --mode)
@@ -62,7 +70,12 @@ _totebag() {
                     return 0
                     ;;
                 *)
-                    COMPREPLY=()
+                    if [[ "${cur}" == "@*" ]]; then
+                        COMPREPLY=($(compgen -f "${cur:1}" -P "@"))
+                    else
+                        COMPREPLY=($(compgen -f "${cur}"))
+                    fi
+                    return 0
                     ;;
             esac
             COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )

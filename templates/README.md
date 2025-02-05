@@ -26,22 +26,26 @@ Usage: totebag [OPTIONS] [ARGUMENTS]...
 
 Arguments:
   [ARGUMENTS]...  List of files or directories to be processed.
-                  If archive mode, the archive file name can specify at the first argument.
-                  If the frist argument was not the archive name, the default archive name `totebag.zip` is applied.
+                  '-' reads form stdin, and '@<filename>' reads from a file.
+                  In archive mode, the resultant archive file name is determined by the following rule.
+                      - if output option is specified, use it.
+                      - if the first argument is the archive file name, use it.
+                      - otherwise, use the default name 'totebag.zip'.
+                  The format is determined by the extension of the resultant file name.
 
 Options:
       --to-archive-name-dir          extract files to DEST/ARCHIVE_NAME directory (extract mode).
   -C, --dir <DIR>                    Specify the base directory for archiving or extracting. [default: .]
-  -i, --ignore-types <IGNORE_TYPES>  Specify the ignore type. [possible values: default, hidden,
-                                         git-ignore, git-global, git-exclude, ignore]
+  -i, --ignore-types <IGNORE_TYPES>  Specify the ignore type. [possible values: default, hidden, git-ignore, git-global, git-exclude, ignore]
+  -L, --level <LEVEL>                Specify the compression level. [default: 5] [possible values: 0-9 (none to finest)]
+                                     For more details of level of each compression method, see README. [default: 5]
   -n, --no-recursive                 No recursive directory (archive mode).
-      --level <LEVEL>                Specify the log level [default: warn]
-                                         [possible values: error, warn, info, debug, trace]
-  -m, --mode <MODE>                  Mode of operation. [default: auto] 
-                                         [possible values: auto, archive, extract, list]
+  -l, --long                         List entries in the archive file with long format.
+      --log <LOGLEVEL>               Specify the log level [default: warn] [possible values: error, warn, info, debug, trace]
+  -m, --mode <MODE>                  Mode of operation. [default: auto] [possible values: auto archive, extract, list]
   -o, --output <DEST>                Output file in archive mode, or output directory in extraction mode
       --overwrite                    Overwrite existing files.
-  -h, --help                         Print help
+  -h, --help                         Print help (see more with '--help')
   -V, --version                      Print version
 ```
 
@@ -62,7 +66,7 @@ Options:
 
 |       | Level                                                        |
 | ----- | ------------------------------------------------------------ |
-| Cab   | 0: None, otherwise: MsZIP, [CompressionType](https://docs.rs/cab/latest/cab/enum.CompressionType.html). |
+| Cab   | 0: None, otherwise: MsZIP; see [CompressionType](https://docs.rs/cab/latest/cab/enum.CompressionType.html). |
 | Gzip  | See [Compression](https://docs.rs/flate2/1.0.35/flate2/struct.Compression.html#method.new). |
 | Bzip2 | See [Compression](https://docs.rs/bzip2/latest/bzip2/struct.Compression.html#method.new). |
 | Xz    | See [XzEncoder](https://docs.rs/xz/latest/xz/write/struct.XzEncoder.html#method.new). |
