@@ -11,10 +11,12 @@ pub fn print_archive_result(result: ArchiveEntries) {
     };
     println!(
         "archived: {} ({} entries, {:>10} / {:>10}, {:.2}%)",
-        result.archive_file.display(), result.len(),
-        f(result.compressed), f(result.total()), rate
+        result.archive_file.display(),
+        result.len(),
+        f(result.compressed),
+        f(result.total()),
+        rate
     );
-    
 }
 
 pub fn print_long_format(entry: Entry) {

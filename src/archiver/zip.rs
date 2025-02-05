@@ -9,7 +9,7 @@ use std::io::BufReader;
 use std::path::PathBuf;
 use zip::ZipWriter;
 
-use crate::archiver::{ArchiveEntry, TargetPath, ToteArchiver};
+use crate::archiver::{ArchiveEntry, TargetPath, Targets, ToteArchiver};
 use crate::{Result, ToteError};
 
 pub(super) struct ZipArchiver {}
@@ -23,8 +23,9 @@ impl ZipArchiver {
         zw: &mut ZipWriter<File>,
         target: PathBuf,
         tp: &TargetPath,
+        level: u8,
     ) -> Result<()> {
-        let opts = os::create_file_opts(&target);
+        let opts = os::create_file_opts(&target, level as i64);
         let dest_path = tp.dest_path(&target);
         let name = dest_path.to_str().unwrap();
         if let Err(e) = zw.start_file(name, opts) {
@@ -39,16 +40,16 @@ impl ZipArchiver {
 }
 
 impl ToteArchiver for ZipArchiver {
-    fn perform(&self, file: File, tps: Vec<TargetPath>) -> Result<Vec<ArchiveEntry>> {
+    fn perform(&self, file: File, tps: Targets) -> Result<Vec<ArchiveEntry>> {
         let mut errs = vec![];
         let mut zw = zip::ZipWriter::new(file);
         let mut entries = vec![];
-        for tp in tps {
-            for t in tp.walker().flatten() {
+        for tp in tps.iter() {
+            for t in tp.iter() {
                 let path = t.into_path();
                 entries.push(ArchiveEntry::from(&path));
                 if path.is_file() {
-                    if let Err(e) = self.process_file(&mut zw, path, &tp) {
+                    if let Err(e) = self.process_file(&mut zw, path, tp, tps.level()) {
                         errs.push(e);
                     }
                 }
@@ -70,6 +71,8 @@ impl ToteArchiver for ZipArchiver {
 
 #[cfg(test)]
 mod tests {
+    use core::panic;
+
     use super::*;
     use crate::archiver::Archiver;
 
@@ -95,8 +98,9 @@ mod tests {
                 .overwrite(true)
                 .build();
 
-            let result = archiver.perform();
-            assert!(result.is_ok());
+            if let Err(e) = archiver.perform() {
+                panic!("{:?}", e);
+            }
         });
     }
 

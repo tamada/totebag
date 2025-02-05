@@ -42,7 +42,7 @@ pub enum ToteError {
     FileExists(PathBuf),
     IO(std::io::Error),
     NoArgumentsGiven,
-    Unknown(String),
+    Warn(String),
     UnknownFormat(String),
     UnsupportedFormat(String),
 }
@@ -83,6 +83,7 @@ mod tests {
             .iter()
             .map(|e| e.name.clone())
             .collect::<Vec<String>>();
+        println!("{:?}", list);
         assert!(list.contains(&"testdata/sample/Cargo.toml".to_string()));
         assert!(list.contains(&"testdata/sample/LICENSE".to_string()));
         assert!(list.contains(&"testdata/sample/README.md".to_string()));

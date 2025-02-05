@@ -97,7 +97,7 @@ pub trait ToteArchiver {
     /// Perform the archiving operation.
     /// - `file` is the destination file for the archive.
     /// - `tps` is the list of files to be archived.
-    fn perform(&self, file: File, tps: Vec<TargetPath>) -> Result<Vec<ArchiveEntry>>;
+    fn perform(&self, file: File, tps: Targets) -> Result<Vec<ArchiveEntry>>;
     /// Returns true if this archiver is enabled.
     fn enable(&self) -> bool;
 }
@@ -126,6 +126,9 @@ pub struct Archiver {
     /// The list of files to be archived.
     #[builder(setter(into))]
     pub targets: Vec<PathBuf>,
+    /// The compression level (available: 0 to 9, 0 is none and 9 is finest).
+    #[builder(default = 5)]
+    pub level: u8,
     /// the prefix directory for the each file into the archive files when `Some`
     #[builder(default = None, setter(strip_option, into))]
     pub rebase_dir: Option<PathBuf>,
@@ -139,6 +142,25 @@ pub struct Archiver {
     /// specifies the ignore types for traversing.
     #[builder(default = vec![IgnoreType::Default], setter(into))]
     pub ignore_types: Vec<IgnoreType>,
+}
+
+pub struct Targets<'a> {
+    paths: Vec<TargetPath<'a>>,
+    opts: &'a Archiver,
+}
+
+impl<'a> Targets<'a> {
+    fn new(paths: Vec<TargetPath<'a>>, opts: &'a Archiver) -> Self {
+        Self { paths, opts }
+    }
+
+    pub(crate) fn iter(&self) -> impl Iterator<Item = &TargetPath<'a>> {
+        self.paths.iter()
+    }
+
+    pub(crate) fn level(&self) -> u8 {
+        self.opts.level
+    }
 }
 
 /// TargetPath is a helper struct to handle the target path for the archiving operation.
@@ -171,8 +193,12 @@ impl<'a> TargetPath<'a> {
         }
     }
 
+    pub fn iter(&self) -> impl Iterator<Item = ignore::DirEntry> {
+        self.walker().flatten()
+    }
+
     /// Returns the directory traversing walker for the given path of this instance.
-    pub fn walker(&self) -> Walk {
+    fn walker(&self) -> Walk {
         let mut builder = WalkBuilder::new(self.base_path);
         build_walker_impl(self.opts, &mut builder);
         builder.build()
@@ -216,7 +242,7 @@ impl Archiver {
                 }
             }
         }
-        match self.archive_impl(archiver, paths) {
+        match self.archive_impl(archiver, Targets::new(paths, self)) {
             Ok(entries) => {
                 let compressed = self.archive_file.metadata().map(|m| m.len()).unwrap_or(0);
                 Ok(ArchiveEntries::new(&self.archive_file, entries, compressed))
@@ -228,7 +254,7 @@ impl Archiver {
     fn archive_impl(
         &self,
         archiver: Box<dyn ToteArchiver>,
-        tps: Vec<TargetPath>,
+        tps: Targets,
     ) -> Result<Vec<ArchiveEntry>> {
         match File::create(&self.archive_file) {
             Ok(f) => archiver.perform(f, tps),

@@ -23,7 +23,7 @@ fn update_loglevel(level: LogLevel) {
 }
 
 fn perform(mut opts: cli::CliOpts) -> Result<()> {
-    update_loglevel(opts.level);
+    update_loglevel(opts.loglevel);
     if cfg!(debug_assertions) {
         #[cfg(debug_assertions)]
         if opts.generate_completion {
@@ -42,7 +42,7 @@ fn perform(mut opts: cli::CliOpts) -> Result<()> {
         },
         RunMode::Extract => perform_extract_or_list(opts, manager, perform_extract_each),
         RunMode::List => perform_extract_or_list(opts, manager, perform_list_each),
-        RunMode::Auto => Err(ToteError::Unknown(
+        RunMode::Auto => Err(ToteError::Warn(
             "cannot distinguish archiving and extracting".to_string(),
         )),
     }
@@ -128,6 +128,7 @@ fn perform_archive(cliopts: cli::CliOpts, fm: FormatManager) -> Result<ArchiveEn
                 .collect::<Vec<PathBuf>>(),
         )
         .rebase_dir(cliopts.archivers.base_dir)
+        .level(cliopts.archivers.level)
         .overwrite(cliopts.overwrite)
         .no_recursive(cliopts.archivers.no_recursive)
         .ignore_types(cliopts.archivers.ignores)
@@ -166,7 +167,7 @@ fn print_error(e: &ToteError) {
         ToteError::FileExists(p) => println!("{}: file already exists", p.to_str().unwrap()),
         ToteError::IO(e) => println!("IO error: {}", e),
         ToteError::NoArgumentsGiven => println!("No arguments given. Use --help for usage."),
-        ToteError::Unknown(s) => println!("Unknown error: {}", s),
+        ToteError::Warn(s) => println!("Unknown error: {}", s),
         ToteError::UnknownFormat(f) => println!("{}: unknown format", f),
         ToteError::UnsupportedFormat(f) => println!("{}: unsupported format", f),
     }

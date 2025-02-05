@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use tar::Builder;
 use xz2::write::XzEncoder;
 
-use crate::archiver::{ArchiveEntry, TargetPath, ToteArchiver};
+use crate::archiver::{ArchiveEntry, Targets, ToteArchiver};
 use crate::{Result, ToteError};
 
 pub(super) struct TarArchiver {}
@@ -16,7 +16,7 @@ pub(super) struct TarXzArchiver {}
 pub(super) struct TarZstdArchiver {}
 
 impl ToteArchiver for TarArchiver {
-    fn perform(&self, file: File, tps: Vec<TargetPath>) -> Result<Vec<ArchiveEntry>> {
+    fn perform(&self, file: File, tps: Targets) -> Result<Vec<ArchiveEntry>> {
         write_tar(tps, file)
     }
     fn enable(&self) -> bool {
@@ -25,8 +25,9 @@ impl ToteArchiver for TarArchiver {
 }
 
 impl ToteArchiver for TarGzArchiver {
-    fn perform(&self, file: File, tps: Vec<TargetPath>) -> Result<Vec<ArchiveEntry>> {
-        write_tar(tps, GzEncoder::new(file, flate2::Compression::default()))
+    fn perform(&self, file: File, tps: Targets) -> Result<Vec<ArchiveEntry>> {
+        let level = tps.level() as u32;
+        write_tar(tps, GzEncoder::new(file, flate2::Compression::new(level)))
     }
     fn enable(&self) -> bool {
         true
@@ -34,8 +35,9 @@ impl ToteArchiver for TarGzArchiver {
 }
 
 impl ToteArchiver for TarBz2Archiver {
-    fn perform(&self, file: File, tps: Vec<TargetPath>) -> Result<Vec<ArchiveEntry>> {
-        write_tar(tps, BzEncoder::new(file, bzip2::Compression::best()))
+    fn perform(&self, file: File, tps: Targets) -> Result<Vec<ArchiveEntry>> {
+        let level = tps.level() as u32;
+        write_tar(tps, BzEncoder::new(file, bzip2::Compression::new(level)))
     }
     fn enable(&self) -> bool {
         true
@@ -43,8 +45,9 @@ impl ToteArchiver for TarBz2Archiver {
 }
 
 impl ToteArchiver for TarXzArchiver {
-    fn perform(&self, file: File, tps: Vec<TargetPath>) -> Result<Vec<ArchiveEntry>> {
-        write_tar(tps, XzEncoder::new(file, 9))
+    fn perform(&self, file: File, tps: Targets) -> Result<Vec<ArchiveEntry>> {
+        let level = tps.level() as u32;
+        write_tar(tps, XzEncoder::new(file, level))
     }
     fn enable(&self) -> bool {
         true
@@ -52,8 +55,10 @@ impl ToteArchiver for TarXzArchiver {
 }
 
 impl ToteArchiver for TarZstdArchiver {
-    fn perform(&self, file: File, tps: Vec<TargetPath>) -> Result<Vec<ArchiveEntry>> {
-        let encoder = zstd::Encoder::new(file, 9).unwrap();
+    fn perform(&self, file: File, tps: Targets) -> Result<Vec<ArchiveEntry>> {
+        let level = tps.level() as u32;
+        let level = (level as f64 + 1.0) / 10.0 * 22.0; // convert to 1-22
+        let encoder = zstd::Encoder::new(file, level as i32).unwrap();
         write_tar(tps, encoder.auto_finish())
     }
     fn enable(&self) -> bool {
@@ -61,12 +66,12 @@ impl ToteArchiver for TarZstdArchiver {
     }
 }
 
-fn write_tar<W: Write>(tps: Vec<TargetPath>, f: W) -> Result<Vec<ArchiveEntry>> {
+fn write_tar<W: Write>(tps: Targets, f: W) -> Result<Vec<ArchiveEntry>> {
     let mut builder = tar::Builder::new(f);
     let mut errs = vec![];
     let mut entries = vec![];
-    for tp in tps {
-        for t in tp.walker().flatten() {
+    for tp in tps.iter() {
+        for t in tp.iter() {
             let path = t.into_path();
             entries.push(ArchiveEntry::from(&path));
             let dest_dir = tp.dest_path(&path);

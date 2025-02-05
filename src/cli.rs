@@ -23,8 +23,8 @@ pub(crate) struct CliOpts {
     #[clap(flatten)]
     pub listers: ListerOpts,
 
-    #[clap(long = "level", help = "Specify the log level", default_value_t = LogLevel::Warn, ignore_case = true, value_enum)]
-    pub level: LogLevel,
+    #[clap(long = "log", help = "Specify the log level", default_value_t = LogLevel::Warn, ignore_case = true, value_enum)]
+    pub loglevel: LogLevel,
 
     #[clap(short = 'm', long = "mode", default_value_t = RunMode::Auto, value_name = "MODE", required = false, ignore_case = true, value_enum, help = "Mode of operation.")]
     pub mode: RunMode,
@@ -53,10 +53,13 @@ pub(crate) struct CliOpts {
 
     #[clap(
         value_name = "ARGUMENTS",
-        help = r###"List of files or directories to be processed. '-' reads form stdin, and '@<filename>' reads from a file.
-If archive mode, the archive file name can specify at the first argument.
-If the frist argument was not the archive name, the default archive name `totebag.zip` is applied.
-"###
+        help = r###"List of files or directories to be processed.
+'-' reads form stdin, and '@<filename>' reads from a file.
+In archive mode, the resultant archive file name is determined by the following rule.
+    - if output option is specified, use it.
+    - if the first argument is the archive file name, use it.
+    - otherwise, use the default name 'totebag.zip'.
+The format is determined by the extension of the resultant file name."###
     )]
     args: Vec<String>,
 }
@@ -92,6 +95,10 @@ pub struct ArchiverOpts {
     )]
     pub ignores: Vec<IgnoreType>,
 
+    #[clap(short = 'L', long = "level", default_value_t = 5, help = r#"Specify the compression level. [default: 5] [possible values: 0-9 (none to finest)]
+For more details of level of each compression method, see README."#, value_parser=compression_level)]
+    pub level: u8,
+
     #[clap(
         short = 'n',
         long = "no-recursive",
@@ -124,6 +131,10 @@ pub enum LogLevel {
     Debug,
     /// The trace level.
     Trace,
+}
+
+fn compression_level(s: &str) -> core::result::Result<u8, String> {
+    clap_num::number_range(s, 0, 9)
 }
 
 #[derive(Parser, Debug)]

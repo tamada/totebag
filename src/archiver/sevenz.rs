@@ -1,22 +1,23 @@
 use std::fs::File;
 use std::path::PathBuf;
 
-use sevenz_rust::{SevenZArchiveEntry, SevenZWriter};
+use sevenz_rust::{SevenZArchiveEntry, SevenZMethod, SevenZMethodConfiguration, SevenZWriter};
 
-use crate::archiver::{ArchiveEntry, TargetPath, ToteArchiver};
+use crate::archiver::{ArchiveEntry, Targets, ToteArchiver};
 use crate::{Result, ToteError};
 
 pub(super) struct SevenZArchiver {}
 
 impl ToteArchiver for SevenZArchiver {
-    fn perform(&self, file: File, tps: Vec<TargetPath>) -> Result<Vec<ArchiveEntry>> {
+    fn perform(&self, file: File, tps: Targets) -> Result<Vec<ArchiveEntry>> {
         let mut w = match SevenZWriter::new(file) {
             Ok(writer) => writer,
             Err(e) => return Err(ToteError::Archiver(e.to_string())),
         };
+        set_compression_level(&mut w, tps.level());
         let mut errs = vec![];
         let mut entries = vec![];
-        for tp in tps {
+        for tp in tps.iter() {
             for t in tp.walker().flatten() {
                 let path = t.into_path();
                 entries.push(ArchiveEntry::from(&path));
@@ -40,6 +41,14 @@ impl ToteArchiver for SevenZArchiver {
     fn enable(&self) -> bool {
         true
     }
+}
+
+fn set_compression_level(szw: &mut SevenZWriter<File>, level: u8) {
+    let level = match level {
+        0..=4 => SevenZMethod::LZMA,
+        _ => SevenZMethod::LZMA2,
+    };
+    szw.set_content_methods(vec![SevenZMethodConfiguration::new(level)]);
 }
 
 fn process_file(szw: &mut SevenZWriter<File>, target: &PathBuf, dest_path: &PathBuf) -> Result<()> {
@@ -72,15 +81,16 @@ mod tests {
     }
 
     #[test]
-    fn test_zip() {
+    fn test_sevenz() {
         run_test(|| {
             let archiver = Archiver::builder()
                 .archive_file(PathBuf::from("results/test.7z"))
                 .targets(vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")])
                 .overwrite(true)
                 .build();
-            let result = archiver.perform();
-            assert!(result.is_ok());
+            if let Err(e) = archiver.perform() {
+                panic!("{:?}", e);
+            }
         });
     }
 
