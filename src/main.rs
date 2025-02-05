@@ -245,6 +245,20 @@ mod tests {
     }
 
     #[test]
+    fn test_list() {
+        let mut opts = cli::CliOpts::parse_from(&["totebag_test", "--mode", "list", "testdata/test.zip"]);
+        let m = totebag::format::Manager::default();
+        match opts.finalize(&m) {
+            Ok(_) => (),
+            Err(e) => panic!("unexpected error: {:?}", e),
+        }
+        match perform(opts) {
+            Ok(_) => (),
+            Err(e) => panic!("unexpected error: {:?}", e),
+        }
+    }
+
+    #[test]
     fn test_update_loglevel_error() {
         update_loglevel(LogLevel::Error);
         assert_eq!(std::env::var("RUST_LOG").unwrap(), "error");
