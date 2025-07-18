@@ -1,8 +1,8 @@
 # totebag
 
-[![Version](https://shields.io/badge/Version-0.7.9-blue)](https://github.com/tamada/totebag/releases/tag/v0.7.9)
+[![Version](https://shields.io/badge/Version-0.7.10-blue)](https://github.com/tamada/totebag/releases/tag/v0.7.10)
 [![MIT License](https://shields.io/badge/License-MIT-blue)](https://github.com/tamada/totebag/blob/main/LICENSE)
-[![docker](https://shields.io/badge/Docker-0.7.9-blue?logo=docker)](https://github.com/tamada/totebag/pkgs/container/totebag)
+[![docker](https://shields.io/badge/Docker-0.7.10-blue?logo=docker)](https://github.com/tamada/totebag/pkgs/container/totebag)
 
 [![build](https://github.com/tamada/totebag/actions/workflows/build.yaml/badge.svg)](https://github.com/tamada/totebag/actions/workflows/build.yaml)
 [![Rust Report Card](https://rust-reportcard.xuri.me/badge/github.com/tamada/totebag)](https://rust-reportcard.xuri.me/report/github.com/tamada/totebag)
@@ -83,7 +83,7 @@ brew install tamada/tap/totebag
 ## :whale: Docker
 
 ```sh
-docker run -it --rm -v $PWD:/workdir ghcr.io/tamada/totebag:0.7.9 [OPTIONS] [ARGUMENTS]...
+docker run -it --rm -v $PWD:/workdir ghcr.io/tamada/totebag:0.7.10 [OPTIONS] [ARGUMENTS]...
 ```
 
 - **Working directory**: `/workdir`
