@@ -113,7 +113,7 @@ fn extract_tar<R: Read>(mut archive: tar::Archive<R>, opts: PathUtils) -> Result
             continue;
         }
         let size = entry.header().size().unwrap();
-        log::info!("extracting {:?} ({} bytes)", path, size);
+        log::info!("extracting {path:?} ({size} bytes)");
 
         let dest = opts.destination(&path)?;
         if entry.header().entry_type().is_file() {

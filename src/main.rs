@@ -21,7 +21,7 @@ fn update_loglevel(level: LogLevel) {
     env_logger::try_init().unwrap_or_else(|_| {
         eprintln!("failed to initialize logger. set RUST_LOG to see logs.");
     });
-    log::info!("set log level to {:?}", level);
+    log::info!("set log level to {level:?}");
 }
 
 fn perform(mut opts: cli::CliOpts) -> Result<()> {
@@ -59,7 +59,7 @@ where
         .iter()
         .map(PathBuf::from)
         .collect::<Vec<PathBuf>>();
-    log::info!("args: {:?}", args);
+    log::info!("args: {args:?}");
     let mut errs = vec![];
     for arg in args {
         if let Err(e) = f(&opts, m.clone(), arg) {
@@ -155,7 +155,7 @@ fn print_archive_result(result: ArchiveEntries) {
 
 fn print_error(e: &ToteError) {
     match e {
-        ToteError::Archiver(s) => println!("Archive error: {}", s),
+        ToteError::Archiver(s) => println!("Archive error: {s}"),
         ToteError::Array(errs) => {
             for err in errs.iter() {
                 print_error(err);
@@ -163,15 +163,15 @@ fn print_error(e: &ToteError) {
         }
         ToteError::DestIsDir(p) => println!("{}: destination is a directory", p.to_str().unwrap()),
         ToteError::DirExists(p) => println!("{}: directory already exists", p.to_str().unwrap()),
-        ToteError::Extractor(s) => println!("Extractor error: {}", s),
-        ToteError::Fatal(e) => println!("Error: {}", e),
+        ToteError::Extractor(s) => println!("Extractor error: {s}"),
+        ToteError::Fatal(e) => println!("Error: {e}"),
         ToteError::FileNotFound(p) => println!("{}: file not found", p.to_str().unwrap()),
         ToteError::FileExists(p) => println!("{}: file already exists", p.to_str().unwrap()),
-        ToteError::IO(e) => println!("IO error: {}", e),
+        ToteError::IO(e) => println!("IO error: {e}"),
         ToteError::NoArgumentsGiven => println!("No arguments given. Use --help for usage."),
-        ToteError::Warn(s) => println!("Unknown error: {}", s),
-        ToteError::UnknownFormat(f) => println!("{}: unknown format", f),
-        ToteError::UnsupportedFormat(f) => println!("{}: unsupported format", f),
+        ToteError::Warn(s) => println!("Unknown error: {s}"),
+        ToteError::UnknownFormat(f) => println!("{f}: unknown format"),
+        ToteError::UnsupportedFormat(f) => println!("{f}: unsupported format"),
     }
 }
 
@@ -185,7 +185,7 @@ mod gencomp {
     use std::path::PathBuf;
 
     fn generate_impl(app: &mut Command, shell: Shell, dest: PathBuf) -> Result<()> {
-        log::info!("generate completion for {:?} to {:?}", shell, dest);
+        log::info!("generate completion for {shell:?} to {dest:?}");
         if let Err(e) = std::fs::create_dir_all(dest.parent().unwrap()) {
             return Err(ToteError::IO(e));
         }

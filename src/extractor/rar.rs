@@ -28,10 +28,7 @@ impl ToteExtractor for RarExtractor {
         let mut file = archive.open_for_processing().unwrap();
         while let Some(header) = file.read_header().unwrap() {
             let name = header.entry().filename.to_str().unwrap();
-            let dest = match opts.destination(PathBuf::from(name)) {
-                Ok(dest) => dest,
-                Err(e) => return Err(e),
-            };
+            let dest = opts.destination(PathBuf::from(name))?;
             file = if header.entry().is_file() {
                 log::info!(
                     "extracting {} ({} bytes)",

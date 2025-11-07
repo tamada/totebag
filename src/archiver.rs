@@ -181,7 +181,7 @@ impl<'a> TargetPath<'a> {
     pub fn dest_path(&self, target: &PathBuf) -> PathBuf {
         let t = target.clone();
         let r = self.dest_path_impl(target);
-        log::debug!("dest_path({:?}) -> {:?}", t, r);
+        log::debug!("dest_path({t:?}) -> {r:?}");
         r
     }
 
@@ -207,10 +207,7 @@ impl<'a> TargetPath<'a> {
 
 impl Archiver {
     pub fn perform(&self) -> Result<ArchiveEntries> {
-        let archiver = match create_archiver(&self.manager, &self.archive_file) {
-            Ok(a) => a,
-            Err(e) => return Err(e),
-        };
+        let archiver = create_archiver(&self.manager, &self.archive_file)?;
         self.perform_with(archiver)
     }
 

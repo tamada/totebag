@@ -14,10 +14,8 @@ pub(super) struct LhaExtractor {}
 impl ToteExtractor for LhaExtractor {
     fn list(&self, archive_file: PathBuf) -> Result<Vec<Entry>> {
         let mut result = vec![];
-        let mut reader = match delharc::parse_file(archive_file) {
-            Err(e) => return Err(ToteError::IO(e)),
-            Ok(h) => h,
-        };
+        let mut reader = delharc::parse_file(archive_file)
+            .map_err(ToteError::IO)?;
         loop {
             let header = reader.header();
             if !header.is_directory() {
@@ -36,10 +34,8 @@ impl ToteExtractor for LhaExtractor {
     }
 
     fn perform(&self, archive_file: PathBuf, opts: PathUtils) -> Result<()> {
-        let mut reader = match delharc::parse_file(archive_file) {
-            Err(e) => return Err(ToteError::IO(e)),
-            Ok(h) => h,
-        };
+        let mut reader = delharc::parse_file(archive_file)
+                .map_err(ToteError::IO)?;
         let mut errs = vec![];
         loop {
             if let Err(e) = write_data_impl(&mut reader, &opts) {
@@ -65,28 +61,18 @@ impl ToteExtractor for LhaExtractor {
 fn write_data_impl(reader: &mut LhaDecodeReader<File>, opts: &PathUtils) -> Result<()> {
     let header = reader.header();
     let name = header.parse_pathname();
-    let dest = match opts.destination(name.clone()) {
-        Ok(dest) => dest,
-        Err(e) => return Err(e),
-    };
+    let dest = opts.destination(name.clone())?;
     if reader.is_decoder_supported() {
         log::info!("extracting {:?} ({} bytes)", &name, header.original_size);
         create_dir_all(dest.parent().unwrap()).unwrap();
-        let mut dest = match File::create(dest) {
-            Ok(f) => f,
-            Err(e) => return Err(ToteError::IO(e)),
-        };
-        match copy(reader, &mut dest) {
-            Ok(_) => {}
-            Err(e) => return Err(ToteError::IO(e)),
-        }
+        let mut dest = File::create(dest).map_err(ToteError::IO)?;
+        copy(reader, &mut dest).map_err(ToteError::IO)?;
         if let Err(e) = reader.crc_check() {
             return Err(ToteError::Fatal(Box::new(e)));
         };
     } else if !header.is_directory() {
         log::info!(
-            "{:?}: unsupported compression method ({:?})",
-            &name,
+            "{name:?}: unsupported compression method ({:?})",
             header.compression
         );
     }

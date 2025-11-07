@@ -164,10 +164,7 @@ impl CliOpts {
     }
 
     pub(crate) fn finalize(&mut self, m: &totebag::format::Manager) -> Result<()> {
-        let args = match normalize_args(self.args.clone()) {
-            Ok(args) => args,
-            Err(e) => return Err(e),
-        };
+        let args = normalize_args(self.args.clone())?;
         if args.is_empty() {
             return Err(ToteError::NoArgumentsGiven);
         }

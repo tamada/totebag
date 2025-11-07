@@ -15,12 +15,9 @@ impl ToteExtractor for CabExtractor {
     }
 
     fn perform(&self, target: PathBuf, opts: PathUtils) -> Result<()> {
-        let list = match list_impl(&target, |file| {
+        let list = list_impl(&target, |file| {
             (file.name().to_string(), file.uncompressed_size())
-        }) {
-            Ok(l) => l,
-            Err(e) => return Err(e),
-        };
+        })?;
         let mut errs = vec![];
         let mut cabinet = open_cabinet(&target)?;
         for file in list {
@@ -42,11 +39,8 @@ fn write_file_impl(
     opts: &PathUtils,
 ) -> Result<()> {
     let file_name = file.0.clone();
-    let dest_file = match opts.destination(PathBuf::from(file_name.clone())) {
-        Ok(dest_file) => dest_file,
-        Err(e) => return Err(e),
-    };
-    log::info!("extracting {} ({} bytes)", file_name, file.1);
+    let dest_file = opts.destination(PathBuf::from(file_name.clone()))?;
+    log::info!("extracting {file_name} ({} bytes)", file.1);
     match create_dir_all(dest_file.parent().unwrap()) {
         Ok(_) => {}
         Err(e) => return Err(ToteError::IO(e)),

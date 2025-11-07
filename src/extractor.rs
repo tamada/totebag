@@ -140,10 +140,7 @@ pub struct Extractor {
 impl Extractor {
     /// Returns the entries in the archive file.
     pub fn list(&self) -> Result<Vec<Entry>> {
-        let extractor = match create(&self.manager, &self.archive_file) {
-            Ok(e) => e,
-            Err(e) => return Err(e),
-        };
+        let extractor = create(&self.manager, &self.archive_file)?;
         self.list_with(extractor)
     }
 
@@ -154,10 +151,7 @@ impl Extractor {
 
     /// Execute extraction of the archive file.
     pub fn perform(&self) -> Result<()> {
-        let extractor = match create(&self.manager, &self.archive_file) {
-            Ok(e) => e,
-            Err(e) => return Err(e),
-        };
+        let extractor = create(&self.manager, &self.archive_file)?;
         self.perform_with(extractor)
     }
 
@@ -248,13 +242,11 @@ fn create<P: AsRef<Path>>(m: &crate::format::Manager, file: P) -> Result<Box<dyn
             "TarZstd" => Ok(Box::new(tar::TarZstdExtractor {})),
             "Zip" => Ok(Box::new(zip::ZipExtractor {})),
             s => Err(ToteError::UnknownFormat(format!(
-                "{}: unsupported format",
-                s
+                "{s}: unsupported format",
             ))),
         },
         None => Err(ToteError::Extractor(format!(
-            "{:?} no suitable extractor",
-            file
+            "{file:?} no suitable extractor"
         ))),
     }
 }
