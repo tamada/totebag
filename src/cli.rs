@@ -222,9 +222,14 @@ fn reads_file_or_stdin_if_needed<S: AsRef<str>>(s: S) -> Result<Vec<String>> {
 }
 
 fn reads_from_file<S: AsRef<str>>(s: S) -> Result<Vec<String>> {
-    match std::fs::File::open(s.as_ref()) {
-        Ok(f) => reads_from_reader(f),
-        Err(e) => Err(ToteError::IO(e)),
+    let path = PathBuf::from(s.as_ref());
+    if !path.exists() {
+        Err(ToteError::FileNotFound(path))
+    } else {
+        match std::fs::File::open(path) {
+            Ok(f) => reads_from_reader(f),
+            Err(e) => Err(ToteError::IO(e)),
+        }
     }
 }
 

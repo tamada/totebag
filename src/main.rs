@@ -78,38 +78,46 @@ fn perform_extract_each(
     fm: FormatManager,
     archive_file: PathBuf,
 ) -> Result<()> {
-    let extractor = Extractor::builder()
-        .archive_file(archive_file)
-        .manager(fm)
-        .destination(opts.extractor_output())
-        .use_archive_name_dir(opts.extractors.to_archive_name_dir)
-        .overwrite(opts.overwrite)
-        .build();
-    log::info!("{}", extractor.info());
-    extractor.perform()
+    if !archive_file.exists() {
+        Err(ToteError::FileNotFound(archive_file))
+    } else {
+        let extractor = Extractor::builder()
+            .archive_file(archive_file)
+            .manager(fm)
+            .destination(opts.extractor_output())
+            .use_archive_name_dir(opts.extractors.to_archive_name_dir)
+            .overwrite(opts.overwrite)
+            .build();
+        log::info!("{}", extractor.info());
+        extractor.perform()
+    }
 }
 
 fn perform_list_each(opts: &cli::CliOpts, fm: FormatManager, archive_file: PathBuf) -> Result<()> {
-    let extractor = Extractor::builder()
-        .archive_file(archive_file)
-        .manager(fm)
-        .destination(opts.extractor_output())
-        .use_archive_name_dir(opts.extractors.to_archive_name_dir)
-        .overwrite(opts.overwrite)
-        .build();
-    log::info!("{}", extractor.info());
-    match extractor.list() {
-        Ok(files) => {
-            for file in files {
-                if opts.listers.long {
-                    list::print_long_format(file)
-                } else {
-                    println!("{}", file.name);
+    if !archive_file.exists() {
+        Err(ToteError::FileNotFound(archive_file))
+    } else {
+        let extractor = Extractor::builder()
+            .archive_file(archive_file)
+            .manager(fm)
+            .destination(opts.extractor_output())
+            .use_archive_name_dir(opts.extractors.to_archive_name_dir)
+            .overwrite(opts.overwrite)
+            .build();
+        log::info!("{}", extractor.info());
+        match extractor.list() {
+            Ok(files) => {
+                for file in files {
+                    if opts.listers.long {
+                        list::print_long_format(file)
+                    } else {
+                        println!("{}", file.name);
+                    }
                 }
+                Ok(())
             }
-            Ok(())
+            Err(e) => Err(e),
         }
-        Err(e) => Err(e),
     }
 }
 
@@ -119,24 +127,29 @@ fn perform_archive(cliopts: cli::CliOpts, fm: FormatManager) -> Result<ArchiveEn
             "output file is not specified".to_string(),
         ));
     }
-    let archiver = Archiver::builder()
-        .archive_file(cliopts.archiver_output())
-        .manager(fm.clone())
-        .targets(
-            cliopts
-                .args()
-                .iter()
-                .map(PathBuf::from)
-                .collect::<Vec<PathBuf>>(),
-        )
-        .rebase_dir(cliopts.archivers.base_dir)
-        .level(cliopts.archivers.level)
-        .overwrite(cliopts.overwrite)
-        .no_recursive(cliopts.archivers.no_recursive)
-        .ignore_types(cliopts.archivers.ignores)
-        .build();
-    log::info!("{}", archiver.info());
-    archiver.perform()
+    let dest = cliopts.archiver_output();
+    if dest.exists() && !cliopts.overwrite {
+        Err(ToteError::FileExists(dest))
+    } else {
+        let archiver = Archiver::builder()
+            .archive_file(dest)
+            .manager(fm.clone())
+            .targets(
+                cliopts
+                    .args()
+                    .iter()
+                    .map(PathBuf::from)
+                    .collect::<Vec<PathBuf>>(),
+            )
+            .rebase_dir(cliopts.archivers.base_dir)
+            .level(cliopts.archivers.level)
+            .overwrite(cliopts.overwrite)
+            .no_recursive(cliopts.archivers.no_recursive)
+            .ignore_types(cliopts.archivers.ignores)
+            .build();
+        log::info!("{}", archiver.info());
+        archiver.perform()
+    }
 }
 
 fn main() -> Result<()> {
