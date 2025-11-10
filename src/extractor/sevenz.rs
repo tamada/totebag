@@ -40,13 +40,12 @@ fn convert(e: &SevenZArchiveEntry) -> Entry {
     let uncompressed_size = e.size;
     let mtime = e.last_modified_date.to_unix_time();
     let dt = DateTime::from_timestamp(mtime, 0);
-    Entry::new(
-        name,
-        Some(compressed_size),
-        Some(uncompressed_size),
-        None,
-        dt.map(|dt| dt.naive_local()),
-    )
+    Entry::builder()
+        .name(name)
+        .compressed_size(compressed_size)
+        .original_size(uncompressed_size)
+        .date(dt.map(|dt| dt.naive_local()).unwrap())
+        .build()
 }
 
 fn extract(mut file: &File, opts: PathUtils) -> Result<()> {

@@ -52,13 +52,11 @@ fn convert(fh: FileHeader) -> Entry {
     let uncompressed_size = fh.unpacked_size;
     let mtime = fh.file_time as i64;
     let dt = DateTime::from_timestamp(mtime, 0);
-    Entry::new(
-        name.to_string(),
-        None,
-        Some(uncompressed_size),
-        None,
-        dt.map(|dt| dt.naive_local()),
-    )
+    Entry::builder()
+        .name(name)
+        .original_size(uncompressed_size)
+        .date(dt.map(|dt| dt.naive_local()).unwrap())
+        .build()
 }
 
 #[cfg(test)]

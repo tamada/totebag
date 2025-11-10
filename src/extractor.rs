@@ -5,6 +5,9 @@
  * # Example: listing the entries in the archive file
  *
  * ```
+ * use std::path::PathBuf;
+ * use totebag::extractor::Extractor;
+ * 
  * let file = PathBuf::from("testdata/test.zip");
  * let extractor = Extractor::builder()
  *     .archive_file(file)
@@ -20,10 +23,14 @@
  * The destination for extraction is the current directory in the following example.
  *
  * ```
+ * use std::path::PathBuf;
+ * use totebag::extractor::Extractor;
+ * 
  * let extractor = Extractor::builder()
- *     .archive_file(PathBuf::From("testdata/test.zip"))
+ *     .archive_file(PathBuf::from("testdata/test.zip"))
+ *     .destination(PathBuf::from("results"))
  *     .build();
- * match extractor.perform(&opts) {
+ * match extractor.perform() {
  *     Ok(r) => println!("{:?}", r),
  *     Err(e) => println!("error: {:?}", e),
  * }
@@ -45,13 +52,15 @@ mod tar;
 mod zip;
 
 /// This struct represents an entry in the archive file.
-/// To build an instance of this struct, use [`Entry::new`] or [`Entry::builder`] methods.
+/// To build an instance of this struct, use [`Entry::new`] or [`Entry::builder`] methods in each [`Extractor`].
 ///
 /// # Example of builder
 ///
 /// The required field is only [`name`](Entry::name), other fields are optional.
 ///
 /// ```
+/// use totebag::extractor::Entry;
+/// 
 /// let entry = Entry::builder()
 ///     .name("entry_name_extracted_from_archive_file")
 ///     .build();
@@ -60,13 +69,13 @@ mod zip;
 pub struct Entry {
     #[builder(setter(into))]
     pub name: String,
-    #[builder(setter(into, strip_option))]
+    #[builder(setter(into, strip_option), default = None)]
     pub compressed_size: Option<u64>,
-    #[builder(setter(into, strip_option))]
+    #[builder(setter(into, strip_option), default = None)]
     pub original_size: Option<u64>,
-    #[builder(setter(into, strip_option))]
+    #[builder(setter(into, strip_option), default = Some(0o644))]
     pub unix_mode: Option<u32>,
-    #[builder(setter(into, strip_option))]
+    #[builder(setter(into, strip_option), default = None)]
     pub date: Option<NaiveDateTime>,
 }
 

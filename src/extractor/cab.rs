@@ -86,7 +86,11 @@ fn convert(f: &FileEntry) -> Entry {
     let name = f.name().to_string();
     let uncompressed_size = f.uncompressed_size();
     let mtime = f.datetime().map(to_naive_datetime);
-    Entry::new(name, None, Some(uncompressed_size as u64), None, mtime)
+    Entry::builder()
+        .name(name)
+        .original_size(uncompressed_size as u64)
+        .date(mtime.unwrap())
+        .build()
 }
 
 fn to_naive_datetime(t: time::PrimitiveDateTime) -> chrono::NaiveDateTime {

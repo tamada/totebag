@@ -145,13 +145,12 @@ fn tar_entry_to_entry<R: Read>(e: tar::Entry<R>) -> ToteEntry {
     let mode = header.mode().unwrap();
     let mtime = header.mtime().unwrap();
     let datetime = chrono::DateTime::from_timestamp_millis(mtime as i64);
-    ToteEntry::new(
-        path,
-        None,
-        size.ok(),
-        Some(mode),
-        datetime.map(|dt| dt.naive_local()),
-    )
+    ToteEntry::builder()
+        .name(path)
+        .original_size(size.unwrap())
+        .unix_mode(mode)
+        .date(datetime.map(|dt| dt.naive_local()).unwrap())
+        .build()
 }
 
 #[cfg(test)]

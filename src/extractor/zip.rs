@@ -51,13 +51,13 @@ fn convert(zfile: ZipFile) -> Entry {
         Some(t) => convert_to_datetime(t),
         None => None,
     };
-    Entry::new(
-        name,
-        Some(compressed_size),
-        Some(uncompresseed_size),
-        mode,
-        mtime,
-    )
+    Entry::builder()
+        .name(name)
+        .compressed_size(compressed_size)
+        .original_size(uncompresseed_size)
+        .unix_mode(mode.unwrap())
+        .date(mtime.unwrap())
+        .build()
 }
 
 fn convert_to_datetime(t: zip::DateTime) -> Option<NaiveDateTime> {

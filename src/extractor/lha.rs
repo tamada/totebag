@@ -85,13 +85,12 @@ fn convert(h: &LhaHeader) -> Entry {
     let original_size = h.original_size;
     let mtime = h.last_modified as i64;
     let dt = DateTime::from_timestamp(mtime, 0);
-    Entry::new(
-        name,
-        Some(compressed_size),
-        Some(original_size),
-        None,
-        dt.map(|dt| dt.naive_local()),
-    )
+    Entry::builder()
+        .name(name)
+        .compressed_size(compressed_size)
+        .original_size(original_size)
+        .date(dt.map(|dt| dt.naive_local()).unwrap())
+        .build()    
 }
 
 #[cfg(test)]

@@ -7,21 +7,25 @@
 //! Cab, Lha, SevenZ, Rar, Tar, TarGz, TarBz2, TarXz, TarZstd, and Zip.
 //!
 //! ```
+//! use totebag::format::Manager;
+//! use std::path::PathBuf;
 //! let manager = Manager::default();
 //! let format = manager.find(PathBuf::from("test.zip"))
 //!      .expect("Unexpected error: test.zip");
-//! let format_name = format.name; // should be "Zip"
+//! let format_name = format.name.clone(); // should be "Zip"
 //! ```
 //!
 //! ## Use your own format
 //!
 //! ```
+//! use totebag::format::{Format, Manager};
+//! use std::path::PathBuf;
 //! let mut manager = Manager::default();
 //! let additional_format = Format::new("Compact Pro", vec![".sea", ".cpt"]);
-//! manager.add(additional_format);
+//! manager.add(additional_format.clone());
 //! let format = manager.find("test.cpt")
 //!     .expect("Unexpected error: test.cpt");
-//! let format_name = format.name; // should be "Compact Pro"
+//! let format_name = format.name.clone(); // should be "Compact Pro"
 //!
 //! // remove the format
 //! manager.remove(additional_format);

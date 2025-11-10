@@ -5,9 +5,12 @@
 //! # Example: archiving the files
 //!
 //! ```
+//! use std::path::PathBuf;
+//! use totebag::archiver::Archiver;
+//! 
 //! let archiver = Archiver::builder()
 //!     .archive_file("destination/test.zip") // destination file.
-//!     .targets(vec!["src", "Cargo.toml"])   // files to be archived.
+//!     .targets(vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")])   // files to be archived.
 //!     .rebase_dir(PathBuf::from("new"))     // rebased directory in the archive file.
 //!     .overwrite(true)                      // set overwrite flag of the destination file.
 //!     .build();
@@ -104,6 +107,9 @@ pub trait ToteArchiver {
 
 /// Archiver is a struct to handle the archiving operation.
 /// ```
+/// use std::path::PathBuf;
+/// use totebag::archiver::Archiver;
+/// 
 /// let archiver = Archiver::builder()
 ///     .archive_file(PathBuf::from("results/test.zip"))
 ///     .targets(vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")])
