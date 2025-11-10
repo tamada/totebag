@@ -100,7 +100,7 @@ mod tests {
 
     #[test]
     fn test_list_archives() {
-        let file = PathBuf::from("testdata/test.lzh");
+        let file = PathBuf::from("../testdata/test.lzh");
         let extractor = LhaExtractor {};
         match extractor.list(file) {
             Ok(r) => {
@@ -117,7 +117,7 @@ mod tests {
 
     #[test]
     fn test_extract_archive() {
-        let archive_file = PathBuf::from("testdata/test.lzh");
+        let archive_file = PathBuf::from("../testdata/test.lzh");
         let opts = Extractor::builder()
             .archive_file(archive_file)
             .destination("results/lha")

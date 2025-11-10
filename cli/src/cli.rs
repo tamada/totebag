@@ -251,7 +251,7 @@ mod tests {
     #[test]
     fn test_read_from_file1() {
         let manager = totebag::format::Manager::default();
-        let mut cli = CliOpts::parse_from(&["totebag_test", "@testdata/files/archive_mode1.txt"]);
+        let mut cli = CliOpts::parse_from(&["totebag_test", "@../testdata/files/archive_mode1.txt"]);
         match cli.finalize(&manager) {
             Ok(_) => {}
             Err(e) => panic!("error: {:?}", e),
@@ -267,7 +267,7 @@ mod tests {
     #[test]
     fn test_read_from_file2() {
         let manager = totebag::format::Manager::default();
-        let mut cli = CliOpts::parse_from(&["totebag_test", "@testdata/files/archive_mode2.txt"]);
+        let mut cli = CliOpts::parse_from(&["totebag_test", "@../testdata/files/archive_mode2.txt"]);
         match cli.finalize(&manager) {
             Ok(_) => {}
             Err(e) => panic!("error: {:?}", e),
@@ -283,7 +283,7 @@ mod tests {
     #[test]
     fn test_read_from_file3() {
         let manager = totebag::format::Manager::default();
-        let mut cli = CliOpts::parse_from(&["totebag_test", "@testdata/files/extract_mode.txt"]);
+        let mut cli = CliOpts::parse_from(&["totebag_test", "@../testdata/files/extract_mode.txt"]);
         match cli.finalize(&manager) {
             Ok(_) => {}
             Err(e) => panic!("error: {:?}", e),

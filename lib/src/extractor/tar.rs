@@ -160,7 +160,7 @@ mod tests {
 
     #[test]
     fn test_list_tar_file() {
-        let file = PathBuf::from("testdata/test.tar");
+        let file = PathBuf::from("../testdata/test.tar");
         let extractor = TarExtractor {};
         match extractor.list(file) {
             Ok(r) => {
@@ -177,7 +177,7 @@ mod tests {
 
     #[test]
     fn test_extract_archive() {
-        let archive_file = PathBuf::from("testdata/test.tar");
+        let archive_file = PathBuf::from("../testdata/test.tar");
         let opts = Extractor::builder()
             .archive_file(archive_file)
             .destination("results/tar")
@@ -194,7 +194,7 @@ mod tests {
 
     #[test]
     fn test_list_tarbz2_file() {
-        let file = PathBuf::from("testdata/test.tar.bz2");
+        let file = PathBuf::from("../testdata/test.tar.bz2");
         let extractor = TarBz2Extractor {};
         match extractor.list(file) {
             Ok(r) => {
@@ -211,7 +211,7 @@ mod tests {
 
     #[test]
     fn test_list_targz_file() {
-        let file = PathBuf::from("testdata/test.tar.gz");
+        let file = PathBuf::from("../testdata/test.tar.gz");
         let extractor = TarGzExtractor {};
         match extractor.list(file) {
             Ok(r) => {
@@ -228,7 +228,7 @@ mod tests {
 
     #[test]
     fn test_list_tarzstd_file() {
-        let file = PathBuf::from("testdata/test.tar.zst");
+        let file = PathBuf::from("../testdata/test.tar.zst");
         let extractor = TarZstdExtractor {};
         match extractor.list(file) {
             Ok(r) => {

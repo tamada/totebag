@@ -75,7 +75,7 @@ mod tests {
 
     #[test]
     fn test_list() {
-        let file = PathBuf::from("testdata/test.7z");
+        let file = PathBuf::from("../testdata/test.7z");
         let extractor = SevenZExtractor {};
         match extractor.list(file) {
             Ok(r) => {
@@ -92,7 +92,7 @@ mod tests {
 
     #[test]
     fn test_extract_archive() {
-        let archive_file = PathBuf::from("testdata/test.7z");
+        let archive_file = PathBuf::from("../testdata/test.7z");
         let opts = Extractor::builder()
             .archive_file(archive_file)
             .destination("results/sevenz")

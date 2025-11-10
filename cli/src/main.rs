@@ -11,12 +11,14 @@ mod cli;
 mod list;
 
 fn update_loglevel(level: LogLevel) {
-    match level {
-        cli::LogLevel::Error => std::env::set_var("RUST_LOG", "error"),
-        cli::LogLevel::Warn => std::env::set_var("RUST_LOG", "warn"),
-        cli::LogLevel::Info => std::env::set_var("RUST_LOG", "info"),
-        cli::LogLevel::Debug => std::env::set_var("RUST_LOG", "debug"),
-        cli::LogLevel::Trace => std::env::set_var("RUST_LOG", "trace"),
+    unsafe {
+        match level {
+            cli::LogLevel::Error => std::env::set_var("RUST_LOG", "error"),
+            cli::LogLevel::Warn => std::env::set_var("RUST_LOG", "warn"),
+            cli::LogLevel::Info => std::env::set_var("RUST_LOG", "info"),
+            cli::LogLevel::Debug => std::env::set_var("RUST_LOG", "debug"),
+            cli::LogLevel::Trace => std::env::set_var("RUST_LOG", "trace"),
+        }
     }
     env_logger::try_init().unwrap_or_else(|_| {
         eprintln!("failed to initialize logger. set RUST_LOG to see logs.");
@@ -262,7 +264,7 @@ mod tests {
     #[test]
     fn test_list() {
         let mut opts =
-            cli::CliOpts::parse_from(&["totebag_test", "--mode", "list", "testdata/test.zip"]);
+            cli::CliOpts::parse_from(&["totebag_test", "--mode", "list", "../testdata/test.zip"]);
         let m = totebag::format::Manager::default();
         match opts.finalize(&m) {
             Ok(_) => (),

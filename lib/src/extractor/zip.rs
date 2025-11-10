@@ -82,7 +82,7 @@ mod tests {
 
     #[test]
     fn test_list_archives() {
-        let file = PathBuf::from("testdata/test.zip");
+        let file = PathBuf::from("../testdata/test.zip");
         let extractor = ZipExtractor {};
         match extractor.list(file) {
             Ok(r) => {
@@ -110,7 +110,7 @@ mod tests {
 
     #[test]
     fn test_extract_archive() {
-        let archive_file = PathBuf::from("testdata/test.zip");
+        let archive_file = PathBuf::from("../testdata/test.zip");
         let opts = Extractor::builder()
             .archive_file(archive_file)
             .destination("results/zip")

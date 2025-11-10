@@ -8,7 +8,7 @@
  * use std::path::PathBuf;
  * use totebag::extractor::Extractor;
  * 
- * let file = PathBuf::from("testdata/test.zip");
+ * let file = PathBuf::from("../testdata/test.zip");
  * let extractor = Extractor::builder()
  *     .archive_file(file)
  *     .build();
@@ -27,7 +27,7 @@
  * use totebag::extractor::Extractor;
  * 
  * let extractor = Extractor::builder()
- *     .archive_file(PathBuf::from("testdata/test.zip"))
+ *     .archive_file(PathBuf::from("../testdata/test.zip"))
  *     .destination(PathBuf::from("results"))
  *     .build();
  * match extractor.perform() {

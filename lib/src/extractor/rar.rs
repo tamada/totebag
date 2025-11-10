@@ -68,7 +68,7 @@ mod tests {
     #[test]
     fn test_list_archives() {
         let extractor = RarExtractor {};
-        let file = PathBuf::from("testdata/test.rar");
+        let file = PathBuf::from("../testdata/test.rar");
         match extractor.list(file) {
             Ok(r) => {
                 let r = r.iter().map(|e| e.name.clone()).collect::<Vec<_>>();
@@ -84,7 +84,7 @@ mod tests {
 
     #[test]
     fn test_extract_archive() {
-        let archive_file = PathBuf::from("testdata/test.rar");
+        let archive_file = PathBuf::from("../testdata/test.rar");
         let opts = Extractor::builder()
             .archive_file(archive_file.clone())
             .destination(PathBuf::from("results/rar"))
