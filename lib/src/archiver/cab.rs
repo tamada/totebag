@@ -9,7 +9,12 @@ use crate::{Result, ToteError};
 pub(super) struct CabArchiver {}
 
 impl ToteArchiver for CabArchiver {
-    fn perform(&self, file: File, targets: &Vec<PathBuf>, config: &crate::ArchiveConfig) -> Result<Vec<ArchiveEntry>> {
+    fn perform(
+        &self,
+        file: File,
+        targets: &Vec<PathBuf>,
+        config: &crate::ArchiveConfig,
+    ) -> Result<Vec<ArchiveEntry>> {
         let mut errs = vec![];
         let mut entries = vec![];
         let mut builder = CabinetBuilder::new();
@@ -101,7 +106,8 @@ mod tests {
                 .overwrite(false)
                 .no_recursive(true)
                 .build();
-            let v = vec!["lib", "cli", "Cargo.toml"].into_iter()
+            let v = vec!["lib", "cli", "Cargo.toml"]
+                .into_iter()
                 .map(|s| PathBuf::from(s))
                 .collect::<Vec<_>>();
             if let Err(e) = crate::archive(&v, &config) {

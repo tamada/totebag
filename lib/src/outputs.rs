@@ -2,13 +2,16 @@ use crate::Result;
 use crate::extractor::Entry;
 
 pub fn to_string(entries: &Vec<Entry>) -> Result<String> {
-    Ok(entries.into_iter()
+    Ok(entries
+        .into_iter()
         .map(|entry| entry.name.to_string())
-        .collect::<Vec<String>>().join("\n"))
+        .collect::<Vec<String>>()
+        .join("\n"))
 }
 
 pub fn to_string_long(entries: &Vec<Entry>) -> Result<String> {
-    Ok(entries.iter()
+    Ok(entries
+        .iter()
         .map(|entry| to_long_format(entry))
         .collect::<Vec<String>>()
         .join("\n"))
@@ -69,8 +72,12 @@ fn format_mode(mode: u8) -> String {
 use chrono::NaiveDateTime;
 use serde::Serializer;
 
-pub fn serialize_option_u32_octal<S>(value: &Option<u32>, serializer: S) -> std::result::Result<S::Ok, S::Error>
-    where S: Serializer,
+pub fn serialize_option_u32_octal<S>(
+    value: &Option<u32>,
+    serializer: S,
+) -> std::result::Result<S::Ok, S::Error>
+where
+    S: Serializer,
 {
     match value {
         Some(v) => serializer.serialize_str(&format!("{:o}", v)),

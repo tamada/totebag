@@ -6,7 +6,7 @@
 //!
 //! ```
 //! use std::path::PathBuf;
-//! 
+//!
 //! let config = totebag::ArchiveConfig::builder()
 //!     .dest("results/test.zip")                  // destination file.
 //!     .rebase_dir(PathBuf::from("new"))          // rebased directory in the archive file.
@@ -95,7 +95,12 @@ pub trait ToteArchiver {
     /// Perform the archiving operation.
     /// - `file` is the destination file for the archive.
     /// - `tps` is the list of files to be archived.
-    fn perform(&self, file: File, targets: &Vec<PathBuf>, config: &crate::ArchiveConfig) -> Result<Vec<ArchiveEntry>>;
+    fn perform(
+        &self,
+        file: File,
+        targets: &Vec<PathBuf>,
+        config: &crate::ArchiveConfig,
+    ) -> Result<Vec<ArchiveEntry>>;
 
     /// Returns true if this archiver is enabled.
     fn enable(&self) -> bool;
@@ -126,14 +131,22 @@ pub fn create<P: AsRef<Path>>(dest: P) -> Result<Box<dyn ToteArchiver>> {
                 "TarXz" => Box::new(TarXzArchiver {}),
                 "TarZstd" => Box::new(TarZstdArchiver {}),
                 "Zip" => Box::new(ZipArchiver::new()),
-                _ => return Err(ToteError::UnknownFormat(format!("{}: unknown format", format.name))),
+                _ => {
+                    return Err(ToteError::UnknownFormat(format!(
+                        "{}: unknown format",
+                        format.name
+                    )));
+                }
             };
             if !archiver.enable() {
-                Err(ToteError::UnsupportedFormat(format!("{}: unsupported format (archiving)", format.name)))
+                Err(ToteError::UnsupportedFormat(format!(
+                    "{}: unsupported format (archiving)",
+                    format.name
+                )))
             } else {
                 Ok(archiver)
             }
-        },
+        }
         None => Err(ToteError::Archiver(format!(
             "{:?}: no suitable archiver",
             dest.file_name().unwrap()

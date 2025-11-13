@@ -7,7 +7,12 @@ use crate::{Result, ToteError};
 pub(super) struct LhaArchiver {}
 
 impl ToteArchiver for LhaArchiver {
-    fn perform(&self, _: File, _: &Vec<PathBuf>, _config: &crate::ArchiveConfig) -> Result<Vec<ArchiveEntry>> {
+    fn perform(
+        &self,
+        _: File,
+        _: &Vec<PathBuf>,
+        _config: &crate::ArchiveConfig,
+    ) -> Result<Vec<ArchiveEntry>> {
         Err(ToteError::UnsupportedFormat(
             "only extraction support for lha".to_string(),
         ))

@@ -7,7 +7,12 @@ use crate::{Result, ToteError};
 pub(super) struct RarArchiver {}
 
 impl ToteArchiver for RarArchiver {
-    fn perform(&self, _: File, _: &Vec<PathBuf>, _config: &crate::ArchiveConfig) -> Result<Vec<ArchiveEntry>> {
+    fn perform(
+        &self,
+        _: File,
+        _: &Vec<PathBuf>,
+        _config: &crate::ArchiveConfig,
+    ) -> Result<Vec<ArchiveEntry>> {
         Err(ToteError::UnsupportedFormat(
             "only extraction support for rar".to_string(),
         ))
@@ -25,9 +30,7 @@ mod tests {
 
     #[test]
     fn test_rar_archive() {
-        let config = ArchiveConfig::builder()
-            .dest("results/test.rar")
-            .build();
+        let config = ArchiveConfig::builder().dest("results/test.rar").build();
         let v = Vec::<PathBuf>::new();
 
         let r = crate::archive(&v, &config);

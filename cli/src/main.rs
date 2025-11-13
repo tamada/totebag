@@ -39,11 +39,11 @@ fn perform(opts: cli::CliOpts) -> Result<()> {
         Mode::Archive(config) => match perform_archive(config, args) {
             Ok(entries) => print_archive_result(entries),
             Err(e) => Err(e),
-        }
+        },
         Mode::List(config) => match perform_list(config, args) {
             Ok(results) => print_list_result(results),
             Err(e) => Err(e),
-        }
+        },
         Mode::Extract(config) => perform_extract(config, args),
     }
 }
@@ -73,9 +73,7 @@ fn perform_list(config: totebag::ListConfig, args: Vec<String>) -> Result<Vec<St
 }
 
 fn perform_archive(config: totebag::ArchiveConfig, args: Vec<String>) -> Result<ArchiveEntries> {
-    let targets = args.into_iter()
-        .map(|s| PathBuf::from(s))
-        .collect();
+    let targets = args.into_iter().map(|s| PathBuf::from(s)).collect();
     totebag::archive(&targets, &config)
 }
 
@@ -88,8 +86,7 @@ fn main() -> Result<()> {
 }
 
 fn print_list_result(results: Vec<String>) -> Result<()> {
-    results.iter()
-        .for_each(|item| println!("{item}"));
+    results.iter().for_each(|item| println!("{item}"));
     Ok(())
 }
 

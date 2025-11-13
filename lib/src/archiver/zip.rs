@@ -18,7 +18,13 @@ impl ZipArchiver {
     pub fn new() -> Self {
         Self {}
     }
-    fn process_file(&self, zw: &mut ZipWriter<File>, target: &Path, dest_path: PathBuf, level: u8) -> Result<()> {
+    fn process_file(
+        &self,
+        zw: &mut ZipWriter<File>,
+        target: &Path,
+        dest_path: PathBuf,
+        level: u8,
+    ) -> Result<()> {
         let opts = os::create_file_opts(target, level as i64);
         let name = dest_path.to_str().unwrap();
         if let Err(e) = zw.start_file(name, opts) {
@@ -34,7 +40,12 @@ impl ZipArchiver {
 }
 
 impl ToteArchiver for ZipArchiver {
-    fn perform(&self, file: File, targets: &Vec<PathBuf>, config: &crate::ArchiveConfig) -> Result<Vec<ArchiveEntry>> {
+    fn perform(
+        &self,
+        file: File,
+        targets: &Vec<PathBuf>,
+        config: &crate::ArchiveConfig,
+    ) -> Result<Vec<ArchiveEntry>> {
         let mut errs = vec![];
         let mut zw = zip::ZipWriter::new(file);
         let mut entries = vec![];
@@ -43,7 +54,12 @@ impl ToteArchiver for ZipArchiver {
                 let path = entry.path().to_path_buf();
                 entries.push(ArchiveEntry::from(&path));
                 if path.is_file() {
-                    if let Err(e) = self.process_file(&mut zw, &path, config.path_in_archive(&path), config.level) {
+                    if let Err(e) = self.process_file(
+                        &mut zw,
+                        &path,
+                        config.path_in_archive(&path),
+                        config.level,
+                    ) {
                         errs.push(e);
                     }
                 }
@@ -88,7 +104,8 @@ mod tests {
                 .dest("results/test.zip")
                 .overwrite(true)
                 .build();
-            let v = vec!["lib", "cli", "Cargo.toml"].into_iter()
+            let v = vec!["lib", "cli", "Cargo.toml"]
+                .into_iter()
                 .map(|s| PathBuf::from(s))
                 .collect::<Vec<_>>();
             if let Err(e) = crate::archive(&v, &config) {

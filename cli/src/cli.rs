@@ -1,8 +1,8 @@
 use clap::{Parser, ValueEnum};
 use std::{io::BufRead, path::PathBuf};
 
+use totebag::{ArchiveConfig, ExtractConfig, ListConfig};
 use totebag::{IgnoreType, OutputFormat, Result, ToteError};
-use totebag::{ExtractConfig, ListConfig, ArchiveConfig};
 
 pub(crate) enum Mode {
     Archive(ArchiveConfig),
@@ -12,12 +12,14 @@ pub(crate) enum Mode {
 
 impl Mode {
     #[cfg(debug_assertions)]
+    #[allow(unused)]
     pub(crate) fn mode(&self) -> String {
         match self {
             Self::Archive(_) => "archive",
             Self::Extract(_) => "extract",
             Self::List(_) => "list",
-        }.to_string()
+        }
+        .to_string()
     }
 }
 
@@ -30,7 +32,13 @@ pub(crate) enum RunMode {
 }
 
 #[derive(Parser, Debug)]
-#[clap(version, author, about, arg_required_else_help = true)]
+#[clap(
+    bin_name = "totebag",
+    version,
+    author,
+    about,
+    arg_required_else_help = true
+)]
 pub(crate) struct CliOpts {
     #[clap(flatten)]
     pub extractors: ExtractorOpts,
@@ -90,7 +98,6 @@ pub struct ListerOpts {
         help = "Specify the format for listing entries in the archive file."
     )]
     pub format: OutputFormat,
-
 }
 
 #[derive(Parser, Debug)]
@@ -176,7 +183,7 @@ impl CliOpts {
                     } else {
                         Ok(to_archive_config(self, args))
                     }
-                },
+                }
                 RunMode::Archive => Ok(to_archive_config(self, args)),
                 RunMode::Extract => Ok(to_extract_config(self, args)),
                 RunMode::List => Ok(to_list_config(self, args)),
@@ -213,7 +220,10 @@ fn to_extract_config(opts: &CliOpts, args: Vec<String>) -> (Mode, Vec<String>) {
 }
 
 fn to_list_config(opts: &CliOpts, args: Vec<String>) -> (Mode, Vec<String>) {
-    (Mode::List(totebag::ListConfig::new(opts.listers.format.clone())), args)
+    (
+        Mode::List(totebag::ListConfig::new(opts.listers.format.clone())),
+        args,
+    )
 }
 
 pub(crate) fn normalize_args(args: Vec<String>) -> Result<Vec<String>> {
@@ -282,10 +292,15 @@ mod tests {
         let (mode, args) = cli.find_mode().unwrap();
         match mode {
             Mode::List(_) | Mode::Extract(_) => panic!("invalid mode"),
-            Mode::Archive(config) => 
-                assert_eq!(config.dest_file().unwrap(), PathBuf::from("testdata/targets.tar.gz")),
+            Mode::Archive(config) => assert_eq!(
+                config.dest_file().unwrap(),
+                PathBuf::from("testdata/targets.tar.gz")
+            ),
         }
-        assert_eq!(args, vec!["src", "README.md", "LICENSE", "Cargo.toml", "Makefile.toml"]);
+        assert_eq!(
+            args,
+            vec!["src", "README.md", "LICENSE", "Cargo.toml", "Makefile.toml"]
+        );
     }
 
     #[test]
@@ -294,10 +309,14 @@ mod tests {
         let (mode, args) = cli.find_mode().unwrap();
         match mode {
             Mode::List(_) | Mode::Extract(_) => panic!("invalid mode"),
-            Mode::Archive(config) => 
-                assert_eq!(config.dest_file().unwrap(), PathBuf::from("totebag.zip")),
+            Mode::Archive(config) => {
+                assert_eq!(config.dest_file().unwrap(), PathBuf::from("totebag.zip"))
+            }
         }
-        assert_eq!(args, vec!["src", "README.md", "LICENSE", "Cargo.toml", "Makefile.toml"]);
+        assert_eq!(
+            args,
+            vec!["src", "README.md", "LICENSE", "Cargo.toml", "Makefile.toml"]
+        );
     }
 
     #[test]
@@ -306,8 +325,7 @@ mod tests {
         let (mode, args) = cli.find_mode().unwrap();
         match mode {
             Mode::List(_) | Mode::Archive(_) => panic!("invalid mode"),
-            Mode::Extract(config) => 
-                assert_eq!(config.dest, PathBuf::from(".")),
+            Mode::Extract(config) => assert_eq!(config.dest, PathBuf::from(".")),
         }
         assert_eq!(args, vec!["testdata/test.cab", "testdata/test.tar"]);
     }
@@ -341,7 +359,10 @@ mod tests {
         ]);
         let (mode, args) = cli3.find_mode().unwrap();
         assert_eq!(mode.mode(), "extract");
-        assert_eq!(args, vec!["src.zip", "LICENSE.tar", "README.tar.bz2", "hoge.rar"]);
+        assert_eq!(
+            args,
+            vec!["src.zip", "LICENSE.tar", "README.tar.bz2", "hoge.rar"]
+        );
     }
 
     #[test]
@@ -357,7 +378,10 @@ mod tests {
         ]);
         let (mode, args) = cli4.find_mode().unwrap();
         assert_eq!(mode.mode(), "list");
-        assert_eq!(args, vec!["src.zip", "LICENSE.tar", "README.tar.bz2", "hoge.rar"]);
+        assert_eq!(
+            args,
+            vec!["src.zip", "LICENSE.tar", "README.tar.bz2", "hoge.rar"]
+        );
     }
 
     #[test]

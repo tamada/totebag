@@ -9,7 +9,12 @@ use crate::{Result, ToteError};
 pub(super) struct SevenZArchiver {}
 
 impl ToteArchiver for SevenZArchiver {
-    fn perform(&self, file: File, targets: &Vec<PathBuf>, config: &crate::ArchiveConfig) -> Result<Vec<ArchiveEntry>> {
+    fn perform(
+        &self,
+        file: File,
+        targets: &Vec<PathBuf>,
+        config: &crate::ArchiveConfig,
+    ) -> Result<Vec<ArchiveEntry>> {
         let mut w = match SevenZWriter::new(file) {
             Ok(writer) => writer,
             Err(e) => return Err(ToteError::Archiver(e.to_string())),
@@ -86,7 +91,8 @@ mod tests {
                 .dest("results/test.7z")
                 .overwrite(true)
                 .build();
-            let v = vec!["lib", "cli", "Cargo.toml"].iter()
+            let v = vec!["lib", "cli", "Cargo.toml"]
+                .iter()
                 .map(|s| PathBuf::from(s))
                 .collect::<Vec<PathBuf>>();
             if let Err(e) = crate::archive(&v, &config) {

@@ -1,4 +1,4 @@
-use std::fs::{create_dir_all, File};
+use std::fs::{File, create_dir_all};
 use std::io::copy;
 use std::path::{Path, PathBuf};
 
@@ -13,8 +13,7 @@ pub(super) struct LhaExtractor {}
 impl ToteExtractor for LhaExtractor {
     fn list(&self, archive_file: PathBuf) -> Result<Vec<Entry>> {
         let mut result = vec![];
-        let mut reader = delharc::parse_file(archive_file)
-            .map_err(ToteError::IO)?;
+        let mut reader = delharc::parse_file(archive_file).map_err(ToteError::IO)?;
         loop {
             let header = reader.header();
             if !header.is_directory() {
@@ -33,8 +32,7 @@ impl ToteExtractor for LhaExtractor {
     }
 
     fn perform(&self, archive_file: PathBuf, base: PathBuf) -> Result<()> {
-        let mut reader = delharc::parse_file(archive_file)
-                .map_err(ToteError::IO)?;
+        let mut reader = delharc::parse_file(archive_file).map_err(ToteError::IO)?;
         let mut errs = vec![];
         loop {
             if let Err(e) = write_data_impl(&mut reader, &base) {
@@ -89,7 +87,7 @@ fn convert(h: &LhaHeader) -> Entry {
         .compressed_size(compressed_size)
         .original_size(original_size)
         .date(dt.map(|dt| dt.naive_local()).unwrap())
-        .build()    
+        .build()
 }
 
 #[cfg(test)]

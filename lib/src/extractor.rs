@@ -6,7 +6,7 @@
  *
  * ```
  * use std::path::PathBuf;
- * 
+ *
  * let file = PathBuf::from("../testdata/test.zip");
  * let config = totebag::ListConfig::new(totebag::OutputFormat::Default);
  * match totebag::list(file, &config) {
@@ -21,7 +21,7 @@
  *
  * ```
  * use std::path::PathBuf;
- * 
+ *
  * let config = totebag::ExtractConfig::builder()
  *     .dest("results")
  *     .build();
@@ -55,7 +55,7 @@ mod zip;
 ///
 /// ```
 /// use totebag::extractor::Entry;
-/// 
+///
 /// let entry = Entry::builder()
 ///     .name("entry_name_extracted_from_archive_file")
 ///     .build();
@@ -74,7 +74,10 @@ pub struct Entry {
     pub original_size: Option<u64>,
 
     #[builder(setter(into, strip_option), default = Some(0o644))]
-    #[serde(serialize_with = "crate::outputs::serialize_option_u32_octal", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        serialize_with = "crate::outputs::serialize_option_u32_octal",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub unix_mode: Option<u32>,
 
     #[builder(setter(into, strip_option), default = None)]

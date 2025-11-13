@@ -1,17 +1,35 @@
+use std::fs::Metadata;
 use std::path::Path;
 
+use time::OffsetDateTime;
+use zip::DateTime;
 use zip::write::SimpleFileOptions;
 
-pub(super) mod windows;
-
-pub(super) mod linux;
-
 pub(super) fn create_file_opts(target: &Path, level: i64) -> SimpleFileOptions {
-    if cfg!(target_os = "windows") {
-        windows::create_file_opts(target, level)
-    } else {
-        linux::create_file_opts(target, level)
-    }
+    let metadata = std::fs::metadata(target).unwrap();
+    create_file_option(metadata, level)
+}
+
+#[cfg(not(target_os = "windows"))]
+fn create_file_option(metadata: Metadata, level: i64) -> SimpleFileOptions {
+    use std::os::unix::fs::PermissionsExt;
+    let mod_time = DateTime::try_from(OffsetDateTime::from(metadata.modified().unwrap()));
+    let (method, level) = method_and_level(level);
+    SimpleFileOptions::default()
+        .last_modified_time(mod_time.unwrap())
+        .compression_method(method)
+        .compression_level(level)
+        .unix_permissions(metadata.permissions().mode())
+}
+
+#[cfg(target_os = "windows")]
+fn create_file_option(metadata: Metadata, level: i64) -> SimpleFileOptions {
+    let mod_time = DateTime::try_from(OffsetDateTime::from(metadata.modified().unwrap()));
+    let (method, level) = method_and_level(level);
+    SimpleFileOptions::default()
+        .last_modified_time(mod_time.unwrap())
+        .compression_method(method)
+        .compression_level(level)
 }
 
 pub(crate) fn method_and_level(level: i64) -> (zip::CompressionMethod, Option<i64>) {

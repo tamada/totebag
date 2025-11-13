@@ -9,8 +9,11 @@ pub(crate) mod outputs;
 
 use clap::ValueEnum;
 use ignore::WalkBuilder;
+use std::{
+    collections::HashSet,
+    path::{Path, PathBuf},
+};
 use typed_builder::TypedBuilder;
-use std::{collections::HashSet, path::{Path, PathBuf}};
 
 use crate::archiver::ArchiveEntries;
 
@@ -51,7 +54,7 @@ pub enum ToteError {
     Warn(String),
     UnknownFormat(String),
     UnsupportedFormat(String),
-    Xml(serde_xml_rs::Error)
+    Xml(serde_xml_rs::Error),
 }
 
 impl ToteError {
@@ -104,7 +107,10 @@ impl ExtractConfig {
         }
     }
 
-    pub fn extractor(&self, archive_file: &Path) -> Result<Box<dyn crate::extractor::ToteExtractor>> {
+    pub fn extractor(
+        &self,
+        archive_file: &Path,
+    ) -> Result<Box<dyn crate::extractor::ToteExtractor>> {
         crate::extractor::create(archive_file)
     }
 }
@@ -152,7 +158,10 @@ pub enum OutputFormat {
     Xml,
 }
 
-pub fn archive<P: AsRef<Path>>(archive_targets: &Vec<P>, config: &ArchiveConfig) -> Result<ArchiveEntries> {
+pub fn archive<P: AsRef<Path>>(
+    archive_targets: &Vec<P>,
+    config: &ArchiveConfig,
+) -> Result<ArchiveEntries> {
     let dest_file = config.dest_file()?;
     log::info!("{:?}: {}", dest_file, dest_file.exists());
     let archiver = archiver::create(&dest_file)?;
@@ -169,7 +178,7 @@ pub fn archive<P: AsRef<Path>>(archive_targets: &Vec<P>, config: &ArchiveConfig)
             Ok(entries) => {
                 let compressed = dest_file.metadata().map(|m| m.len()).unwrap_or(0);
                 Ok(ArchiveEntries::new(dest_file, entries, compressed))
-            },
+            }
             Err(e) => Err(e),
         },
         Err(e) => Err(ToteError::IO(e)),
@@ -177,7 +186,8 @@ pub fn archive<P: AsRef<Path>>(archive_targets: &Vec<P>, config: &ArchiveConfig)
 }
 
 fn prepare_targets<P: AsRef<Path>>(targets: &Vec<P>) -> Vec<PathBuf> {
-    targets.into_iter()
+    targets
+        .into_iter()
         .map(|p| p.as_ref().to_path_buf())
         .collect()
 }
@@ -265,7 +275,6 @@ impl ArchiveConfig {
             }
             r.into_iter().collect()
         }
-
     }
 }
 

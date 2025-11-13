@@ -1,12 +1,12 @@
-use std::fs::{create_dir_all, File};
+use std::fs::{File, create_dir_all};
 use std::io::copy;
 use std::path::PathBuf;
 
 use chrono::NaiveDateTime;
 use zip::read::ZipFile;
 
-use crate::extractor::{Entry, ToteExtractor};
 use crate::Result;
+use crate::extractor::{Entry, ToteExtractor};
 
 pub(super) struct ZipExtractor {}
 
@@ -108,9 +108,7 @@ mod tests {
     #[test]
     fn test_extract_archive() {
         let archive_file = PathBuf::from("../testdata/test.zip");
-        let opts = crate::ExtractConfig::builder()
-            .dest("results/zip")
-            .build();
+        let opts = crate::ExtractConfig::builder().dest("results/zip").build();
         match crate::extract(archive_file, &opts) {
             Ok(_) => {
                 assert!(true);

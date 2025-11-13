@@ -228,9 +228,7 @@ mod tests {
     #[test]
     fn test_extract_archive() {
         let archive_file = PathBuf::from("../testdata/test.tar");
-        let opts = crate::ExtractConfig::builder()
-            .dest("results/tar")
-            .build();
+        let opts = crate::ExtractConfig::builder().dest("results/tar").build();
         match crate::extract(archive_file, &opts) {
             Ok(_) => {
                 assert!(true);
