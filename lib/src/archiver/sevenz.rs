@@ -12,7 +12,7 @@ impl ToteArchiver for SevenZArchiver {
     fn perform(
         &self,
         file: File,
-        targets: &Vec<PathBuf>,
+        targets: &[PathBuf],
         config: &crate::ArchiveConfig,
     ) -> Result<Vec<ArchiveEntry>> {
         let mut w = match SevenZWriter::new(file) {

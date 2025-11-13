@@ -10,7 +10,7 @@ impl ToteArchiver for LhaArchiver {
     fn perform(
         &self,
         _: File,
-        _: &Vec<PathBuf>,
+        _: &[PathBuf],
         _config: &crate::ArchiveConfig,
     ) -> Result<Vec<ArchiveEntry>> {
         Err(ToteError::UnsupportedFormat(

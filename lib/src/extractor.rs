@@ -136,7 +136,7 @@ pub(super) fn create<P: AsRef<Path>>(file: P) -> Result<Box<dyn ToteExtractor>> 
             "TarXz" => Ok(Box::new(tar::TarXzExtractor {})),
             "TarZstd" => Ok(Box::new(tar::TarZstdExtractor {})),
             "Zip" => Ok(Box::new(zip::ZipExtractor {})),
-            s => Err(ToteError::UnknownFormat(format!("{}: unknown format", s))),
+            s => Err(ToteError::UnknownFormat(format!("{s}: unknown format"))),
         },
         None => Err(ToteError::Extractor(format!(
             "{file:?} no suitable extractor"

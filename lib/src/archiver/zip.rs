@@ -43,7 +43,7 @@ impl ToteArchiver for ZipArchiver {
     fn perform(
         &self,
         file: File,
-        targets: &Vec<PathBuf>,
+        targets: &[PathBuf],
         config: &crate::ArchiveConfig,
     ) -> Result<Vec<ArchiveEntry>> {
         let mut errs = vec![];

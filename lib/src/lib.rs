@@ -72,7 +72,7 @@ impl ToteError {
 pub fn extract<P: AsRef<Path>>(archive_file: P, config: &ExtractConfig) -> Result<()> {
     let archive_file = archive_file.as_ref();
     let base_dir = config.dest(archive_file)?;
-    let extractor = config.extractor(&archive_file)?;
+    let extractor = config.extractor(archive_file)?;
     extractor.perform(archive_file.to_path_buf(), base_dir)
 }
 
@@ -124,18 +124,18 @@ pub fn entries<P: AsRef<Path>>(archive_file: P) -> Result<Vec<crate::extractor::
 pub fn list<P: AsRef<Path>>(archive_file: P, config: &ListConfig) -> Result<String> {
     match entries(archive_file) {
         Err(e) => Err(e),
-        Ok(entries) => convert(entries, &config.format),
+        Ok(entries) => format_for_output(entries, &config.format),
     }
 }
 
-fn convert(entries: Vec<crate::extractor::Entry>, f: &OutputFormat) -> Result<String> {
+fn format_for_output(entries: Vec<crate::extractor::Entry>, f: &OutputFormat) -> Result<String> {
     use OutputFormat::*;
     match f {
         Default => outputs::to_string(&entries),
         Long => outputs::to_string_long(&entries),
-        Json => serde_json::to_string(&entries).map_err(|e| ToteError::Json(e)),
-        PrettyJson => serde_json::to_string_pretty(&entries).map_err(|e| ToteError::Json(e)),
-        Xml => serde_xml_rs::to_string(&entries).map_err(|e| ToteError::Xml(e)),
+        Json => serde_json::to_string(&entries).map_err(ToteError::Json),
+        PrettyJson => serde_json::to_string_pretty(&entries).map_err(ToteError::Json),
+        Xml => serde_xml_rs::to_string(&entries).map_err(ToteError::Xml),
     }
 }
 
@@ -159,7 +159,7 @@ pub enum OutputFormat {
 }
 
 pub fn archive<P: AsRef<Path>>(
-    archive_targets: &Vec<P>,
+    archive_targets: &[P],
     config: &ArchiveConfig,
 ) -> Result<ArchiveEntries> {
     let dest_file = config.dest_file()?;
@@ -174,7 +174,7 @@ pub fn archive<P: AsRef<Path>>(
     }
     let targets = prepare_targets(archive_targets);
     match std::fs::File::create(&dest_file) {
-        Ok(file) => match archiver.perform(file, &targets, &config) {
+        Ok(file) => match archiver.perform(file, &targets, config) {
             Ok(entries) => {
                 let compressed = dest_file.metadata().map(|m| m.len()).unwrap_or(0);
                 Ok(ArchiveEntries::new(dest_file, entries, compressed))
@@ -185,9 +185,9 @@ pub fn archive<P: AsRef<Path>>(
     }
 }
 
-fn prepare_targets<P: AsRef<Path>>(targets: &Vec<P>) -> Vec<PathBuf> {
+fn prepare_targets<P: AsRef<Path>>(targets: &[P]) -> Vec<PathBuf> {
     targets
-        .into_iter()
+        .iter()
         .map(|p| p.as_ref().to_path_buf())
         .collect()
 }

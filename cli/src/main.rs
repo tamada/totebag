@@ -73,7 +73,9 @@ fn perform_list(config: totebag::ListConfig, args: Vec<String>) -> Result<Vec<St
 }
 
 fn perform_archive(config: totebag::ArchiveConfig, args: Vec<String>) -> Result<ArchiveEntries> {
-    let targets = args.into_iter().map(|s| PathBuf::from(s)).collect();
+    let targets = args.into_iter()
+        .map(PathBuf::from)
+        .collect::<Vec<_>>();
     totebag::archive(&targets, &config)
 }
 

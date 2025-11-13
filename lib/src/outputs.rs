@@ -1,18 +1,18 @@
 use crate::Result;
 use crate::extractor::Entry;
 
-pub fn to_string(entries: &Vec<Entry>) -> Result<String> {
+pub fn to_string(entries: &[Entry]) -> Result<String> {
     Ok(entries
-        .into_iter()
+        .iter()
         .map(|entry| entry.name.to_string())
         .collect::<Vec<String>>()
         .join("\n"))
 }
 
-pub fn to_string_long(entries: &Vec<Entry>) -> Result<String> {
+pub fn to_string_long(entries: &[Entry]) -> Result<String> {
     Ok(entries
         .iter()
-        .map(|entry| to_long_format(entry))
+        .map(to_long_format)
         .collect::<Vec<String>>()
         .join("\n"))
 }
@@ -80,7 +80,7 @@ where
     S: Serializer,
 {
     match value {
-        Some(v) => serializer.serialize_str(&format!("{:o}", v)),
+        Some(v) => serializer.serialize_str(&format!("{v:o}")),
         None => serializer.serialize_none(),
     }
 }

@@ -16,7 +16,7 @@ use std::fmt::Display;
 use std::path::Path;
 use std::sync::LazyLock;
 
-static MANAGER: LazyLock<Manager> = LazyLock::new(|| Manager::default());
+static MANAGER: LazyLock<Manager> = LazyLock::new(Manager::default);
 
 /// Archive format manager.
 #[derive(Debug, Clone)]

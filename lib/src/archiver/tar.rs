@@ -19,7 +19,7 @@ impl ToteArchiver for TarArchiver {
     fn perform(
         &self,
         file: File,
-        targets: &Vec<PathBuf>,
+        targets: &[PathBuf],
         config: &crate::ArchiveConfig,
     ) -> Result<Vec<ArchiveEntry>> {
         write_tar(file, targets, config)
@@ -33,7 +33,7 @@ impl ToteArchiver for TarGzArchiver {
     fn perform(
         &self,
         file: File,
-        targets: &Vec<PathBuf>,
+        targets: &[PathBuf],
         config: &crate::ArchiveConfig,
     ) -> Result<Vec<ArchiveEntry>> {
         let level = config.level as u32;
@@ -52,7 +52,7 @@ impl ToteArchiver for TarBz2Archiver {
     fn perform(
         &self,
         file: File,
-        targets: &Vec<PathBuf>,
+        targets: &[PathBuf],
         config: &crate::ArchiveConfig,
     ) -> Result<Vec<ArchiveEntry>> {
         let level = config.level as u32;
@@ -71,7 +71,7 @@ impl ToteArchiver for TarXzArchiver {
     fn perform(
         &self,
         file: File,
-        targets: &Vec<PathBuf>,
+        targets: &[PathBuf],
         config: &crate::ArchiveConfig,
     ) -> Result<Vec<ArchiveEntry>> {
         let level = config.level as u32;
@@ -86,7 +86,7 @@ impl ToteArchiver for TarZstdArchiver {
     fn perform(
         &self,
         file: File,
-        targets: &Vec<PathBuf>,
+        targets: &[PathBuf],
         config: &crate::ArchiveConfig,
     ) -> Result<Vec<ArchiveEntry>> {
         let level = config.level as u32;
@@ -101,7 +101,7 @@ impl ToteArchiver for TarZstdArchiver {
 
 fn write_tar<W: Write>(
     f: W,
-    targets: &Vec<PathBuf>,
+    targets: &[PathBuf],
     config: &crate::ArchiveConfig,
 ) -> Result<Vec<ArchiveEntry>> {
     let mut builder = tar::Builder::new(f);
@@ -171,7 +171,7 @@ mod tests {
             let v = vec!["lib", "cli", "Cargo.toml"]
                 .iter()
                 .map(|s| PathBuf::from(s))
-                .collect();
+                .collect::<Vec<_>>();
             let result = crate::archive(&v, &config);
             let path = PathBuf::from("results/test.tar");
             if let Err(e) = result {
@@ -193,7 +193,7 @@ mod tests {
             let v = vec!["lib", "cli", "Cargo.toml"]
                 .iter()
                 .map(|s| PathBuf::from(s))
-                .collect();
+                .collect::<Vec<_>>();
             let result = crate::archive(&v, &config);
             let path = PathBuf::from("results/test.tar.gz");
             assert!(result.is_ok());
@@ -212,7 +212,7 @@ mod tests {
             let v = vec!["lib", "cli", "Cargo.toml"]
                 .iter()
                 .map(|s| PathBuf::from(s))
-                .collect();
+                .collect::<Vec<_>>();
             let result = crate::archive(&v, &config);
             let path = PathBuf::from("results/test.tar.bz2");
             assert!(result.is_ok());
@@ -231,7 +231,7 @@ mod tests {
             let v = vec!["lib", "cli", "Cargo.toml"]
                 .iter()
                 .map(|s| PathBuf::from(s))
-                .collect();
+                .collect::<Vec<_>>();
             let result = crate::archive(&v, &config);
             let path = PathBuf::from("results/test.tar.xz");
             assert!(result.is_ok());
@@ -250,7 +250,7 @@ mod tests {
             let v = vec!["lib", "cli", "Cargo.toml"]
                 .iter()
                 .map(|s| PathBuf::from(s))
-                .collect();
+                .collect::<Vec<_>>();
             let result = crate::archive(&v, &config);
             let path = PathBuf::from("results/test.tar.zst");
             assert!(result.is_ok());

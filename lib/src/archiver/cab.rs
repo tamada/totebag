@@ -12,7 +12,7 @@ impl ToteArchiver for CabArchiver {
     fn perform(
         &self,
         file: File,
-        targets: &Vec<PathBuf>,
+        targets: &[PathBuf],
         config: &crate::ArchiveConfig,
     ) -> Result<Vec<ArchiveEntry>> {
         let mut errs = vec![];
@@ -20,9 +20,9 @@ impl ToteArchiver for CabArchiver {
         let mut builder = CabinetBuilder::new();
         let ctype = compression_type(config.level);
         let folder = builder.add_folder(ctype);
-        let list = collect_entries(targets, &config);
+        let list = collect_entries(targets, config);
         for path in list.iter() {
-            entries.push(ArchiveEntry::from(&path));
+            entries.push(ArchiveEntry::from(path));
             folder.add_file(config.path_in_archive(path).to_str().unwrap());
         }
         let mut writer = match builder.build(file) {
