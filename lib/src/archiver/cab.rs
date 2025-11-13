@@ -1,30 +1,30 @@
 use std::fs::File;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use cab::{CabinetBuilder, CabinetWriter};
 
-use crate::archiver::{ArchiveEntry, TargetPath, Targets, ToteArchiver};
+use crate::archiver::{ArchiveEntry, ToteArchiver};
 use crate::{Result, ToteError};
 
 pub(super) struct CabArchiver {}
 
 impl ToteArchiver for CabArchiver {
-    fn perform(&self, file: File, tps: Targets) -> Result<Vec<ArchiveEntry>> {
+    fn perform(&self, file: File, targets: &Vec<PathBuf>, config: &crate::ArchiveConfig) -> Result<Vec<ArchiveEntry>> {
         let mut errs = vec![];
         let mut entries = vec![];
         let mut builder = CabinetBuilder::new();
-        let ctype = compression_type(tps.level());
+        let ctype = compression_type(config.level);
         let folder = builder.add_folder(ctype);
-        let list = collect_entries(&tps);
-        for (path, tp) in list.clone() {
+        let list = collect_entries(targets, &config);
+        for path in list.iter() {
             entries.push(ArchiveEntry::from(&path));
-            folder.add_file(tp.dest_path(&path).to_str().unwrap().to_string());
+            folder.add_file(config.path_in_archive(path).to_str().unwrap());
         }
         let mut writer = match builder.build(file) {
             Ok(w) => w,
             Err(e) => return Err(ToteError::Archiver(e.to_string())),
         };
-        for (path, _) in list {
+        for path in list.iter() {
             if let Err(e) = write_entry(&mut writer, path) {
                 errs.push(e);
             }
@@ -47,7 +47,7 @@ fn compression_type(level: u8) -> cab::CompressionType {
     }
 }
 
-fn write_entry(writer: &mut CabinetWriter<File>, path: PathBuf) -> Result<()> {
+fn write_entry(writer: &mut CabinetWriter<File>, path: &Path) -> Result<()> {
     match (File::open(path), writer.next_file()) {
         (Ok(mut reader), Ok(Some(mut w))) => match std::io::copy(&mut reader, &mut w) {
             Ok(_) => Ok(()),
@@ -63,13 +63,13 @@ fn write_entry(writer: &mut CabinetWriter<File>, path: PathBuf) -> Result<()> {
     }
 }
 
-fn collect_entries<'a>(tps: &'a Targets) -> Vec<(PathBuf, &'a TargetPath<'a>)> {
+fn collect_entries<P: AsRef<Path>>(targets: &[P], config: &crate::ArchiveConfig) -> Vec<PathBuf> {
     let mut r = vec![];
-    for tp in tps.iter() {
-        for t in tp.iter() {
-            let path = t.into_path();
+    for path in targets {
+        for entry in config.iter(path) {
+            let path = entry.into_path();
             if path.is_file() {
-                r.push((path, tp));
+                r.push(path)
             }
         }
     }
@@ -78,7 +78,6 @@ fn collect_entries<'a>(tps: &'a Targets) -> Vec<(PathBuf, &'a TargetPath<'a>)> {
 
 #[cfg(test)]
 mod tests {
-    use crate::archiver::Archiver;
     use std::path::PathBuf;
 
     fn run_test<F>(f: F)
@@ -97,14 +96,17 @@ mod tests {
     #[test]
     fn test_archive() {
         run_test(|| {
-            let archiver = Archiver::builder()
-                .archive_file(PathBuf::from("results/test.cab"))
-                .targets(vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")])
+            let config = crate::ArchiveConfig::builder()
+                .dest("results/test.cab")
                 .overwrite(false)
                 .no_recursive(true)
                 .build();
-            let r = archiver.perform();
-            assert!(r.is_ok());
+            let v = vec!["lib", "cli", "Cargo.toml"].into_iter()
+                .map(|s| PathBuf::from(s))
+                .collect::<Vec<_>>();
+            if let Err(e) = crate::archive(&v, &config) {
+                panic!("{e:?}")
+            }
         });
     }
 

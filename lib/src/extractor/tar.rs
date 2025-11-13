@@ -6,7 +6,7 @@ use crate::{Result, ToteError};
 use tar::Archive;
 use xz2::read::XzDecoder;
 
-use crate::extractor::{Entry as ToteEntry, PathUtils, ToteExtractor};
+use crate::extractor::{Entry as ToteEntry, ToteExtractor};
 pub(super) struct TarExtractor {}
 
 pub(super) struct TarGzExtractor {}
@@ -24,10 +24,10 @@ impl ToteExtractor for TarExtractor {
             Err(e) => Err(e),
         }
     }
-    fn perform(&self, archive_file: PathBuf, opts: PathUtils) -> Result<()> {
+    fn perform(&self, archive_file: PathBuf, base: PathBuf) -> Result<()> {
         match open_tar_file(archive_file, |f| f) {
             Err(e) => Err(e),
-            Ok(archive) => extract_tar(archive, opts),
+            Ok(archive) => extract_tar(archive, base),
         }
     }
 }
@@ -39,9 +39,9 @@ impl ToteExtractor for TarGzExtractor {
             Err(e) => Err(e),
         }
     }
-    fn perform(&self, archive_file: PathBuf, opts: PathUtils) -> Result<()> {
+    fn perform(&self, archive_file: PathBuf, base: PathBuf) -> Result<()> {
         match open_tar_file(archive_file, flate2::read::GzDecoder::new) {
-            Ok(archive) => extract_tar(archive, opts),
+            Ok(archive) => extract_tar(archive, base),
             Err(e) => Err(e),
         }
     }
@@ -54,10 +54,10 @@ impl ToteExtractor for TarBz2Extractor {
             Err(e) => Err(e),
         }
     }
-    fn perform(&self, archive_file: PathBuf, opts: PathUtils) -> Result<()> {
+    fn perform(&self, archive_file: PathBuf, base: PathBuf) -> Result<()> {
         match open_tar_file(archive_file, bzip2::read::BzDecoder::new) {
             Err(e) => Err(e),
-            Ok(archive) => extract_tar(archive, opts),
+            Ok(archive) => extract_tar(archive, base),
         }
     }
 }
@@ -69,10 +69,10 @@ impl ToteExtractor for TarXzExtractor {
             Ok(archive) => list_tar(archive),
         }
     }
-    fn perform(&self, archive_file: PathBuf, opts: PathUtils) -> Result<()> {
+    fn perform(&self, archive_file: PathBuf, base: PathBuf) -> Result<()> {
         match open_tar_file(archive_file, XzDecoder::new) {
             Err(e) => Err(e),
-            Ok(archive) => extract_tar(archive, opts),
+            Ok(archive) => extract_tar(archive, base),
         }
     }
 }
@@ -84,10 +84,10 @@ impl ToteExtractor for TarZstdExtractor {
             Ok(archive) => list_tar(archive),
         }
     }
-    fn perform(&self, archive_file: PathBuf, opts: PathUtils) -> Result<()> {
+    fn perform(&self, archive_file: PathBuf, base: PathBuf) -> Result<()> {
         match open_tar_file(archive_file, |f| zstd::Decoder::new(f).unwrap()) {
             Err(e) => Err(e),
-            Ok(archive) => extract_tar(archive, opts),
+            Ok(archive) => extract_tar(archive, base),
         }
     }
 }
@@ -104,7 +104,7 @@ where
     Ok(Archive::new(writer))
 }
 
-fn extract_tar<R: Read>(mut archive: tar::Archive<R>, opts: PathUtils) -> Result<()> {
+fn extract_tar<R: Read>(mut archive: tar::Archive<R>, base: PathBuf) -> Result<()> {
     for entry in archive.entries().unwrap() {
         let mut entry = entry.unwrap();
         let path = entry.header().path().unwrap();
@@ -115,7 +115,7 @@ fn extract_tar<R: Read>(mut archive: tar::Archive<R>, opts: PathUtils) -> Result
         let size = entry.header().size().unwrap();
         log::info!("extracting {path:?} ({size} bytes)");
 
-        let dest = opts.destination(&path)?;
+        let dest = base.join(&path);
         if entry.header().entry_type().is_file() {
             create_dir_all(dest.parent().unwrap()).unwrap();
             entry.unpack(dest).unwrap();
@@ -156,7 +156,6 @@ fn tar_entry_to_entry<R: Read>(e: tar::Entry<R>) -> ToteEntry {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::extractor::Extractor;
 
     #[test]
     fn test_list_tar_file() {
@@ -173,23 +172,6 @@ mod tests {
             }
             Err(_) => assert!(false),
         }
-    }
-
-    #[test]
-    fn test_extract_archive() {
-        let archive_file = PathBuf::from("../testdata/test.tar");
-        let opts = Extractor::builder()
-            .archive_file(archive_file)
-            .destination("results/tar")
-            .build();
-        match opts.perform() {
-            Ok(_) => {
-                assert!(true);
-                assert!(PathBuf::from("results/tar/Cargo.toml").exists());
-                std::fs::remove_dir_all(PathBuf::from("results/tar")).unwrap();
-            }
-            Err(_) => assert!(false),
-        };
     }
 
     #[test]
@@ -241,5 +223,21 @@ mod tests {
             }
             Err(_) => assert!(false),
         }
+    }
+
+    #[test]
+    fn test_extract_archive() {
+        let archive_file = PathBuf::from("../testdata/test.tar");
+        let opts = crate::ExtractConfig::builder()
+            .dest("results/tar")
+            .build();
+        match crate::extract(archive_file, &opts) {
+            Ok(_) => {
+                assert!(true);
+                assert!(PathBuf::from("results/tar/Cargo.toml").exists());
+                std::fs::remove_dir_all(PathBuf::from("results/tar")).unwrap();
+            }
+            Err(_) => assert!(false),
+        };
     }
 }

@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::Path;
 
 use zip::write::SimpleFileOptions;
 
@@ -6,7 +6,7 @@ pub(super) mod windows;
 
 pub(super) mod linux;
 
-pub(super) fn create_file_opts(target: &PathBuf, level: i64) -> SimpleFileOptions {
+pub(super) fn create_file_opts(target: &Path, level: i64) -> SimpleFileOptions {
     if cfg!(target_os = "windows") {
         windows::create_file_opts(target, level)
     } else {

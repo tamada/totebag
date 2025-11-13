@@ -5,7 +5,7 @@ use crate::{Result, ToteError};
 use chrono::DateTime;
 use sevenz_rust::{Archive, BlockDecoder, Password, SevenZArchiveEntry};
 
-use crate::extractor::{Entry, PathUtils, ToteExtractor};
+use crate::extractor::{Entry, ToteExtractor};
 
 pub(super) struct SevenZExtractor {}
 
@@ -25,12 +25,12 @@ impl ToteExtractor for SevenZExtractor {
         }
     }
 
-    fn perform(&self, archive_file: PathBuf, opts: PathUtils) -> Result<()> {
+    fn perform(&self, archive_file: PathBuf, base: PathBuf) -> Result<()> {
         let file = match File::open(archive_file) {
             Ok(file) => file,
             Err(e) => return Err(ToteError::IO(e)),
         };
-        extract(&file, opts)
+        extract(&file, base)
     }
 }
 
@@ -48,7 +48,7 @@ fn convert(e: &SevenZArchiveEntry) -> Entry {
         .build()
 }
 
-fn extract(mut file: &File, opts: PathUtils) -> Result<()> {
+fn extract(mut file: &File, base: PathBuf) -> Result<()> {
     let len = file.metadata().unwrap().len();
     let password = Password::empty();
     let archive = match Archive::read(&mut file, len, password.as_ref()) {
@@ -59,7 +59,7 @@ fn extract(mut file: &File, opts: PathUtils) -> Result<()> {
     for findex in 0..folder_count {
         let folder_decoder = BlockDecoder::new(findex, &archive, password.as_slice(), &mut file);
         if let Err(e) = folder_decoder.for_each_entries(&mut |entry, reader| {
-            let d = opts.destination(PathBuf::from(entry.name.clone())).unwrap();
+            let d = base.join(&entry.name);
             sevenz_rust::default_entry_extract_fn(entry, reader, &d)
         }) {
             return Err(ToteError::Fatal(Box::new(e)));
@@ -71,7 +71,6 @@ fn extract(mut file: &File, opts: PathUtils) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::extractor::Extractor;
 
     #[test]
     fn test_list() {
@@ -93,11 +92,10 @@ mod tests {
     #[test]
     fn test_extract_archive() {
         let archive_file = PathBuf::from("../testdata/test.7z");
-        let opts = Extractor::builder()
-            .archive_file(archive_file)
-            .destination("results/sevenz")
+        let opts = crate::ExtractConfig::builder()
+            .dest("results/sevenz")
             .build();
-        match opts.perform() {
+        match crate::extract(archive_file, &opts) {
             Ok(_) => {
                 assert!(true);
                 assert!(PathBuf::from("results/sevenz/Cargo.toml").exists());

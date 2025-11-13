@@ -1,11 +1,11 @@
 use clap::Parser;
 use std::path::PathBuf;
 
-use cli::{LogLevel, RunMode};
-use totebag::archiver::{ArchiveEntries, Archiver};
-use totebag::extractor::Extractor;
-use totebag::format::Manager as FormatManager;
+use cli::LogLevel;
+use totebag::archiver::ArchiveEntries;
 use totebag::{Result, ToteError};
+
+use crate::cli::Mode;
 
 mod cli;
 mod list;
@@ -26,7 +26,7 @@ fn update_loglevel(level: LogLevel) {
     log::info!("set log level to {level:?}");
 }
 
-fn perform(mut opts: cli::CliOpts) -> Result<()> {
+fn perform(opts: cli::CliOpts) -> Result<()> {
     update_loglevel(opts.loglevel);
     if cfg!(debug_assertions) {
         #[cfg(debug_assertions)]
@@ -34,124 +34,49 @@ fn perform(mut opts: cli::CliOpts) -> Result<()> {
             return gencomp::generate(PathBuf::from("target/completions"));
         }
     }
-    let manager = FormatManager::default();
-    opts.finalize(&manager)?;
-    match opts.run_mode() {
-        RunMode::Archive => match perform_archive(opts, manager) {
-            Ok(result) => {
-                print_archive_result(result);
-                Ok(())
-            }
+    let (mode, args) = opts.find_mode()?;
+    match mode {
+        Mode::Archive(config) => match perform_archive(config, args) {
+            Ok(entries) => print_archive_result(entries),
             Err(e) => Err(e),
-        },
-        RunMode::Extract => perform_extract_or_list(opts, manager, perform_extract_each),
-        RunMode::List => perform_extract_or_list(opts, manager, perform_list_each),
-        RunMode::Auto => Err(ToteError::Warn(
-            "cannot distinguish archiving and extracting".to_string(),
-        )),
+        }
+        Mode::List(config) => match perform_list(config, args) {
+            Ok(results) => print_list_result(results),
+            Err(e) => Err(e),
+        }
+        Mode::Extract(config) => perform_extract(config, args),
     }
 }
 
-fn perform_extract_or_list<F>(opts: cli::CliOpts, m: FormatManager, f: F) -> Result<()>
-where
-    F: Fn(&cli::CliOpts, FormatManager, PathBuf) -> Result<()>,
-{
-    let args = opts
-        .args()
-        .iter()
-        .map(PathBuf::from)
-        .collect::<Vec<PathBuf>>();
-    log::info!("args: {args:?}");
+fn perform_extract(config: totebag::ExtractConfig, args: Vec<String>) -> Result<()> {
     let mut errs = vec![];
-    for arg in args {
-        if let Err(e) = f(&opts, m.clone(), arg) {
+    for item in args {
+        let path = PathBuf::from(item);
+        if let Err(e) = totebag::extract(path, &config) {
             errs.push(e);
         }
     }
-    if errs.is_empty() {
-        Ok(())
-    } else {
-        Err(ToteError::Array(errs))
-    }
+    ToteError::error_or((), errs)
 }
 
-fn perform_extract_each(
-    opts: &cli::CliOpts,
-    fm: FormatManager,
-    archive_file: PathBuf,
-) -> Result<()> {
-    if !archive_file.exists() {
-        Err(ToteError::FileNotFound(archive_file))
-    } else {
-        let extractor = Extractor::builder()
-            .archive_file(archive_file)
-            .manager(fm)
-            .destination(opts.extractor_output())
-            .use_archive_name_dir(opts.extractors.to_archive_name_dir)
-            .overwrite(opts.overwrite)
-            .build();
-        log::info!("{}", extractor.info());
-        extractor.perform()
-    }
-}
-
-fn perform_list_each(opts: &cli::CliOpts, fm: FormatManager, archive_file: PathBuf) -> Result<()> {
-    if !archive_file.exists() {
-        Err(ToteError::FileNotFound(archive_file))
-    } else {
-        let extractor = Extractor::builder()
-            .archive_file(archive_file)
-            .manager(fm)
-            .destination(opts.extractor_output())
-            .use_archive_name_dir(opts.extractors.to_archive_name_dir)
-            .overwrite(opts.overwrite)
-            .build();
-        log::info!("{}", extractor.info());
-        match extractor.list() {
-            Ok(files) => {
-                for file in files {
-                    if opts.listers.long {
-                        list::print_long_format(file)
-                    } else {
-                        println!("{}", file.name);
-                    }
-                }
-                Ok(())
-            }
-            Err(e) => Err(e),
+fn perform_list(config: totebag::ListConfig, args: Vec<String>) -> Result<Vec<String>> {
+    let mut errs = vec![];
+    let mut results = vec![];
+    for item in args {
+        let path = PathBuf::from(item);
+        match totebag::list(path, &config) {
+            Ok(r) => results.push(r),
+            Err(e) => errs.push(e),
         }
     }
+    ToteError::error_or(results, errs)
 }
 
-fn perform_archive(cliopts: cli::CliOpts, fm: FormatManager) -> Result<ArchiveEntries> {
-    if cliopts.output.is_none() {
-        return Err(ToteError::Archiver(
-            "output file is not specified".to_string(),
-        ));
-    }
-    let dest = cliopts.archiver_output();
-    if dest.exists() && !cliopts.overwrite {
-        Err(ToteError::FileExists(dest))
-    } else {
-        let archiver = Archiver::builder()
-            .archive_file(dest)
-            .manager(fm.clone())
-            .targets(
-                cliopts
-                    .args()
-                    .iter()
-                    .map(PathBuf::from)
-                    .collect::<Vec<PathBuf>>(),
-            )
-            .rebase_dir(cliopts.archivers.base_dir)
-            .level(cliopts.archivers.level)
-            .overwrite(cliopts.overwrite)
-            .no_recursive(cliopts.archivers.no_recursive)
-            .ignore_types(cliopts.archivers.ignores)
-            .build();
-        log::info!("{}", archiver.info());
-        archiver.perform()
-    }
+fn perform_archive(config: totebag::ArchiveConfig, args: Vec<String>) -> Result<ArchiveEntries> {
+    let targets = args.into_iter()
+        .map(|s| PathBuf::from(s))
+        .collect();
+    totebag::archive(&targets, &config)
 }
 
 fn main() -> Result<()> {
@@ -162,10 +87,17 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn print_archive_result(result: ArchiveEntries) {
+fn print_list_result(results: Vec<String>) -> Result<()> {
+    results.iter()
+        .for_each(|item| println!("{item}"));
+    Ok(())
+}
+
+fn print_archive_result(result: ArchiveEntries) -> Result<()> {
     if log::log_enabled!(log::Level::Info) {
         list::print_archive_result(result);
     }
+    Ok(())
 }
 
 fn print_error(e: &ToteError) {
@@ -183,10 +115,12 @@ fn print_error(e: &ToteError) {
         ToteError::FileNotFound(p) => println!("{}: file not found", p.to_str().unwrap()),
         ToteError::FileExists(p) => println!("{}: file already exists", p.to_str().unwrap()),
         ToteError::IO(e) => println!("IO error: {e}"),
+        ToteError::Json(e) => println!("Json error: {e}"),
         ToteError::NoArgumentsGiven => println!("No arguments given. Use --help for usage."),
         ToteError::Warn(s) => println!("Unknown error: {s}"),
         ToteError::UnknownFormat(f) => println!("{f}: unknown format"),
         ToteError::UnsupportedFormat(f) => println!("{f}: unsupported format"),
+        ToteError::Xml(e) => println!("xml error: {e}"),
     }
 }
 
@@ -254,22 +188,16 @@ mod tests {
             "README.md",
             "Cargo.toml",
         ]);
-        let args = opts.args();
         assert_eq!(opts.mode, RunMode::Auto);
         assert_eq!(opts.output, Some(PathBuf::from("test.zip")));
-        assert_eq!(args.len(), 4);
-        assert_eq!(args, vec!["src", "LICENSE", "README.md", "Cargo.toml"]);
+        assert_eq!(opts.args.len(), 4);
+        assert_eq!(opts.args, vec!["src", "LICENSE", "README.md", "Cargo.toml"]);
     }
 
     #[test]
     fn test_list() {
-        let mut opts =
+        let opts =
             cli::CliOpts::parse_from(&["totebag_test", "--mode", "list", "../testdata/test.zip"]);
-        let m = totebag::format::Manager::default();
-        match opts.finalize(&m) {
-            Ok(_) => (),
-            Err(e) => panic!("unexpected error: {:?}", e),
-        }
         match perform(opts) {
             Ok(_) => (),
             Err(e) => panic!("unexpected error: {:?}", e),

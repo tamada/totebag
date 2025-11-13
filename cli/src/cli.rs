@@ -1,7 +1,25 @@
 use clap::{Parser, ValueEnum};
 use std::{io::BufRead, path::PathBuf};
 
-use totebag::{IgnoreType, Result, ToteError};
+use totebag::{IgnoreType, OutputFormat, Result, ToteError};
+use totebag::{ExtractConfig, ListConfig, ArchiveConfig};
+
+pub(crate) enum Mode {
+    Archive(ArchiveConfig),
+    Extract(ExtractConfig),
+    List(ListConfig),
+}
+
+impl Mode {
+    #[cfg(debug_assertions)]
+    pub(crate) fn mode(&self) -> String {
+        match self {
+            Self::Archive(_) => "archive",
+            Self::Extract(_) => "extract",
+            Self::List(_) => "list",
+        }.to_string()
+    }
+}
 
 #[derive(Debug, Clone, ValueEnum, PartialEq, Copy)]
 pub(crate) enum RunMode {
@@ -61,17 +79,18 @@ In archive mode, the resultant archive file name is determined by the following 
     - otherwise, use the default name 'totebag.zip'.
 The format is determined by the extension of the resultant file name."###
     )]
-    args: Vec<String>,
+    pub args: Vec<String>,
 }
 
 #[derive(Parser, Debug)]
 pub struct ListerOpts {
     #[clap(
-        short,
-        long,
-        help = "List entries in the archive file with long format."
+        short, long, value_name = "FORMAT", value_enum, ignore_case = true,
+        default_value_t = OutputFormat::Default,
+        help = "Specify the format for listing entries in the archive file."
     )]
-    pub long: bool,
+    pub format: OutputFormat,
+
 }
 
 #[derive(Parser, Debug)]
@@ -145,47 +164,56 @@ struct ActualArgs {
 impl ActualArgs {}
 
 impl CliOpts {
-    pub fn args(&self) -> Vec<String> {
-        self.args.clone()
-    }
-
-    pub fn run_mode(&self) -> RunMode {
-        self.mode
-    }
-
-    pub fn archiver_output(&self) -> PathBuf {
-        self.output
-            .clone()
-            .unwrap_or_else(|| PathBuf::from("totebag.zip"))
-    }
-
-    pub fn extractor_output(&self) -> PathBuf {
-        self.output.clone().unwrap_or_else(|| PathBuf::from("."))
-    }
-
-    pub(crate) fn finalize(&mut self, m: &totebag::format::Manager) -> Result<()> {
+    pub(crate) fn find_mode(&self) -> Result<(Mode, Vec<String>)> {
         let args = normalize_args(self.args.clone())?;
         if args.is_empty() {
-            return Err(ToteError::NoArgumentsGiven);
-        }
-        if self.mode == RunMode::Auto {
-            if m.match_all(&args) {
-                self.args = args;
-                self.mode = RunMode::Extract;
-            } else {
-                self.mode = RunMode::Archive;
-                if m.find(&args[0]).is_some() && self.output.is_none() {
-                    self.output = Some(args[0].clone().into());
-                    self.args = args[1..].to_vec();
-                } else {
-                    self.args = args;
-                }
-            }
+            Err(ToteError::NoArgumentsGiven)
         } else {
-            self.args = args;
+            match self.mode {
+                RunMode::Auto => {
+                    if totebag::format::match_all(&args) {
+                        Ok(to_extract_config(self, args))
+                    } else {
+                        Ok(to_archive_config(self, args))
+                    }
+                },
+                RunMode::Archive => Ok(to_archive_config(self, args)),
+                RunMode::Extract => Ok(to_extract_config(self, args)),
+                RunMode::List => Ok(to_list_config(self, args)),
+            }
         }
-        Ok(())
     }
+}
+
+fn to_archive_config(opts: &CliOpts, args: Vec<String>) -> (Mode, Vec<String>) {
+    let (dest, args) = if totebag::format::find(&args[0]).is_some() && opts.output.is_none() {
+        (Some(args[0].clone().into()), args[1..].to_vec())
+    } else {
+        (None, args)
+    };
+    let config = totebag::ArchiveConfig::builder()
+        .dest(dest.unwrap_or_else(|| PathBuf::from("totebag.zip")))
+        .level(opts.archivers.level)
+        .rebase_dir(opts.archivers.base_dir.clone())
+        .overwrite(opts.overwrite)
+        .no_recursive(opts.archivers.no_recursive)
+        .ignore(opts.archivers.ignores.clone())
+        .build();
+    (Mode::Archive(config), args)
+}
+
+fn to_extract_config(opts: &CliOpts, args: Vec<String>) -> (Mode, Vec<String>) {
+    let dest = opts.output.clone().unwrap_or_else(|| PathBuf::from("."));
+    let config = totebag::ExtractConfig::builder()
+        .overwrite(opts.overwrite)
+        .use_archive_name_dir(opts.extractors.to_archive_name_dir)
+        .dest(dest)
+        .build();
+    (Mode::Extract(config), args)
+}
+
+fn to_list_config(opts: &CliOpts, args: Vec<String>) -> (Mode, Vec<String>) {
+    (Mode::List(totebag::ListConfig::new(opts.listers.format.clone())), args)
 }
 
 pub(crate) fn normalize_args(args: Vec<String>) -> Result<Vec<String>> {
@@ -250,85 +278,75 @@ mod tests {
 
     #[test]
     fn test_read_from_file1() {
-        let manager = totebag::format::Manager::default();
-        let mut cli = CliOpts::parse_from(&["totebag_test", "@../testdata/files/archive_mode1.txt"]);
-        match cli.finalize(&manager) {
-            Ok(_) => {}
-            Err(e) => panic!("error: {:?}", e),
+        let cli = CliOpts::parse_from(&["totebag_test", "@../testdata/files/archive_mode1.txt"]);
+        let (mode, args) = cli.find_mode().unwrap();
+        match mode {
+            Mode::List(_) | Mode::Extract(_) => panic!("invalid mode"),
+            Mode::Archive(config) => 
+                assert_eq!(config.dest_file().unwrap(), PathBuf::from("testdata/targets.tar.gz")),
         }
-        assert_eq!(cli.run_mode(), RunMode::Archive);
-        assert_eq!(
-            cli.args(),
-            vec!["src", "README.md", "LICENSE", "Cargo.toml", "Makefile.toml"]
-        );
-        assert_eq!(cli.output, Some(PathBuf::from("testdata/targets.tar.gz")));
+        assert_eq!(args, vec!["src", "README.md", "LICENSE", "Cargo.toml", "Makefile.toml"]);
     }
 
     #[test]
     fn test_read_from_file2() {
-        let manager = totebag::format::Manager::default();
-        let mut cli = CliOpts::parse_from(&["totebag_test", "@../testdata/files/archive_mode2.txt"]);
-        match cli.finalize(&manager) {
-            Ok(_) => {}
-            Err(e) => panic!("error: {:?}", e),
+        let cli = CliOpts::parse_from(&["totebag_test", "@../testdata/files/archive_mode2.txt"]);
+        let (mode, args) = cli.find_mode().unwrap();
+        match mode {
+            Mode::List(_) | Mode::Extract(_) => panic!("invalid mode"),
+            Mode::Archive(config) => 
+                assert_eq!(config.dest_file().unwrap(), PathBuf::from("totebag.zip")),
         }
-        assert_eq!(cli.run_mode(), RunMode::Archive);
-        assert_eq!(
-            cli.args(),
-            vec!["src", "README.md", "LICENSE", "Cargo.toml", "Makefile.toml"]
-        );
-        assert!(cli.output.is_none());
+        assert_eq!(args, vec!["src", "README.md", "LICENSE", "Cargo.toml", "Makefile.toml"]);
     }
 
     #[test]
     fn test_read_from_file3() {
-        let manager = totebag::format::Manager::default();
-        let mut cli = CliOpts::parse_from(&["totebag_test", "@../testdata/files/extract_mode.txt"]);
-        match cli.finalize(&manager) {
-            Ok(_) => {}
-            Err(e) => panic!("error: {:?}", e),
+        let cli = CliOpts::parse_from(&["totebag_test", "@../testdata/files/extract_mode.txt"]);
+        let (mode, args) = cli.find_mode().unwrap();
+        match mode {
+            Mode::List(_) | Mode::Archive(_) => panic!("invalid mode"),
+            Mode::Extract(config) => 
+                assert_eq!(config.dest, PathBuf::from(".")),
         }
-        assert_eq!(cli.run_mode(), RunMode::Extract);
-        assert_eq!(cli.args(), vec!["testdata/test.cab", "testdata/test.tar"]);
-        assert!(cli.output.is_none());
+        assert_eq!(args, vec!["testdata/test.cab", "testdata/test.tar"]);
     }
 
     #[test]
     fn test_find_mode_1() {
-        let manager = totebag::format::Manager::default();
-        let mut cli1 =
+        let cli1 =
             CliOpts::parse_from(&["totebag_test", "src", "LICENSE", "README.md", "Cargo.toml"]);
-        assert!(cli1.finalize(&manager).is_ok());
-        assert_eq!(cli1.run_mode(), RunMode::Archive);
+        let (mode, args) = cli1.find_mode().unwrap();
+        assert_eq!(mode.mode(), "archive");
+        assert_eq!(args, vec!["src", "LICENSE", "README.md", "Cargo.toml"]);
     }
 
     #[test]
     fn test_find_mode_2() {
-        let manager = totebag::format::Manager::default();
-        let mut cli2 =
+        let cli2 =
             CliOpts::parse_from(&["totebag_test", "src", "LICENSE", "README.md", "hoge.zip"]);
-        assert!(cli2.finalize(&manager).is_ok());
-        assert_eq!(cli2.run_mode(), RunMode::Archive);
+        let (mode, args) = cli2.find_mode().unwrap();
+        assert_eq!(mode.mode(), "archive");
+        assert_eq!(args, vec!["src", "LICENSE", "README.md", "hoge.zip"]);
     }
 
     #[test]
     fn test_find_mode_3() {
-        let manager = totebag::format::Manager::default();
-        let mut cli3 = CliOpts::parse_from(&[
+        let cli3 = CliOpts::parse_from(&[
             "totebag_test",
             "src.zip",
             "LICENSE.tar",
             "README.tar.bz2",
             "hoge.rar",
         ]);
-        assert!(cli3.finalize(&manager).is_ok());
-        assert_eq!(cli3.run_mode(), RunMode::Extract);
+        let (mode, args) = cli3.find_mode().unwrap();
+        assert_eq!(mode.mode(), "extract");
+        assert_eq!(args, vec!["src.zip", "LICENSE.tar", "README.tar.bz2", "hoge.rar"]);
     }
 
     #[test]
     fn test_find_mode_4() {
-        let manager = totebag::format::Manager::default();
-        let mut cli4 = CliOpts::parse_from(&[
+        let cli4 = CliOpts::parse_from(&[
             "totebag_test",
             "src.zip",
             "LICENSE.tar",
@@ -337,8 +355,9 @@ mod tests {
             "--mode",
             "list",
         ]);
-        assert!(cli4.finalize(&manager).is_ok());
-        assert_eq!(cli4.run_mode(), RunMode::List);
+        let (mode, args) = cli4.find_mode().unwrap();
+        assert_eq!(mode.mode(), "list");
+        assert_eq!(args, vec!["src.zip", "LICENSE.tar", "README.tar.bz2", "hoge.rar"]);
     }
 
     #[test]

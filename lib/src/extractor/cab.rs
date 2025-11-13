@@ -1,10 +1,9 @@
 use std::fs::{create_dir_all, File};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use cab::{Cabinet, FileEntry};
 
-use crate::extractor::ToteExtractor;
-use crate::extractor::{Entry, PathUtils};
+use crate::extractor::{Entry, ToteExtractor};
 use crate::{Result, ToteError};
 
 pub(super) struct CabExtractor {}
@@ -14,14 +13,14 @@ impl ToteExtractor for CabExtractor {
         list_impl(&target, convert)
     }
 
-    fn perform(&self, target: PathBuf, opts: PathUtils) -> Result<()> {
+    fn perform(&self, target: PathBuf, base: PathBuf) -> Result<()> {
         let list = list_impl(&target, |file| {
             (file.name().to_string(), file.uncompressed_size())
         })?;
         let mut errs = vec![];
         let mut cabinet = open_cabinet(&target)?;
         for file in list {
-            if let Err(e) = write_file_impl(&mut cabinet, file, &opts) {
+            if let Err(e) = write_file_impl(&mut cabinet, file, &base) {
                 errs.push(e);
             }
         }
@@ -36,10 +35,10 @@ impl ToteExtractor for CabExtractor {
 fn write_file_impl(
     cabinet: &mut Cabinet<File>,
     file: (String, u32),
-    opts: &PathUtils,
+    base: &Path,
 ) -> Result<()> {
     let file_name = file.0.clone();
-    let dest_file = opts.destination(PathBuf::from(file_name.clone()))?;
+    let dest_file = base.join(&file_name);
     log::info!("extracting {file_name} ({} bytes)", file.1);
     match create_dir_all(dest_file.parent().unwrap()) {
         Ok(_) => {}
@@ -103,7 +102,6 @@ fn to_naive_datetime(t: time::PrimitiveDateTime) -> chrono::NaiveDateTime {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::extractor::Extractor;
 
     #[test]
     fn test_list_archives() {
@@ -126,13 +124,12 @@ mod tests {
     fn test_extract_archive() {
         let archive_file = PathBuf::from("../testdata/test.cab");
         let dest = PathBuf::from("results/cab");
-        let opts = Extractor::builder()
-            .archive_file(archive_file)
-            .destination(dest)
+        let opts = crate::ExtractConfig::builder()
+            .dest(dest)
             .use_archive_name_dir(true)
             .build();
 
-        match opts.perform() {
+        match crate::extract(archive_file, &opts) {
             Ok(_) => {
                 assert!(true);
                 assert!(PathBuf::from("results/cab/test/Cargo.toml").exists());

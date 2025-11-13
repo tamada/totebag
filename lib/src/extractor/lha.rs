@@ -1,12 +1,11 @@
 use std::fs::{create_dir_all, File};
 use std::io::copy;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use chrono::DateTime;
 use delharc::{LhaDecodeReader, LhaHeader};
 
-use crate::extractor::ToteExtractor;
-use crate::extractor::{Entry, PathUtils};
+use crate::extractor::{Entry, ToteExtractor};
 use crate::{Result, ToteError};
 
 pub(super) struct LhaExtractor {}
@@ -33,12 +32,12 @@ impl ToteExtractor for LhaExtractor {
         Ok(result)
     }
 
-    fn perform(&self, archive_file: PathBuf, opts: PathUtils) -> Result<()> {
+    fn perform(&self, archive_file: PathBuf, base: PathBuf) -> Result<()> {
         let mut reader = delharc::parse_file(archive_file)
                 .map_err(ToteError::IO)?;
         let mut errs = vec![];
         loop {
-            if let Err(e) = write_data_impl(&mut reader, &opts) {
+            if let Err(e) = write_data_impl(&mut reader, &base) {
                 errs.push(e);
             }
             match reader.next_file() {
@@ -58,10 +57,10 @@ impl ToteExtractor for LhaExtractor {
     }
 }
 
-fn write_data_impl(reader: &mut LhaDecodeReader<File>, opts: &PathUtils) -> Result<()> {
+fn write_data_impl(reader: &mut LhaDecodeReader<File>, base: &Path) -> Result<()> {
     let header = reader.header();
     let name = header.parse_pathname();
-    let dest = opts.destination(name.clone())?;
+    let dest = base.join(&name);
     if reader.is_decoder_supported() {
         log::info!("extracting {:?} ({} bytes)", &name, header.original_size);
         create_dir_all(dest.parent().unwrap()).unwrap();
@@ -96,7 +95,6 @@ fn convert(h: &LhaHeader) -> Entry {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::extractor::Extractor;
 
     #[test]
     fn test_list_archives() {
@@ -118,13 +116,12 @@ mod tests {
     #[test]
     fn test_extract_archive() {
         let archive_file = PathBuf::from("../testdata/test.lzh");
-        let opts = Extractor::builder()
-            .archive_file(archive_file)
-            .destination("results/lha")
+        let opts = crate::ExtractConfig::builder()
+            .dest("results/lha")
             .use_archive_name_dir(true)
             .overwrite(true)
             .build();
-        match opts.perform() {
+        match crate::extract(archive_file, &opts) {
             Ok(_) => {
                 assert!(true);
                 assert!(PathBuf::from("results/lha/test/Cargo.toml").exists());

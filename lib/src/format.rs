@@ -7,36 +7,20 @@
 //! Cab, Lha, SevenZ, Rar, Tar, TarGz, TarBz2, TarXz, TarZstd, and Zip.
 //!
 //! ```
-//! use totebag::format::Manager;
 //! use std::path::PathBuf;
-//! let manager = Manager::default();
-//! let format = manager.find(PathBuf::from("test.zip"))
+//! let format = totebag::format::find(PathBuf::from("test.zip"))
 //!      .expect("Unexpected error: test.zip");
 //! let format_name = format.name.clone(); // should be "Zip"
 //! ```
-//!
-//! ## Use your own format
-//!
-//! ```
-//! use totebag::format::{Format, Manager};
-//! use std::path::PathBuf;
-//! let mut manager = Manager::default();
-//! let additional_format = Format::new("Compact Pro", vec![".sea", ".cpt"]);
-//! manager.add(additional_format.clone());
-//! let format = manager.find("test.cpt")
-//!     .expect("Unexpected error: test.cpt");
-//! let format_name = format.name.clone(); // should be "Compact Pro"
-//!
-//! // remove the format
-//! manager.remove(additional_format);
-//! let _ = manager.find("test.cpt"); // should be None
-//! ```
 use std::fmt::Display;
 use std::path::Path;
+use std::sync::LazyLock;
+
+static MANAGER: LazyLock<Manager> = LazyLock::new(|| Manager::default());
 
 /// Archive format manager.
 #[derive(Debug, Clone)]
-pub struct Manager {
+struct Manager {
     formats: Vec<Format>,
 }
 
@@ -57,33 +41,33 @@ impl Default for Manager {
     }
 }
 
+pub fn match_all<P: AsRef<Path>>(args: &[P]) -> bool {
+    MANAGER.match_all(args)
+}
+
+pub fn find<P: AsRef<Path>>(path: P) -> Option<&'static Format> {
+    MANAGER.find(path)
+}
+
 impl Manager {
-    pub fn new(formats: Vec<Format>) -> Self {
+    pub(crate) fn new(formats: Vec<Format>) -> Self {
         Self { formats }
     }
 
     /// Returns `true` if all of the given file names are Some by [method.find] method.
-    pub fn match_all<P: AsRef<Path>>(&self, args: &[P]) -> bool {
+    fn match_all<P: AsRef<Path>>(&self, args: &[P]) -> bool {
         args.iter().all(|p| self.find(p).is_some())
     }
 
     /// Find the format of the given file name.
     /// If the given file name has an unknown extension for totebag, it returns an `Err(ToteErro::Unknown)`.
-    pub fn find<P: AsRef<Path>>(&self, path: P) -> Option<&Format> {
+    fn find<P: AsRef<Path>>(&self, path: P) -> Option<&Format> {
         let name = path
             .as_ref()
             .to_str()
             .expect("unexpected error: invalid path")
             .to_lowercase();
         self.formats.iter().find(|f| f.is_match(&name))
-    }
-
-    pub fn add(&mut self, format: Format) {
-        self.formats.push(format);
-    }
-
-    pub fn remove(&mut self, format: Format) {
-        self.formats.retain(|f| f != &format);
     }
 }
 

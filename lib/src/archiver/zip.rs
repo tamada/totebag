@@ -6,10 +6,10 @@ use crate::archiver::os;
 
 use std::fs::File;
 use std::io::BufReader;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use zip::ZipWriter;
 
-use crate::archiver::{ArchiveEntry, TargetPath, Targets, ToteArchiver};
+use crate::archiver::{ArchiveEntry, ToteArchiver};
 use crate::{Result, ToteError};
 
 pub(super) struct ZipArchiver {}
@@ -18,38 +18,32 @@ impl ZipArchiver {
     pub fn new() -> Self {
         Self {}
     }
-    fn process_file(
-        &self,
-        zw: &mut ZipWriter<File>,
-        target: PathBuf,
-        tp: &TargetPath,
-        level: u8,
-    ) -> Result<()> {
-        let opts = os::create_file_opts(&target, level as i64);
-        let dest_path = tp.dest_path(&target);
+    fn process_file(&self, zw: &mut ZipWriter<File>, target: &Path, dest_path: PathBuf, level: u8) -> Result<()> {
+        let opts = os::create_file_opts(target, level as i64);
         let name = dest_path.to_str().unwrap();
         if let Err(e) = zw.start_file(name, opts) {
-            return Err(ToteError::Fatal(Box::new(e)));
-        }
-        let mut file = BufReader::new(File::open(target).unwrap());
-        match std::io::copy(&mut file, zw) {
-            Ok(_) => Ok(()),
-            Err(e) => Err(ToteError::IO(e)),
+            Err(ToteError::Fatal(Box::new(e)))
+        } else {
+            let mut file = BufReader::new(File::open(target).unwrap());
+            match std::io::copy(&mut file, zw) {
+                Ok(_) => Ok(()),
+                Err(e) => Err(ToteError::IO(e)),
+            }
         }
     }
 }
 
 impl ToteArchiver for ZipArchiver {
-    fn perform(&self, file: File, tps: Targets) -> Result<Vec<ArchiveEntry>> {
+    fn perform(&self, file: File, targets: &Vec<PathBuf>, config: &crate::ArchiveConfig) -> Result<Vec<ArchiveEntry>> {
         let mut errs = vec![];
         let mut zw = zip::ZipWriter::new(file);
         let mut entries = vec![];
-        for tp in tps.iter() {
-            for t in tp.iter() {
-                let path = t.into_path();
+        for tp in targets.iter() {
+            for entry in config.iter(tp) {
+                let path = entry.path().to_path_buf();
                 entries.push(ArchiveEntry::from(&path));
                 if path.is_file() {
-                    if let Err(e) = self.process_file(&mut zw, path, tp, tps.level()) {
+                    if let Err(e) = self.process_file(&mut zw, &path, config.path_in_archive(&path), config.level) {
                         errs.push(e);
                     }
                 }
@@ -74,8 +68,6 @@ mod tests {
     use core::panic;
 
     use super::*;
-    use crate::archiver::Archiver;
-
     fn run_test<F>(f: F)
     where
         F: FnOnce(),
@@ -92,14 +84,15 @@ mod tests {
     #[test]
     fn test_zip() {
         run_test(|| {
-            let archiver = Archiver::builder()
-                .archive_file(PathBuf::from("results/test.zip"))
-                .targets(vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")])
+            let config = crate::ArchiveConfig::builder()
+                .dest("results/test.zip")
                 .overwrite(true)
                 .build();
-
-            if let Err(e) = archiver.perform() {
-                panic!("{:?}", e);
+            let v = vec!["lib", "cli", "Cargo.toml"].into_iter()
+                .map(|s| PathBuf::from(s))
+                .collect::<Vec<_>>();
+            if let Err(e) = crate::archive(&v, &config) {
+                panic!("{e:?}")
             }
         });
     }
