@@ -3,14 +3,17 @@ use std::path::{Path, PathBuf};
 
 use cab::{Cabinet, FileEntry};
 
-use crate::extractor::{Entry, ToteExtractor};
+use crate::extractor::{Entries, Entry, ToteExtractor};
 use crate::{Result, ToteError};
 
 pub(super) struct CabExtractor {}
 
 impl ToteExtractor for CabExtractor {
-    fn list(&self, target: PathBuf) -> Result<Vec<Entry>> {
-        list_impl(&target, convert)
+    fn list(&self, target: PathBuf) -> Result<Entries> {
+        match list_impl(&target, convert) {
+            Ok(r) => Ok(Entries::new(target, r)),
+            Err(e) => Err(e),
+        }
     }
 
     fn perform(&self, target: PathBuf, base: PathBuf) -> Result<()> {

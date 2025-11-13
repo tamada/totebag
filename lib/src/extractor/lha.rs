@@ -5,15 +5,15 @@ use std::path::{Path, PathBuf};
 use chrono::DateTime;
 use delharc::{LhaDecodeReader, LhaHeader};
 
-use crate::extractor::{Entry, ToteExtractor};
+use crate::extractor::{Entries, Entry, ToteExtractor};
 use crate::{Result, ToteError};
 
 pub(super) struct LhaExtractor {}
 
 impl ToteExtractor for LhaExtractor {
-    fn list(&self, archive_file: PathBuf) -> Result<Vec<Entry>> {
+    fn list(&self, archive_file: PathBuf) -> Result<Entries> {
         let mut result = vec![];
-        let mut reader = delharc::parse_file(archive_file).map_err(ToteError::IO)?;
+        let mut reader = delharc::parse_file(&archive_file).map_err(ToteError::IO)?;
         loop {
             let header = reader.header();
             if !header.is_directory() {
@@ -28,7 +28,7 @@ impl ToteExtractor for LhaExtractor {
                 Err(e) => return Err(ToteError::Fatal(Box::new(e))),
             }
         }
-        Ok(result)
+        Ok(Entries::new(archive_file, result))
     }
 
     fn perform(&self, archive_file: PathBuf, base: PathBuf) -> Result<()> {

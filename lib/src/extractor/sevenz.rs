@@ -5,13 +5,13 @@ use crate::{Result, ToteError};
 use chrono::DateTime;
 use sevenz_rust::{Archive, BlockDecoder, Password, SevenZArchiveEntry};
 
-use crate::extractor::{Entry, ToteExtractor};
+use crate::extractor::{Entry, Entries, ToteExtractor};
 
 pub(super) struct SevenZExtractor {}
 
 impl ToteExtractor for SevenZExtractor {
-    fn list(&self, archive_file: PathBuf) -> Result<Vec<Entry>> {
-        let mut reader = File::open(archive_file).unwrap();
+    fn list(&self, archive_file: PathBuf) -> Result<Entries> {
+        let mut reader = File::open(&archive_file).unwrap();
         let len = reader.metadata().unwrap().len();
         match Archive::read(&mut reader, len, Password::empty().as_ref()) {
             Ok(archive) => {
@@ -19,7 +19,7 @@ impl ToteExtractor for SevenZExtractor {
                 for entry in &archive.files {
                     r.push(convert(entry));
                 }
-                Ok(r)
+                Ok(Entries::new(archive_file, r))
             }
             Err(e) => Err(ToteError::Fatal(Box::new(e))),
         }

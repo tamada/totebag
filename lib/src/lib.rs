@@ -16,6 +16,7 @@ use std::{
 use typed_builder::TypedBuilder;
 
 use crate::archiver::ArchiveEntries;
+use crate::extractor::Entries;
 
 /// Define the result type for the this library.
 pub type Result<T> = std::result::Result<T, ToteError>;
@@ -115,7 +116,7 @@ impl ExtractConfig {
     }
 }
 
-pub fn entries<P: AsRef<Path>>(archive_file: P) -> Result<Vec<crate::extractor::Entry>> {
+pub fn entries<P: AsRef<Path>>(archive_file: P) -> Result<Entries> {
     let archive_file = archive_file.as_ref();
     let extractor = crate::extractor::create(archive_file)?;
     extractor.list(archive_file.to_path_buf())
@@ -128,7 +129,7 @@ pub fn list<P: AsRef<Path>>(archive_file: P, config: &ListConfig) -> Result<Stri
     }
 }
 
-fn format_for_output(entries: Vec<crate::extractor::Entry>, f: &OutputFormat) -> Result<String> {
+fn format_for_output(entries: Entries, f: &OutputFormat) -> Result<String> {
     use OutputFormat::*;
     match f {
         Default => outputs::to_string(&entries),

@@ -6,12 +6,12 @@ use unrar::FileHeader;
 
 use crate::{Result, ToteError};
 
-use crate::extractor::{Entry, ToteExtractor};
+use crate::extractor::{Entry, Entries, ToteExtractor};
 
 pub(super) struct RarExtractor {}
 
 impl ToteExtractor for RarExtractor {
-    fn list(&self, archive_file: PathBuf) -> Result<Vec<Entry>> {
+    fn list(&self, archive_file: PathBuf) -> Result<Entries> {
         let mut r = vec![];
         for entry in unrar::Archive::new(&archive_file)
             .open_for_listing()
@@ -20,7 +20,7 @@ impl ToteExtractor for RarExtractor {
             let header = entry.unwrap();
             r.push(convert(header));
         }
-        Ok(r)
+        Ok(Entries::new(archive_file, r))
     }
 
     fn perform(&self, archive_file: PathBuf, base: PathBuf) -> Result<()> {

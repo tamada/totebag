@@ -6,13 +6,13 @@ use chrono::NaiveDateTime;
 use zip::read::ZipFile;
 
 use crate::Result;
-use crate::extractor::{Entry, ToteExtractor};
+use crate::extractor::{Entry, Entries, ToteExtractor};
 
 pub(super) struct ZipExtractor {}
 
 impl ToteExtractor for ZipExtractor {
-    fn list(&self, archive_file: PathBuf) -> Result<Vec<Entry>> {
-        let zip_file = File::open(archive_file).unwrap();
+    fn list(&self, archive_file: PathBuf) -> Result<Entries> {
+        let zip_file = File::open(&archive_file).unwrap();
         let mut zip = zip::ZipArchive::new(zip_file).unwrap();
 
         let mut result = vec![];
@@ -20,7 +20,7 @@ impl ToteExtractor for ZipExtractor {
             let file = zip.by_index(i).unwrap();
             result.push(convert(file));
         }
-        Ok(result)
+        Ok(Entries::new(archive_file, result))
     }
 
     fn perform(&self, archive_file: PathBuf, base: PathBuf) -> Result<()> {
@@ -84,20 +84,21 @@ mod tests {
         match extractor.list(file) {
             Ok(r) => {
                 assert_eq!(r.len(), 19);
+                let mut i = r.iter();
                 assert_eq!(
-                    r.get(0).map(|t| &t.name),
+                    i.next().map(|t| &t.name),
                     Some("Cargo.toml".to_string()).as_ref()
                 );
                 assert_eq!(
-                    r.get(1).map(|t| &t.name),
+                    i.next().map(|t| &t.name),
                     Some("build.rs".to_string()).as_ref()
                 );
                 assert_eq!(
-                    r.get(2).map(|t| &t.name),
+                    i.next().map(|t| &t.name),
                     Some("LICENSE".to_string()).as_ref()
                 );
                 assert_eq!(
-                    r.get(3).map(|t| &t.name),
+                    i.next().map(|t| &t.name),
                     Some("README.md".to_string()).as_ref()
                 );
             }

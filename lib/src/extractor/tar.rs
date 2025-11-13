@@ -6,7 +6,7 @@ use crate::{Result, ToteError};
 use tar::Archive;
 use xz2::read::XzDecoder;
 
-use crate::extractor::{Entry as ToteEntry, ToteExtractor};
+use crate::extractor::{Entry as ToteEntry, Entries, ToteExtractor};
 pub(super) struct TarExtractor {}
 
 pub(super) struct TarGzExtractor {}
@@ -18,14 +18,14 @@ pub(super) struct TarXzExtractor {}
 pub(super) struct TarZstdExtractor {}
 
 impl ToteExtractor for TarExtractor {
-    fn list(&self, archive_file: PathBuf) -> Result<Vec<ToteEntry>> {
-        match open_tar_file(archive_file, |f| f) {
-            Ok(archive) => list_tar(archive),
+    fn list(&self, archive_file: PathBuf) -> Result<Entries> {
+        match open_tar_file(&archive_file, |f| f) {
+            Ok(archive) => list_tar(archive, archive_file),
             Err(e) => Err(e),
         }
     }
     fn perform(&self, archive_file: PathBuf, base: PathBuf) -> Result<()> {
-        match open_tar_file(archive_file, |f| f) {
+        match open_tar_file(&archive_file, |f| f) {
             Err(e) => Err(e),
             Ok(archive) => extract_tar(archive, base),
         }
@@ -33,14 +33,14 @@ impl ToteExtractor for TarExtractor {
 }
 
 impl ToteExtractor for TarGzExtractor {
-    fn list(&self, archive_file: PathBuf) -> Result<Vec<ToteEntry>> {
-        match open_tar_file(archive_file, flate2::read::GzDecoder::new) {
-            Ok(archive) => list_tar(archive),
+    fn list(&self, archive_file: PathBuf) -> Result<Entries> {
+        match open_tar_file(&archive_file, flate2::read::GzDecoder::new) {
+            Ok(archive) => list_tar(archive, archive_file),
             Err(e) => Err(e),
         }
     }
     fn perform(&self, archive_file: PathBuf, base: PathBuf) -> Result<()> {
-        match open_tar_file(archive_file, flate2::read::GzDecoder::new) {
+        match open_tar_file(&archive_file, flate2::read::GzDecoder::new) {
             Ok(archive) => extract_tar(archive, base),
             Err(e) => Err(e),
         }
@@ -48,14 +48,14 @@ impl ToteExtractor for TarGzExtractor {
 }
 
 impl ToteExtractor for TarBz2Extractor {
-    fn list(&self, archive_file: PathBuf) -> Result<Vec<ToteEntry>> {
-        match open_tar_file(archive_file, bzip2::read::BzDecoder::new) {
-            Ok(archive) => list_tar(archive),
+    fn list(&self, archive_file: PathBuf) -> Result<Entries> {
+        match open_tar_file(&archive_file, bzip2::read::BzDecoder::new) {
+            Ok(archive) => list_tar(archive, archive_file),
             Err(e) => Err(e),
         }
     }
     fn perform(&self, archive_file: PathBuf, base: PathBuf) -> Result<()> {
-        match open_tar_file(archive_file, bzip2::read::BzDecoder::new) {
+        match open_tar_file(&archive_file, bzip2::read::BzDecoder::new) {
             Err(e) => Err(e),
             Ok(archive) => extract_tar(archive, base),
         }
@@ -63,14 +63,14 @@ impl ToteExtractor for TarBz2Extractor {
 }
 
 impl ToteExtractor for TarXzExtractor {
-    fn list(&self, archive_file: PathBuf) -> Result<Vec<ToteEntry>> {
-        match open_tar_file(archive_file, XzDecoder::new) {
+    fn list(&self, archive_file: PathBuf) -> Result<Entries> {
+        match open_tar_file(&archive_file, XzDecoder::new) {
             Err(e) => Err(e),
-            Ok(archive) => list_tar(archive),
+            Ok(archive) => list_tar(archive, archive_file),
         }
     }
     fn perform(&self, archive_file: PathBuf, base: PathBuf) -> Result<()> {
-        match open_tar_file(archive_file, XzDecoder::new) {
+        match open_tar_file(&archive_file, XzDecoder::new) {
             Err(e) => Err(e),
             Ok(archive) => extract_tar(archive, base),
         }
@@ -78,21 +78,21 @@ impl ToteExtractor for TarXzExtractor {
 }
 
 impl ToteExtractor for TarZstdExtractor {
-    fn list(&self, archive_file: PathBuf) -> Result<Vec<ToteEntry>> {
-        match open_tar_file(archive_file, |f| zstd::Decoder::new(f).unwrap()) {
+    fn list(&self, archive_file: PathBuf) -> Result<Entries> {
+        match open_tar_file(&archive_file, |f| zstd::Decoder::new(f).unwrap()) {
             Err(e) => Err(e),
-            Ok(archive) => list_tar(archive),
+            Ok(archive) => list_tar(archive, archive_file),
         }
     }
     fn perform(&self, archive_file: PathBuf, base: PathBuf) -> Result<()> {
-        match open_tar_file(archive_file, |f| zstd::Decoder::new(f).unwrap()) {
+        match open_tar_file(&archive_file, |f| zstd::Decoder::new(f).unwrap()) {
             Err(e) => Err(e),
             Ok(archive) => extract_tar(archive, base),
         }
     }
 }
 
-fn open_tar_file<F, R: Read>(file: PathBuf, opener: F) -> Result<Archive<R>>
+fn open_tar_file<F, R: Read>(file: &PathBuf, opener: F) -> Result<Archive<R>>
 where
     F: FnOnce(File) -> R,
 {
@@ -129,13 +129,13 @@ fn is_filename_mac_finder_file(path: PathBuf) -> bool {
     filename == ".DS_Store" || filename.starts_with("._")
 }
 
-fn list_tar<R: Read>(mut archive: tar::Archive<R>) -> Result<Vec<ToteEntry>> {
+fn list_tar<R: Read>(mut archive: tar::Archive<R>, path: PathBuf) -> Result<Entries> {
     let mut result = vec![];
     for entry in archive.entries().unwrap() {
         let entry = entry.unwrap();
         result.push(tar_entry_to_entry(entry));
     }
-    Ok(result)
+    Ok(Entries::new(path, result))
 }
 
 fn tar_entry_to_entry<R: Read>(e: tar::Entry<R>) -> ToteEntry {

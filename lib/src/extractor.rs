@@ -109,12 +109,37 @@ impl Entry {
     }
 }
 
+#[derive(Debug, Serialize)]
+#[serde(rename = "archive-file")]
+pub struct Entries {
+    pub path: PathBuf,
+    pub entries: Vec<Entry>,
+}
+
+impl Entries {
+    pub fn new(path: PathBuf, entries: Vec<Entry>) -> Self {
+        Self { path, entries }
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &Entry> {
+        self.entries.iter()
+    }
+
+    pub fn len(&self) -> usize {
+        self.entries.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.entries.is_empty()
+    }
+}
+
 /// The trait for extracting the archive file.
 /// If you want to support a new format for extraction, you need to implement the `ToteExtractor` trait.
 /// Then, the call [`perform_with`](Extractor::perform_with) and/or [`list_with`](Extractor::list_with) method of [`Extractor`].
 pub trait ToteExtractor {
     /// returns the entry list of the given archive file.
-    fn list(&self, archive_file: PathBuf) -> Result<Vec<Entry>>;
+    fn list(&self, archive_file: PathBuf) -> Result<Entries>;
     /// extract the given archive file into the specified directory with the given options.
     fn perform(&self, archive_file: PathBuf, opts: PathBuf) -> Result<()>;
 }

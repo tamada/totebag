@@ -1,7 +1,7 @@
 use crate::Result;
-use crate::extractor::Entry;
+use crate::extractor::{Entries, Entry};
 
-pub fn to_string(entries: &[Entry]) -> Result<String> {
+pub fn to_string(entries: &Entries) -> Result<String> {
     Ok(entries
         .iter()
         .map(|entry| entry.name.to_string())
@@ -9,7 +9,7 @@ pub fn to_string(entries: &[Entry]) -> Result<String> {
         .join("\n"))
 }
 
-pub fn to_string_long(entries: &[Entry]) -> Result<String> {
+pub fn to_string_long(entries: &Entries) -> Result<String> {
     Ok(entries
         .iter()
         .map(to_long_format)
