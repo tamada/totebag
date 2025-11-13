@@ -52,8 +52,12 @@ fn perform_extract(config: totebag::ExtractConfig, args: Vec<String>) -> Result<
     let mut errs = vec![];
     for item in args {
         let path = PathBuf::from(item);
-        if let Err(e) = totebag::extract(path, &config) {
-            errs.push(e);
+        if !path.exists() {
+            errs.push(ToteError::FileNotFound(path))
+        } else {
+            if let Err(e) = totebag::extract(path, &config) {
+                errs.push(e);
+            }
         }
     }
     ToteError::error_or((), errs)
@@ -64,9 +68,13 @@ fn perform_list(config: totebag::ListConfig, args: Vec<String>) -> Result<Vec<St
     let mut results = vec![];
     for item in args {
         let path = PathBuf::from(item);
-        match totebag::list(path, &config) {
-            Ok(r) => results.push(r),
-            Err(e) => errs.push(e),
+        if !path.exists() {
+            errs.push(ToteError::FileNotFound(path))
+        } else {
+            match totebag::list(path, &config) {
+                Ok(r) => results.push(r),
+                Err(e) => errs.push(e),
+            }
         }
     }
     ToteError::error_or(results, errs)
