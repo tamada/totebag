@@ -24,12 +24,14 @@ jobs:
 
       - name: Create release
         id: create_release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ steps.vars.outputs.tag }}
-          name: Release v${{ steps.vars.outputs.tag }}
-          draft: false
-          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run:
+          gh release create ${{ steps.vars.outputs.tag }} \
+            --draft \
+            --repo $GITHUB_REPOSITORY \
+            --title "Release v${{ steps.vars.outputs.tag }}" \
+            --generate-notes
 
   publish:
     runs-on: ${{ matrix.os }}
@@ -49,7 +51,7 @@ jobs:
             artifact_name: ${{ needs.setup.outputs.appname }}
             asset_name: ${{ needs.setup.outputs.appname }}-${{ needs.setup.outputs.tag }}_linux_amd64
           # - os: ubuntu-latest
-          #   target: aarch64-pc-windows-gnullvm
+          #   target: aarch64-pc-windows-gnu
           #   artifact_name: ${{ needs.setup.outputs.appname }}.exe
           #   asset_name: ${{ needs.setup.outputs.appname }}-${{ needs.setup.outputs.tag }}_windows_arm64
           # - os: ubuntu-latest
@@ -87,7 +89,9 @@ jobs:
           key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}        
 
       - name: Setup
-        run: rustup update stable
+        run: |
+          rustup update stable
+          cargo install cargo-zigbuild
 
       - name: Setup Rust (1/2) (toolchain)
         uses: taiki-e/setup-cross-toolchain-action@v1
@@ -103,11 +107,14 @@ jobs:
 
       - name: Cross build (Linux and Windows)
         run: |
-          cargo build --release --target ${{ matrix.target }}
+          rustup target add ${{ matrix.target }}
+          cargo zigbuild --release --target ${{ matrix.target }}
                   
       # publish release
       - name: Create release file
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           DIR=${{ steps.vars.outputs.dir }}
           DIST=${{ matrix.target }}
@@ -115,17 +122,20 @@ jobs:
           # cp -r site/public dist/$DIST/$DIR/docs
           cp -r README.md LICENSE assets target/${{ matrix.target }}/release/${{ matrix.artifact_name }} dist/$DIST/$DIR
           tar cvfz dist/${{ matrix.asset_name }}.tar.gz -C dist/$DIST $DIR
-        
-      - name: Upload release assets
-        id: upload-release-assets
-        uses: actions/upload-release-asset@v1.0.1
+          gh release upload v${{ steps.vars.outputs.tag }} dist/${{ matrix.asset_name }}.tar.gz --repo $GITHUB_REPOSITORY
+
+  finalize_release:
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Publish the release
+        id: publish_release
+        run:
+          gh release edit --draft=false --repo $GITHUB_REPOSITORY v${{ needs.publish.outputs.tag }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          asset_path: dist/${{ matrix.asset_name }}.tar.gz
-          asset_name: ${{ matrix.asset_name }}.tar.gz
-          asset_content_type: application/x-gzip
-          upload_url: ${{ needs.setup.outputs.upload_url }}
 
   docker:
     needs: publish

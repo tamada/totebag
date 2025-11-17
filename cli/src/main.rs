@@ -8,7 +8,6 @@ use totebag::{Result, ToteError};
 use crate::cli::Mode;
 
 mod cli;
-mod list;
 
 fn update_loglevel(level: LogLevel) {
     unsafe {
@@ -102,9 +101,27 @@ fn print_list_result(results: Vec<String>) -> Result<()> {
 
 fn print_archive_result(result: ArchiveEntries) -> Result<()> {
     if log::log_enabled!(log::Level::Info) {
-        list::print_archive_result(result);
+        print_archive_result_impl(result);
     }
     Ok(())
+}
+
+fn print_archive_result_impl(result: ArchiveEntries) {
+    let f = humansize::make_format(humansize::DECIMAL);
+    let total = result.total();
+    let rate = if total == 0 {
+        0.0
+    } else {
+        result.compressed as f64 / total as f64 * 100.0
+    };
+    println!(
+        "archived: {} ({} entries, {:>10} / {:>10}, {:.2}%)",
+        result.archive_file.display(),
+        result.len(),
+        f(result.compressed),
+        f(result.total()),
+        rate
+    );
 }
 
 fn print_error(e: &ToteError) {
