@@ -40,7 +40,7 @@ impl ToteExtractor for ZipExtractor {
     }
 }
 
-fn convert(zfile: ZipFile) -> Entry {
+fn convert<R: std::io::Read>(zfile: ZipFile<R>) -> Entry {
     let name = zfile.name().to_string();
     let compressed_size = zfile.compressed_size();
     let uncompresseed_size = zfile.size();
