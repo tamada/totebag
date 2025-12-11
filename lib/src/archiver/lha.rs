@@ -1,12 +1,18 @@
 use std::fs::File;
+use std::path::PathBuf;
 
-use crate::archiver::{ArchiveEntry, Targets, ToteArchiver};
+use crate::archiver::{ArchiveEntry, ToteArchiver};
 use crate::{Result, ToteError};
 
 pub(super) struct LhaArchiver {}
 
 impl ToteArchiver for LhaArchiver {
-    fn perform(&self, _: File, _: Targets) -> Result<Vec<ArchiveEntry>> {
+    fn perform(
+        &self,
+        _: File,
+        _: &[PathBuf],
+        _config: &crate::ArchiveConfig,
+    ) -> Result<Vec<ArchiveEntry>> {
         Err(ToteError::UnsupportedFormat(
             "only extraction support for lha".to_string(),
         ))
@@ -18,22 +24,20 @@ impl ToteArchiver for LhaArchiver {
 
 #[cfg(test)]
 mod tests {
-    use crate::archiver::Archiver;
-
     use super::*;
 
     use std::path::PathBuf;
 
     #[test]
     fn test_lha_archive() {
-        let archiver = Archiver::builder()
-            .archive_file(PathBuf::from("results/test.lzh"))
-            .targets(vec![])
+        let config = crate::ArchiveConfig::builder()
+            .dest(PathBuf::from("results/test.lzh"))
             .build();
-        let r = archiver.perform();
+        let v: Vec<PathBuf> = Vec::new();
+        let r = crate::archive(&v, &config);
         assert!(r.is_err());
         if let Err(ToteError::UnsupportedFormat(e)) = r {
-            assert_eq!(e, "Lha: not support archiving");
+            assert_eq!(e, "Lha: unsupported format (archiving)");
         } else {
             panic!("unexpected result: {:?}", r);
         }

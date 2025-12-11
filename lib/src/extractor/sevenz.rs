@@ -5,13 +5,13 @@ use crate::{Result, ToteError};
 use chrono::DateTime;
 use sevenz_rust::{Archive, BlockDecoder, Password, SevenZArchiveEntry};
 
-use crate::extractor::{Entry, PathUtils, ToteExtractor};
+use crate::extractor::{Entry, Entries, ToteExtractor};
 
 pub(super) struct SevenZExtractor {}
 
 impl ToteExtractor for SevenZExtractor {
-    fn list(&self, archive_file: PathBuf) -> Result<Vec<Entry>> {
-        let mut reader = File::open(archive_file).unwrap();
+    fn list(&self, archive_file: PathBuf) -> Result<Entries> {
+        let mut reader = File::open(&archive_file).unwrap();
         let len = reader.metadata().unwrap().len();
         match Archive::read(&mut reader, len, Password::empty().as_ref()) {
             Ok(archive) => {
@@ -19,18 +19,18 @@ impl ToteExtractor for SevenZExtractor {
                 for entry in &archive.files {
                     r.push(convert(entry));
                 }
-                Ok(r)
+                Ok(Entries::new(archive_file, r))
             }
             Err(e) => Err(ToteError::Fatal(Box::new(e))),
         }
     }
 
-    fn perform(&self, archive_file: PathBuf, opts: PathUtils) -> Result<()> {
+    fn perform(&self, archive_file: PathBuf, base: PathBuf) -> Result<()> {
         let file = match File::open(archive_file) {
             Ok(file) => file,
             Err(e) => return Err(ToteError::IO(e)),
         };
-        extract(&file, opts)
+        extract(&file, base)
     }
 }
 
@@ -40,16 +40,15 @@ fn convert(e: &SevenZArchiveEntry) -> Entry {
     let uncompressed_size = e.size;
     let mtime = e.last_modified_date.to_unix_time();
     let dt = DateTime::from_timestamp(mtime, 0);
-    Entry::new(
-        name,
-        Some(compressed_size),
-        Some(uncompressed_size),
-        None,
-        dt.map(|dt| dt.naive_local()),
-    )
+    Entry::builder()
+        .name(name)
+        .compressed_size(compressed_size)
+        .original_size(uncompressed_size)
+        .date(dt.map(|dt| dt.naive_local()).unwrap())
+        .build()
 }
 
-fn extract(mut file: &File, opts: PathUtils) -> Result<()> {
+fn extract(mut file: &File, base: PathBuf) -> Result<()> {
     let len = file.metadata().unwrap().len();
     let password = Password::empty();
     let archive = match Archive::read(&mut file, len, password.as_ref()) {
@@ -60,7 +59,7 @@ fn extract(mut file: &File, opts: PathUtils) -> Result<()> {
     for findex in 0..folder_count {
         let folder_decoder = BlockDecoder::new(findex, &archive, password.as_slice(), &mut file);
         if let Err(e) = folder_decoder.for_each_entries(&mut |entry, reader| {
-            let d = opts.destination(PathBuf::from(entry.name.clone())).unwrap();
+            let d = base.join(&entry.name);
             sevenz_rust::default_entry_extract_fn(entry, reader, &d)
         }) {
             return Err(ToteError::Fatal(Box::new(e)));
@@ -72,11 +71,10 @@ fn extract(mut file: &File, opts: PathUtils) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::extractor::Extractor;
 
     #[test]
     fn test_list() {
-        let file = PathBuf::from("testdata/test.7z");
+        let file = PathBuf::from("../testdata/test.7z");
         let extractor = SevenZExtractor {};
         match extractor.list(file) {
             Ok(r) => {
@@ -93,12 +91,11 @@ mod tests {
 
     #[test]
     fn test_extract_archive() {
-        let archive_file = PathBuf::from("testdata/test.7z");
-        let opts = Extractor::builder()
-            .archive_file(archive_file)
-            .destination("results/sevenz")
+        let archive_file = PathBuf::from("../testdata/test.7z");
+        let opts = crate::ExtractConfig::builder()
+            .dest("results/sevenz")
             .build();
-        match opts.perform() {
+        match crate::extract(archive_file, &opts) {
             Ok(_) => {
                 assert!(true);
                 assert!(PathBuf::from("results/sevenz/Cargo.toml").exists());

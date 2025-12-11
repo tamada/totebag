@@ -1,12 +1,18 @@
 use std::fs::File;
+use std::path::PathBuf;
 
-use crate::archiver::{ArchiveEntry, Targets, ToteArchiver};
+use crate::archiver::{ArchiveEntry, ToteArchiver};
 use crate::{Result, ToteError};
 
 pub(super) struct RarArchiver {}
 
 impl ToteArchiver for RarArchiver {
-    fn perform(&self, _: File, _: Targets) -> Result<Vec<ArchiveEntry>> {
+    fn perform(
+        &self,
+        _: File,
+        _: &[PathBuf],
+        _config: &crate::ArchiveConfig,
+    ) -> Result<Vec<ArchiveEntry>> {
         Err(ToteError::UnsupportedFormat(
             "only extraction support for rar".to_string(),
         ))
@@ -18,21 +24,19 @@ impl ToteArchiver for RarArchiver {
 
 #[cfg(test)]
 mod tests {
-    use crate::archiver::Archiver;
+    use crate::ArchiveConfig;
     use crate::ToteError;
     use std::path::PathBuf;
 
     #[test]
     fn test_rar_archive() {
-        let archiver = Archiver::builder()
-            .archive_file(PathBuf::from("results/test.rar"))
-            .targets(vec![])
-            .build();
+        let config = ArchiveConfig::builder().dest("results/test.rar").build();
+        let v = Vec::<PathBuf>::new();
 
-        let r = archiver.perform();
+        let r = crate::archive(&v, &config);
         assert!(r.is_err());
         if let Err(ToteError::UnsupportedFormat(e)) = r {
-            assert_eq!(e, "Rar: not support archiving");
+            assert_eq!(e, "Rar: unsupported format (archiving)");
         } else {
             panic!("unexpected result: {:?}", r);
         }

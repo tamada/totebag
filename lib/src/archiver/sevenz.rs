@@ -3,26 +3,31 @@ use std::path::PathBuf;
 
 use sevenz_rust::{SevenZArchiveEntry, SevenZMethod, SevenZMethodConfiguration, SevenZWriter};
 
-use crate::archiver::{ArchiveEntry, Targets, ToteArchiver};
+use crate::archiver::{ArchiveEntry, ToteArchiver};
 use crate::{Result, ToteError};
 
 pub(super) struct SevenZArchiver {}
 
 impl ToteArchiver for SevenZArchiver {
-    fn perform(&self, file: File, tps: Targets) -> Result<Vec<ArchiveEntry>> {
+    fn perform(
+        &self,
+        file: File,
+        targets: &[PathBuf],
+        config: &crate::ArchiveConfig,
+    ) -> Result<Vec<ArchiveEntry>> {
         let mut w = match SevenZWriter::new(file) {
             Ok(writer) => writer,
             Err(e) => return Err(ToteError::Archiver(e.to_string())),
         };
-        set_compression_level(&mut w, tps.level());
+        set_compression_level(&mut w, config.level);
         let mut errs = vec![];
         let mut entries = vec![];
-        for tp in tps.iter() {
-            for t in tp.walker().flatten() {
+        for tp in targets {
+            for t in config.iter(tp) {
                 let path = t.into_path();
                 entries.push(ArchiveEntry::from(&path));
                 if path.is_file() {
-                    if let Err(e) = process_file(&mut w, &path, &tp.dest_path(&path)) {
+                    if let Err(e) = process_file(&mut w, &path, &config.path_in_archive(&path)) {
                         errs.push(e);
                     }
                 }
@@ -64,7 +69,6 @@ fn process_file(szw: &mut SevenZWriter<File>, target: &PathBuf, dest_path: &Path
 
 #[cfg(test)]
 mod tests {
-    use crate::archiver::Archiver;
     use std::path::PathBuf;
 
     fn run_test<F>(f: F)
@@ -83,12 +87,15 @@ mod tests {
     #[test]
     fn test_sevenz() {
         run_test(|| {
-            let archiver = Archiver::builder()
-                .archive_file(PathBuf::from("results/test.7z"))
-                .targets(vec![PathBuf::from("src"), PathBuf::from("Cargo.toml")])
+            let config = crate::ArchiveConfig::builder()
+                .dest("results/test.7z")
                 .overwrite(true)
                 .build();
-            if let Err(e) = archiver.perform() {
+            let v = vec!["lib", "cli", "Cargo.toml"]
+                .iter()
+                .map(|s| PathBuf::from(s))
+                .collect::<Vec<PathBuf>>();
+            if let Err(e) = crate::archive(&v, &config) {
                 panic!("{:?}", e);
             }
         });

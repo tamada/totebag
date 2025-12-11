@@ -1,23 +1,19 @@
-use std::fs::{create_dir_all, File};
+use std::fs::{File, create_dir_all};
 use std::io::copy;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use chrono::DateTime;
 use delharc::{LhaDecodeReader, LhaHeader};
 
-use crate::extractor::ToteExtractor;
-use crate::extractor::{Entry, PathUtils};
+use crate::extractor::{Entries, Entry, ToteExtractor};
 use crate::{Result, ToteError};
 
 pub(super) struct LhaExtractor {}
 
 impl ToteExtractor for LhaExtractor {
-    fn list(&self, archive_file: PathBuf) -> Result<Vec<Entry>> {
+    fn list(&self, archive_file: PathBuf) -> Result<Entries> {
         let mut result = vec![];
-        let mut reader = match delharc::parse_file(archive_file) {
-            Err(e) => return Err(ToteError::IO(e)),
-            Ok(h) => h,
-        };
+        let mut reader = delharc::parse_file(&archive_file).map_err(ToteError::IO)?;
         loop {
             let header = reader.header();
             if !header.is_directory() {
@@ -32,17 +28,14 @@ impl ToteExtractor for LhaExtractor {
                 Err(e) => return Err(ToteError::Fatal(Box::new(e))),
             }
         }
-        Ok(result)
+        Ok(Entries::new(archive_file, result))
     }
 
-    fn perform(&self, archive_file: PathBuf, opts: PathUtils) -> Result<()> {
-        let mut reader = match delharc::parse_file(archive_file) {
-            Err(e) => return Err(ToteError::IO(e)),
-            Ok(h) => h,
-        };
+    fn perform(&self, archive_file: PathBuf, base: PathBuf) -> Result<()> {
+        let mut reader = delharc::parse_file(archive_file).map_err(ToteError::IO)?;
         let mut errs = vec![];
         loop {
-            if let Err(e) = write_data_impl(&mut reader, &opts) {
+            if let Err(e) = write_data_impl(&mut reader, &base) {
                 errs.push(e);
             }
             match reader.next_file() {
@@ -62,31 +55,21 @@ impl ToteExtractor for LhaExtractor {
     }
 }
 
-fn write_data_impl(reader: &mut LhaDecodeReader<File>, opts: &PathUtils) -> Result<()> {
+fn write_data_impl(reader: &mut LhaDecodeReader<File>, base: &Path) -> Result<()> {
     let header = reader.header();
     let name = header.parse_pathname();
-    let dest = match opts.destination(name.clone()) {
-        Ok(dest) => dest,
-        Err(e) => return Err(e),
-    };
+    let dest = base.join(&name);
     if reader.is_decoder_supported() {
         log::info!("extracting {:?} ({} bytes)", &name, header.original_size);
         create_dir_all(dest.parent().unwrap()).unwrap();
-        let mut dest = match File::create(dest) {
-            Ok(f) => f,
-            Err(e) => return Err(ToteError::IO(e)),
-        };
-        match copy(reader, &mut dest) {
-            Ok(_) => {}
-            Err(e) => return Err(ToteError::IO(e)),
-        }
+        let mut dest = File::create(dest).map_err(ToteError::IO)?;
+        copy(reader, &mut dest).map_err(ToteError::IO)?;
         if let Err(e) = reader.crc_check() {
             return Err(ToteError::Fatal(Box::new(e)));
         };
     } else if !header.is_directory() {
         log::info!(
-            "{:?}: unsupported compression method ({:?})",
-            &name,
+            "{name:?}: unsupported compression method ({:?})",
             header.compression
         );
     }
@@ -98,24 +81,23 @@ fn convert(h: &LhaHeader) -> Entry {
     let compressed_size = h.compressed_size;
     let original_size = h.original_size;
     let mtime = h.last_modified as i64;
-    let dt = DateTime::from_timestamp(mtime, 0);
-    Entry::new(
-        name,
-        Some(compressed_size),
-        Some(original_size),
-        None,
-        dt.map(|dt| dt.naive_local()),
-    )
+    let dt = DateTime::from_timestamp(mtime, 0)
+        .map(|dt| dt.naive_local()).unwrap();
+    Entry::builder()
+        .name(name)
+        .compressed_size(compressed_size)
+        .original_size(original_size)
+        .date(dt)
+        .build()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::extractor::Extractor;
 
     #[test]
     fn test_list_archives() {
-        let file = PathBuf::from("testdata/test.lzh");
+        let file = PathBuf::from("../testdata/test.lzh");
         let extractor = LhaExtractor {};
         match extractor.list(file) {
             Ok(r) => {
@@ -132,14 +114,13 @@ mod tests {
 
     #[test]
     fn test_extract_archive() {
-        let archive_file = PathBuf::from("testdata/test.lzh");
-        let opts = Extractor::builder()
-            .archive_file(archive_file)
-            .destination("results/lha")
+        let archive_file = PathBuf::from("../testdata/test.lzh");
+        let opts = crate::ExtractConfig::builder()
+            .dest("results/lha")
             .use_archive_name_dir(true)
             .overwrite(true)
             .build();
-        match opts.perform() {
+        match crate::extract(archive_file, &opts) {
             Ok(_) => {
                 assert!(true);
                 assert!(PathBuf::from("results/lha/test/Cargo.toml").exists());

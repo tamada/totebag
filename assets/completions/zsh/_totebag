@@ -31,6 +31,8 @@ git-exclude\:"ignore files and directories that are listed in \`.gitexclude\`"
 ignore\:"ignore files and directories that are listed in \`.ignore\`"))' \
 '-L+[Specify the compression level. \[default\: 5\] \[possible values\: 0-9 (none to finest)\] For more details of level of each compression method, see README.]:LEVEL:_default' \
 '--level=[Specify the compression level. \[default\: 5\] \[possible values\: 0-9 (none to finest)\] For more details of level of each compression method, see README.]:LEVEL:_default' \
+'-f+[Specify the format for listing entries in the archive file.]:FORMAT:(default long json pretty-json xml)' \
+'--format=[Specify the format for listing entries in the archive file.]:FORMAT:(default long json pretty-json xml)' \
 '--log=[Specify the log level]:LOGLEVEL:((error\:"The error level"
 warn\:"The warning level"
 info\:"The info level"
@@ -43,8 +45,6 @@ trace\:"The trace level"))' \
 '--to-archive-name-dir[extract files to DEST/ARCHIVE_NAME directory (extract mode).]' \
 '-n[No recursive directory (archive mode).]' \
 '--no-recursive[No recursive directory (archive mode).]' \
-'-l[List entries in the archive file with long format.]' \
-'--long[List entries in the archive file with long format.]' \
 '--generate-completion[Generate the completion files]' \
 '--overwrite[Overwrite existing files.]' \
 '-h[Print help (see more with '\''--help'\'')]' \

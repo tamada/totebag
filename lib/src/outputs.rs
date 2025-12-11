@@ -1,30 +1,24 @@
-use chrono::NaiveDateTime;
-use totebag::{archiver::ArchiveEntries, extractor::Entry};
+use crate::Result;
+use crate::extractor::{Entries, Entry};
 
-pub fn print_archive_result(result: ArchiveEntries) {
-    let f = humansize::make_format(humansize::DECIMAL);
-    let total = result.total();
-    let rate = if total == 0 {
-        0.0
-    } else {
-        result.compressed as f64 / total as f64 * 100.0
-    };
-    println!(
-        "archived: {} ({} entries, {:>10} / {:>10}, {:.2}%)",
-        result.archive_file.display(),
-        result.len(),
-        f(result.compressed),
-        f(result.total()),
-        rate
-    );
+pub fn to_string(entries: &Entries) -> Result<String> {
+    Ok(entries
+        .iter()
+        .map(|entry| entry.name.to_string())
+        .collect::<Vec<String>>()
+        .join("\n"))
 }
 
-pub fn print_long_format(entry: Entry) {
-    println!("{}", format_long_format(entry));
+pub fn to_string_long(entries: &Entries) -> Result<String> {
+    Ok(entries
+        .iter()
+        .map(to_long_format)
+        .collect::<Vec<String>>()
+        .join("\n"))
 }
 
-fn format_long_format(entry: Entry) -> String {
-    let r1 = format_unix_mode(entry.unix_mode);
+fn to_long_format(entry: &Entry) -> String {
+    let r1 = to_unix_mode(entry.unix_mode);
     let r2 = format_size(entry.compressed_size, entry.original_size);
     let r3 = format_date(entry.date);
     format!("{} {} {} {}", r1, r2, r3, entry.name)
@@ -47,7 +41,7 @@ fn format_size(compressed: Option<u64>, original: Option<u64>) -> String {
     }
 }
 
-fn format_unix_mode(mode: Option<u32>) -> String {
+pub fn to_unix_mode(mode: Option<u32>) -> String {
     if let Some(mode) = mode {
         format!(
             "-{}{}{}",
@@ -75,6 +69,22 @@ fn format_mode(mode: u8) -> String {
     .to_string()
 }
 
+use chrono::NaiveDateTime;
+use serde::Serializer;
+
+pub fn serialize_option_u32_octal<S>(
+    value: &Option<u32>,
+    serializer: S,
+) -> std::result::Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    match value {
+        Some(v) => serializer.serialize_str(&format!("{v:o}")),
+        None => serializer.serialize_none(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use chrono::DateTime;
@@ -93,7 +103,7 @@ mod tests {
             ),
         };
         assert_eq!(
-            format_long_format(entry),
+            to_long_format(&entry),
             "-rw-r--r--      100 B/     200 B 2021-02-03 04:05:10 Cargo.toml"
         );
     }
@@ -111,12 +121,12 @@ mod tests {
         assert_eq!(format_size(None, None), " -------- / -------- ");
         assert_eq!(format_size(Some(100), None), "     100 B/ -------- ");
 
-        assert_eq!(format_unix_mode(None), "----------");
-        assert_eq!(format_unix_mode(Some(0o644)), "-rw-r--r--");
-        assert_eq!(format_unix_mode(Some(0o751)), "-rwxr-x--x");
-        assert_eq!(format_unix_mode(Some(0o640)), "-rw-r-----");
-        assert_eq!(format_unix_mode(Some(0o123)), "---x-w--wx");
-        assert_eq!(format_unix_mode(Some(0o456)), "-r--r-xrw-");
+        assert_eq!(to_unix_mode(None), "----------");
+        assert_eq!(to_unix_mode(Some(0o644)), "-rw-r--r--");
+        assert_eq!(to_unix_mode(Some(0o751)), "-rwxr-x--x");
+        assert_eq!(to_unix_mode(Some(0o640)), "-rw-r-----");
+        assert_eq!(to_unix_mode(Some(0o123)), "---x-w--wx");
+        assert_eq!(to_unix_mode(Some(0o456)), "-r--r-xrw-");
 
         assert_eq!(format_mode(128), "???");
     }
