@@ -55,6 +55,8 @@ jobs:
             -v ${{ github.workspace }}:/io
             -w /io
           run: |
+            rustup toolchain install 1.88.0 # for 
+            rustup default 1.88.0
             rustup target add ${{ matrix.target }}
             cargo zigbuild --release --target ${{ matrix.target }}
 
