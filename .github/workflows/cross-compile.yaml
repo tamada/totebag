@@ -9,9 +9,9 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: macos-13
-            target: x86_64-apple-darwin
-          - os: macos-14
+        #   - os: macos-13                # macos-13 was retired.
+        #     target: x86_64-apple-darwin # no support x86 in macos
+          - os: macos-latest
             target: aarch64-apple-darwin
     steps:
       # initialization
@@ -29,4 +29,36 @@ jobs:
       - name: Build (macOS)
         run: |
             rustup update stable
+            cargo build --release --target ${{ matrix.target }}
+
+  build-on-linux:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target:
+          - x86_64-unknown-linux-gnu
+          - aarch64-unknown-linux-gnu
+
+    steps:
+      # initialization
+      - name: Checkout the project
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0 # Fetch all history for .GitInfo and .Lastmod
+
+      # aarch64 のリンカを入れる（x86_64 は既定で OK）
+      - name: Install cross linker (aarch64 GNU)
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+
+      - name: Setup toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Build (Linux)
+        run: |
             cargo build --release --target ${{ matrix.target }}
