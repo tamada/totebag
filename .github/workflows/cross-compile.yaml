@@ -4,13 +4,15 @@ on:
     branches:
       - "**"
 jobs:
-  build:
+  build-on-macos:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         include:
-          - os: ubuntu-latest
-          - os: macos-latest
+          - os: macos-13
+            target: x86_64-apple-darwin
+          - os: macos-14
+            target: aarch64-apple-darwin
     steps:
       # initialization
       - name: Checkout the project
@@ -19,20 +21,12 @@ jobs:
           ref: main
           fetch-depth: 0 # Fetch all history for .GitInfo and .Lastmod
 
-      - name: Build (macOS)
-        if: matrix.os == 'macos-latest'
-        run: |
-            rustup update stable
-            rustup component add x86_64-apple-darwin
-            cargo build --release --target x86_64-apple-darwin
-            rustup component add aarch64-apple-darwin
-            cargo build --release --target aarch64-apple-darwin
+      - name: Setup toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
 
-      - name: Build (Linux)
-        if: matrix.os == 'ubuntu-latest'
+      - name: Build (macOS)
         run: |
             rustup update stable
-            rustup component add aarch64-unknown-linux-gnu
-            cargo build --release --target aarch64-unknown-linux-gnu
-            rustup component add x86_64-unknown-linux-gnu
-            cargo build --release --target x86_64-unknown-linux-gnu
+            cargo build --release --target ${{ matrix.target }}
