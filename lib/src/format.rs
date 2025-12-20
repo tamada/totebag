@@ -3,7 +3,7 @@
 //!
 //! ## Examples
 //!
-//! As default, [Manager] has the following formats:
+//! `totebag`` recognizes the following formats by the file extensions:
 //! Cab, Lha, SevenZ, Rar, Tar, TarGz, TarBz2, TarXz, TarZstd, and Zip.
 //!
 //! ```
@@ -41,10 +41,13 @@ impl Default for Manager {
     }
 }
 
+/// Returns `true` if all of the given file names are Some by [find] method.
 pub fn match_all<P: AsRef<Path>>(args: &[P]) -> bool {
     MANAGER.match_all(args)
 }
 
+/// Find the format of the given file name.
+/// If the given file name has an unknown extension for totebag, it returns `None`.
 pub fn find<P: AsRef<Path>>(path: P) -> Option<&'static Format> {
     MANAGER.find(path)
 }
@@ -54,13 +57,13 @@ impl Manager {
         Self { formats }
     }
 
-    /// Returns `true` if all of the given file names are Some by [method.find] method.
+    /// Returns `true` if all of the given file names are Some by [find] method.
     fn match_all<P: AsRef<Path>>(&self, args: &[P]) -> bool {
         args.iter().all(|p| self.find(p).is_some())
     }
 
     /// Find the format of the given file name.
-    /// If the given file name has an unknown extension for totebag, it returns an `Err(ToteErro::Unknown)`.
+    /// If the given file name has an unknown extension for totebag, it returns `None`.
     fn find<P: AsRef<Path>>(&self, path: P) -> Option<&Format> {
         let name = path
             .as_ref()
@@ -74,6 +77,7 @@ impl Manager {
 /// Represents the archive format.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Format {
+    /// The general format name.
     pub name: String,
     exts: Vec<String>,
 }

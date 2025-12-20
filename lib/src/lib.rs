@@ -79,10 +79,13 @@ pub fn extract<P: AsRef<Path>>(archive_file: P, config: &ExtractConfig) -> Resul
 
 #[derive(TypedBuilder)]
 pub struct ExtractConfig {
+    /// The destination directory for extraction.
     #[builder(setter(into), default = PathBuf::from("."))]
     pub dest: PathBuf,
+    /// Overwrite flag, if `true`, overwrite the files.
     #[builder(default = false)]
     pub overwrite: bool,
+    /// If `true`, the destination path becomes `{dest}/{archive_file.file_stem()}`.
     #[builder(default = false)]
     pub use_archive_name_dir: bool,
 }
@@ -116,12 +119,14 @@ impl ExtractConfig {
     }
 }
 
+/// Returns the entries in the given archive file.
 pub fn entries<P: AsRef<Path>>(archive_file: P) -> Result<Entries> {
     let archive_file = archive_file.as_ref();
     let extractor = crate::extractor::create(archive_file)?;
     extractor.list(archive_file.to_path_buf())
 }
 
+/// Returns the string of the entries in the given archive file.
 pub fn list<P: AsRef<Path>>(archive_file: P, config: &ListConfig) -> Result<String> {
     match entries(archive_file) {
         Err(e) => Err(e),
@@ -140,7 +145,9 @@ fn format_for_output(entries: Entries, f: &OutputFormat) -> Result<String> {
     }
 }
 
+/// The config object for List mode.
 pub struct ListConfig {
+    /// Specify the output format for listing.
     pub format: OutputFormat,
 }
 

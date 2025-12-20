@@ -90,7 +90,7 @@ impl ArchiveEntry {
 
 /// The trait for creating an archive file.
 /// If you want to support archiving for a new format, you need to implement the `ToteArchiver` trait.
-/// Then, the call [`perform_with`](Archiver::perform_with) method of [`Archiver`].
+/// Then, the call [`perform`](ToteArchiver::perform) method of [`ToteArchiver`].
 pub trait ToteArchiver {
     /// Perform the archiving operation.
     /// - `file` is the destination file for the archive.
