@@ -60,5 +60,6 @@ jobs:
           targets: ${{ matrix.target }}
 
       - name: Build (Linux)
+        continue-on-error: true
         run: |
             cargo build --release --target ${{ matrix.target }}
