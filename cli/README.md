@@ -1,11 +1,11 @@
-# CLI interface for totebag
+## CLI interface for totebag
 
-## :speaking_head: Overview
+### :speaking_head: Overview
 
 The cli interface for `totebag` provides a command-line tool to extract and archive files and directories in multiple formats.
 It offers a unified interface for various archive formats, making it easier to manage archives without worrying about the differences between tools.
 
-## :runner: Usage
+### :runner: Usage
 
 ```sh
 A tool for extracting/archiving files and directories in multiple formats.
@@ -40,7 +40,7 @@ Options:
 Supported archive formats include Cab, Tar, Tar with Gzip/Bzip2/Xz/Zstd, Zip, 7z, Lha/Lzh (extraction only), and Rar (extraction only).
 See [README.md](../README.md) for more details.
 
-### :whale: Docker
+#### :whale: Docker
 
 ```sh
 docker run -it --rm -v $PWD:/workdir ghcr.io/tamada/totebag:0.8.2 [OPTIONS] [ARGUMENTS]...
@@ -49,15 +49,15 @@ docker run -it --rm -v $PWD:/workdir ghcr.io/tamada/totebag:0.8.2 [OPTIONS] [ARG
 - **Working directory**: `/workdir`
 - **User**: `nonroot`
 
-## Examples
+### Examples
 
-### List the file names in the archive file
+#### List the file names in the archive file
 
 ```sh
 totebag -m list archive.zip
 ```
 
-### Extract files from the archive file
+#### Extract files from the archive file
 
 ```sh
 totebag archive.zip
@@ -72,7 +72,7 @@ The above command is equivalent to the following command:
 totebag -m extract -o . archive.zip
 ```
 
-### Create an archive file from files and directories
+#### Create an archive file from files and directories
 
 ```sh
 totebag archive.zip file1 dir1 file2
@@ -87,7 +87,7 @@ The above command is equivalent to the following command:
 totebag -m archive -o archive.zip file1 dir1 file2
 ```
 
-## :anchor: Install
+### :anchor: Install
 
 ```sh
 brew install tamada/tap/totebag

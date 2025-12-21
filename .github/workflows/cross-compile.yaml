@@ -2,8 +2,8 @@ name: cross-compile
 on:
   push:
     branches:
-    #   - "this_workflow_is_just_test_for_github_actions"
-      - "**"
+      - "this_workflow_is_just_test_for_github_actions"
+    #   - "**"
 
 jobs:
   cross-compilation:

@@ -1,13 +1,13 @@
-# API of totebag crate
+## API of totebag crate
 
-## :speaking_head: Overview
+### :speaking_head: Overview
 
 This is the README for the `totebag` crate, which provides the API of the totebag tool for extracting/archiving files and directories in multiple formats.
 
 The `totebag` crate provides a unified API for handling various archive formats, making it easy for developers to integrate archiving and extraction functionality into their Rust applications.
 It abstracts the differences between various archive formats, providing a consistent interface for working with archives.
 
-### Supported archive formats
+#### Supported archive formats
 
 - [Cab](https://github.com/mdsteele/rust-cab)
 - [Tar](https://crates.io/crates/tar)
@@ -20,9 +20,9 @@ It abstracts the differences between various archive formats, providing a consis
 - [Lha, Lzh](https://github.com/royaltm/rust-delharc) (extraction only)
 - [Rar](https://crates.io/crates/unrar) (extraction only)
 
-## :walking: How to use
+### :walking: How to use
 
-### :green_heart: Archiving files and directories
+#### :green_heart: Archiving files and directories
 
 ```rust
 use std::path::PathBuf;
@@ -40,7 +40,7 @@ match totebag::archive(&targets, &config) {
 }
 ```
 
-### :yellow_heart: Extracting the archive file
+#### :yellow_heart: Extracting the archive file
 
 ```rust
 use std::path::PathBuf;
@@ -54,7 +54,7 @@ match totebag::extract("extracting_archive_file.zip", &config) {
 }
 ```
 
-#### Compression level
+##### Compression level
 
 |       | Level                                                        |
 | ----- | ------------------------------------------------------------ |
@@ -66,7 +66,7 @@ match totebag::extract("extracting_archive_file.zip", &config) {
 | Zip   | 0: No compression, 1-3: Deflate (10, 24, 264), 4-6: Bzip2 (1, 6, 9), 7-9: Zstd (-7, 3, 22); see [FileOptions.](https://docs.rs/zip/2.2.2/zip/write/struct.FileOptions.html#method.compression_level) |
 | 7z    | 0-4: LZMA, 5-9: LZMA64 ([SevenZMethod](https://docs.rs/sevenz-rust/latest/sevenz_rust/struct.SevenZMethod.html)) |
 
-### :blue_heart: List entries in an archive file
+#### :blue_heart: List entries in an archive file
 
 The `list` function returns a string-formatted list of entries in the archive file.
 
