@@ -2,9 +2,11 @@ name: cross-compile
 on:
   push:
     branches:
+    #   - "this_workflow_is_just_test_for_github_actions"
       - "**"
+
 jobs:
-  build-on-macos:
+  cross-compilation:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -13,6 +15,10 @@ jobs:
         #     target: x86_64-apple-darwin # no support x86 in macos
           - os: macos-latest
             target: aarch64-apple-darwin
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
     steps:
       # initialization
       - name: Checkout the project
@@ -26,26 +32,11 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
-      - name: Build (macOS)
+      - name: Build (macOS and x86 Linux)
+        if: matrix.target != 'aarch64-unknown-linux-gnu'
         run: |
             rustup update stable
             cargo build --release --target ${{ matrix.target }}
-
-  build-on-linux:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        target:
-          - x86_64-unknown-linux-gnu
-          - aarch64-unknown-linux-gnu
-
-    steps:
-      # initialization
-      - name: Checkout the project
-        uses: actions/checkout@v4
-        with:
-          ref: main
-          fetch-depth: 0 # Fetch all history for .GitInfo and .Lastmod
 
       - name: Build with cargo-zigbuild
         uses: addnab/docker-run-action@v3
@@ -56,33 +47,7 @@ jobs:
             -v ${{ github.workspace }}:/io
             -w /io
           run: |
-            rustup toolchain install 1.88.0 # for 
+            rustup toolchain install 1.88.0 # the newest version of rust
             rustup default 1.88.0
             rustup target add ${{ matrix.target }}
             cargo zigbuild --release --target ${{ matrix.target }}
-
-      - name: Setup toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.target }}
-
-      - name: Build (Linux x86_64)
-        if: matrix.target == 'x86_64-unknown-linux-gnu'
-        run:
-          cargo build --release --target ${{ matrix.target }}
-
-    #   # aarch64 のリンカを入れる（x86_64 は既定で OK）
-    #   - name: Install cross linker (aarch64 GNU)
-    #     if: matrix.target == 'aarch64-unknown-linux-gnu'
-    #     run: |
-    #       sudo apt-get update
-    #       sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libc6-dev-arm64-cross pkg-config
-
-    #   - name: Build (Linux aarch64)
-    #     if: matrix.target == 'aarch64-unknown-linux-gnu'
-    #     env:
-    #       CC_aarch64_unknown_linux_gnu:  aarch64-linux-gnu-gcc
-    #       CXX_aarch64_unknown_linux_gnu: aarch64-linux-gnu-g++
-    #       AR_aarch64_unknown_linux_gnu:  aarch64-linux-gnu-ar
-    #     run:
-    #       cargo build --release --target ${{ matrix.target }}
