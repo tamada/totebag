@@ -2,8 +2,8 @@ name: cross-compile
 on:
   push:
     branches:
-      - "this_workflow_is_just_test_for_github_actions"
-    #   - "**"
+    #   - "this_workflow_is_just_test_for_github_actions"
+      - "**"
 
 jobs:
   cross-compilation:
@@ -16,9 +16,9 @@ jobs:
           - os: macos-latest
             target: aarch64-apple-darwin
           - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
+            target: x86_64-unknown-linux-musl
           - os: ubuntu-latest
-            target: aarch64-unknown-linux-gnu
+            target: aarch64-unknown-linux-musl
     steps:
       # initialization
       - name: Checkout the project
@@ -32,15 +32,34 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
-      - name: Build (macOS and x86 Linux)
-        if: matrix.target != 'aarch64-unknown-linux-gnu'
+      - name: Build (macOS)
+        if: matrix.target == 'aarch64-apple-darwin'
         run: |
             rustup update stable
             cargo build --release --target ${{ matrix.target }}
 
+      - name: Build (x86 Linux)
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        env:
+            CC_x86_64_unknown_linux_musl:  x86_64-linux-musl-gcc
+            CXX_x86_64_unknown_linux_musl: x86_64-linux-musl-g++
+            AR_x86_64_unknown_linux_musl:  x86_64-linux-musl-ar        
+        run: |
+            rustup update stable
+            curl -L https://musl.cc/x86_64-linux-musl-cross.tgz -o musl-cross.tgz
+            sudo tar xvfz musl-cross.tgz -C /opt
+            echo 'PATH=/opt/x86_64-linux-musl-cross/bin:$PATH' >> $GITHUB_ENV
+            mkdir -p .cargo
+            cat at > .cargo/config.toml <<'CFG'
+            [target.x86_64-unknown-linux-musl]
+            linker = "x86_64-linux-musl-gcc"
+            ar     = "x86_64-linux-musl-ar"
+            CFG
+            cargo build --release --target ${{ matrix.target }}
+
       - name: Build with cargo-zigbuild
         uses: addnab/docker-run-action@v3
-        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        if: matrix.target == 'aarch64-unknown-linux-musl'
         with:
           image: ghcr.io/rust-cross/cargo-zigbuild:latest
           options: >
