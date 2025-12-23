@@ -47,7 +47,7 @@ mod tar;
 mod zip;
 
 /// This struct represents an entry in the archive file.
-/// To build an instance of this struct, use [`Entry::new`] or [`Entry::builder`] methods in each [`Extractor`].
+/// To build an instance of this struct, use [`Entry::new`] or [`Entry::builder`] methods in each [`ToteExtractor`].
 ///
 /// # Example of builder
 ///
@@ -62,17 +62,21 @@ mod zip;
 /// ```
 #[derive(Debug, TypedBuilder, Serialize)]
 pub struct Entry {
+    /// The path of the entry.
     #[builder(setter(into))]
     pub name: String,
 
+    /// The compressed size of this entry.
     #[builder(setter(into, strip_option), default = None)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub compressed_size: Option<u64>,
 
+    /// The original size of this entry.
     #[builder(setter(into, strip_option), default = None)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub original_size: Option<u64>,
 
+    /// The unix mode.
     #[builder(setter(into, strip_option), default = Some(0o644))]
     #[serde(
         serialize_with = "crate::outputs::serialize_option_u32_octal",
@@ -80,6 +84,7 @@ pub struct Entry {
     )]
     pub unix_mode: Option<u32>,
 
+    /// The date of this entry.
     #[builder(setter(into, strip_option), default = None)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub date: Option<NaiveDateTime>,
@@ -136,7 +141,7 @@ impl Entries {
 
 /// The trait for extracting the archive file.
 /// If you want to support a new format for extraction, you need to implement the `ToteExtractor` trait.
-/// Then, the call [`perform_with`](Extractor::perform_with) and/or [`list_with`](Extractor::list_with) method of [`Extractor`].
+/// Then, the call [`perform`](ToteExtractor::perform) and/or [`list`](ToteExtractor::list) method of [`ToteExtractor`].
 pub trait ToteExtractor {
     /// returns the entry list of the given archive file.
     fn list(&self, archive_file: PathBuf) -> Result<Entries>;
