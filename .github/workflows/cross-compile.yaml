@@ -39,20 +39,9 @@ jobs:
             rustup update stable
             cargo build --release --target ${{ matrix.target }}
 
-      # - name: Build (x86 Linux)
-      #   uses: addnab/docker-run-action@v3
-      #   if: matrix.target == 'x86_64-unknown-linux-musl'
-      #   with:
-      #     image: ghcr.io/tamada/rust-x86-linux-musl:latest
-      #     options: >
-      #       -v ${{ github.workspace }}:/io
-      #       -w /io
-      #     run: |
-      #       cargo build --release --target ${{ matrix.target }}
-
-      - name: Build with cargo
+      - name: Build (x86 Linux)
         uses: addnab/docker-run-action@v3
-        if: matrix.target != 'aarch64-apple-darwin'
+        if: matrix.target == 'x86_64-unknown-linux-musl'
         with:
           image: rust:alpine
           options: >
@@ -62,6 +51,20 @@ jobs:
             apk add --no-cache musl musl-dev build-base
             rustup target add ${{ matrix.target }}
             cargo build --release --target ${{ matrix.target }}
+
+      - name: Build with cargo-zigbuild
+        uses: addnab/docker-run-action@v3
+        if: matrix.target == 'aarch64-unknown-linux-musl'
+        with:
+          image: ghcr.io/rust-cross/cargo-zigbuild:latest
+          options: >
+            -v ${{ github.workspace }}:/io
+            -w /io
+          run: |
+            rustup toolchain install 1.88.0 # the newest version of rust
+            rustup default 1.88.0
+            rustup target add ${{ matrix.target }}
+            cargo zigbuild --release --target ${{ matrix.target }}
 
       # - name: Build (x86 Linux)
       #   if: matrix.target == 'x86_64-unknown-linux-musl'
