@@ -43,11 +43,13 @@ See [README.md](../README.md) for more details.
 #### :whale: Docker
 
 ```sh
-docker run -it --rm -v $PWD:/workdir ghcr.io/tamada/totebag:0.8.2 [OPTIONS] [ARGUMENTS]...
+docker run -it --rm -v $PWD:/workdir ghcr.io/tamada/totebag:latest [OPTIONS] [ARGUMENTS]...
 ```
 
-- **Working directory**: `/workdir`
+- **Working directory**: `/app`
 - **User**: `nonroot`
+
+For more detail, see [Containerfile](../Containerfile)
 
 ### Examples
 

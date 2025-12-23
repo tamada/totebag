@@ -3,7 +3,7 @@
 //!
 //! ## Examples
 //!
-//! `totebag`` recognizes the following formats by the file extensions:
+//! `totebag` recognizes the following formats by the file extensions:
 //! Cab, Lha, SevenZ, Rar, Tar, TarGz, TarBz2, TarXz, TarZstd, and Zip.
 //!
 //! ```
