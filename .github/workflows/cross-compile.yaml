@@ -28,6 +28,7 @@ jobs:
           fetch-depth: 0 # Fetch all history for .GitInfo and .Lastmod
 
       - name: Setup toolchain
+        if: matrix.target == 'aarch64-apple-darwin'
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
@@ -39,22 +40,14 @@ jobs:
             cargo build --release --target ${{ matrix.target }}
 
       - name: Build (x86 Linux)
+        uses: addnab/docker-run-action@v3
         if: matrix.target == 'x86_64-unknown-linux-musl'
-        env:
-            CC_x86_64_unknown_linux_musl:  x86_64-linux-musl-gcc
-            CXX_x86_64_unknown_linux_musl: x86_64-linux-musl-g++
-            AR_x86_64_unknown_linux_musl:  x86_64-linux-musl-ar        
-        run: |
-            rustup update stable
-            curl -L https://musl.cc/x86_64-linux-musl-cross.tgz -o musl-cross.tgz
-            sudo tar xvfz musl-cross.tgz -C /opt
-            echo 'PATH=/opt/x86_64-linux-musl-cross/bin:$PATH' >> $GITHUB_ENV
-            mkdir -p .cargo
-            cat at > .cargo/config.toml <<'CFG'
-            [target.x86_64-unknown-linux-musl]
-            linker = "x86_64-linux-musl-gcc"
-            ar     = "x86_64-linux-musl-ar"
-            CFG
+        with:
+          image: ghcr.io/tamada/rust-x86-linux-musl
+          options: >
+            -v ${{ github.workspace }}:/io
+            -w /io
+          run: |
             cargo build --release --target ${{ matrix.target }}
 
       - name: Build with cargo-zigbuild
@@ -70,3 +63,22 @@ jobs:
             rustup default 1.88.0
             rustup target add ${{ matrix.target }}
             cargo zigbuild --release --target ${{ matrix.target }}
+
+      # - name: Build (x86 Linux)
+      #   if: matrix.target == 'x86_64-unknown-linux-musl'
+      #   env:
+      #       CC_x86_64_unknown_linux_musl:  x86_64-linux-musl-gcc
+      #       CXX_x86_64_unknown_linux_musl: x86_64-linux-musl-g++
+      #       AR_x86_64_unknown_linux_musl:  x86_64-linux-musl-ar        
+      #   run: |
+      #       rustup update stable
+      #       curl -L https://musl.cc/x86_64-linux-musl-cross.tgz -o musl-cross.tar.gz
+      #       sudo tar xvfz musl-cross.tar.gz -C /opt
+      #       echo 'PATH=/opt/x86_64-linux-musl-cross/bin:$PATH' >> $GITHUB_ENV
+      #       mkdir -p .cargo
+      #       cat at > .cargo/config.toml <<'CFG'
+      #       [target.x86_64-unknown-linux-musl]
+      #       linker = "x86_64-linux-musl-gcc"
+      #       ar     = "x86_64-linux-musl-ar"
+      #       CFG
+      #       cargo build --release --target ${{ matrix.target }}
