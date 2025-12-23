@@ -50,7 +50,7 @@ jobs:
       #     run: |
       #       cargo build --release --target ${{ matrix.target }}
 
-      - name: Build with cargo-zigbuild
+      - name: Build with cargo
         uses: addnab/docker-run-action@v3
         if: matrix.target != 'aarch64-apple-darwin'
         with:
@@ -60,6 +60,7 @@ jobs:
             -w /io
           run: |
             apk add --no-cache musl musl-dev build-base
+            rustup target add ${{ matrix.target }}
             cargo build --release --target ${{ matrix.target }}
 
       # - name: Build (x86 Linux)
