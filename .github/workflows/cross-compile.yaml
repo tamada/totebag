@@ -27,25 +27,17 @@ jobs:
           ref: main
           fetch-depth: 0 # Fetch all history for .GitInfo and .Lastmod
 
-      - name: Cross build
-        uses: houseabsolute/actions-rust-cross@v1
+      - name: Setup toolchain
+        if: matrix.target == 'aarch64-apple-darwin'
+        uses: dtolnay/rust-toolchain@stable
         with:
-          command: build
-          target: ${{ matrix.target }}
-          args: "--release"
-          strip: true
+          targets: ${{ matrix.target }}
 
-      # - name: Setup toolchain
-      #   if: matrix.target == 'aarch64-apple-darwin'
-      #   uses: dtolnay/rust-toolchain@stable
-      #   with:
-      #     targets: ${{ matrix.target }}
-
-      # - name: Build (macOS)
-      #   if: matrix.target == 'aarch64-apple-darwin'
-      #   run: |
-      #       rustup update stable
-      #       cargo build --release --target ${{ matrix.target }}
+      - name: Build (macOS)
+        if: matrix.target == 'aarch64-apple-darwin'
+        run: |
+            rustup update stable
+            cargo build --release --target ${{ matrix.target }}
 
       # - name: Build (x86 Linux)
       #   uses: addnab/docker-run-action@v3
@@ -58,19 +50,17 @@ jobs:
       #     run: |
       #       cargo build --release --target ${{ matrix.target }}
 
-      # - name: Build with cargo-zigbuild
-      #   uses: addnab/docker-run-action@v3
-      #   if: matrix.target == 'aarch64-unknown-linux-musl'
-      #   with:
-      #     image: ghcr.io/rust-cross/cargo-zigbuild:latest
-      #     options: >
-      #       -v ${{ github.workspace }}:/io
-      #       -w /io
-      #     run: |
-      #       rustup toolchain install 1.88.0 # the newest version of rust
-      #       rustup default 1.88.0
-      #       rustup target add ${{ matrix.target }}
-      #       cargo zigbuild --release --target ${{ matrix.target }}
+      - name: Build with cargo-zigbuild
+        uses: addnab/docker-run-action@v3
+        if: matrix.target != 'aarch64-apple-darwin'
+        with:
+          image: rust:alpine
+          options: >
+            -v ${{ github.workspace }}:/io
+            -w /io
+          run: |
+            apk add --no-cache musl musl-dev build-base
+            cargo build --release --target ${{ matrix.target }}
 
       # - name: Build (x86 Linux)
       #   if: matrix.target == 'x86_64-unknown-linux-musl'
