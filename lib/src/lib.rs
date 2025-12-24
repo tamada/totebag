@@ -9,14 +9,14 @@ pub(crate) mod outputs;
 
 use clap::ValueEnum;
 use ignore::WalkBuilder;
-use std::{
-    collections::HashSet,
-    path::{Path, PathBuf},
-};
+use std::collections::HashSet;
+use std::path::{Path, PathBuf};
+
 use typed_builder::TypedBuilder;
 
 use crate::archiver::ArchiveEntries;
 use crate::extractor::Entries;
+use crate::format::{default_format_detector, FormatDetector};
 
 /// Define the result type for the this library.
 pub type Result<T> = std::result::Result<T, ToteError>;
@@ -88,6 +88,8 @@ pub struct ExtractConfig {
     /// If `true`, the destination path becomes `{dest}/{archive_file.file_stem()}`.
     #[builder(default = false)]
     pub use_archive_name_dir: bool,
+    #[builder(default = default_format_detector())]
+    pub format_detector: Box<dyn FormatDetector>,
 }
 
 impl ExtractConfig {
@@ -111,24 +113,23 @@ impl ExtractConfig {
         }
     }
 
-    pub fn extractor(
-        &self,
-        archive_file: &Path,
-    ) -> Result<Box<dyn crate::extractor::ToteExtractor>> {
-        crate::extractor::create(archive_file)
+    pub fn extractor(&self, archive_file: &Path) -> Result<Box<dyn crate::extractor::ToteExtractor>> {
+        let format = self.format_detector.detect(archive_file);
+        crate::extractor::create(archive_file, format)
     }
 }
 
 /// Returns the entries in the given archive file.
-pub fn entries<P: AsRef<Path>>(archive_file: P) -> Result<Entries> {
+pub fn entries<P: AsRef<Path>>(archive_file: P, format_detector: &Box<dyn FormatDetector>) -> Result<Entries> {
     let archive_file = archive_file.as_ref();
-    let extractor = crate::extractor::create(archive_file)?;
+    let format = format_detector.detect(archive_file);
+    let extractor = crate::extractor::create(archive_file, format)?;
     extractor.list(archive_file.to_path_buf())
 }
 
 /// Returns the string of the entries in the given archive file.
 pub fn list<P: AsRef<Path>>(archive_file: P, config: &ListConfig) -> Result<String> {
-    match entries(archive_file) {
+    match entries(archive_file, &config.format_detector) {
         Err(e) => Err(e),
         Ok(entries) => format_for_output(entries, &config.format),
     }
@@ -149,11 +150,12 @@ fn format_for_output(entries: Entries, f: &OutputFormat) -> Result<String> {
 pub struct ListConfig {
     /// Specify the output format for listing.
     pub format: OutputFormat,
+    format_detector: Box<dyn FormatDetector>,
 }
 
 impl ListConfig {
-    pub fn new(format: OutputFormat) -> Self {
-        Self { format }
+    pub fn new(format: OutputFormat, format_detector: Box<dyn FormatDetector>) -> Self {
+        Self { format, format_detector }
     }
 }
 

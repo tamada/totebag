@@ -37,6 +37,7 @@ use std::fmt::Display;
 use std::path::{Path, PathBuf};
 use typed_builder::TypedBuilder;
 
+use crate::format::Format;
 use crate::{Result, ToteError};
 
 mod cab;
@@ -151,9 +152,8 @@ pub trait ToteExtractor {
 
 /// Returns the extractor for the given archive file.
 /// The supported format is `cab`, `lha`, `rar`, `7z`, `tar`, `tar.gz`, `tar.bz2`, `tar.xz`, `tar.zst`, and `zip`.
-pub(super) fn create<P: AsRef<Path>>(file: P) -> Result<Box<dyn ToteExtractor>> {
+pub(super) fn create<P: AsRef<Path>>(file: P, format: Option<&Format>) -> Result<Box<dyn ToteExtractor>> {
     let file = file.as_ref();
-    let format = crate::format::find(file);
     match format {
         Some(format) => match format.name.as_str() {
             "Cab" => Ok(Box::new(cab::CabExtractor {})),

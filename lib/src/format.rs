@@ -24,6 +24,44 @@ struct Manager {
     formats: Vec<Format>,
 }
 
+pub fn default_format_detector() -> Box<dyn FormatDetector> {
+    Box::new(ExtensionFormatDetector {})
+}
+
+pub trait FormatDetector {
+    fn detect(&self, path: &Path) -> Option<&Format>;
+}
+
+pub struct ExtensionFormatDetector;
+pub struct MagicNumberFormatDetector;
+pub struct FixedFormatDetector {
+    format: &'static Format,
+}
+
+impl FixedFormatDetector {
+    pub fn new(format: &'static Format) -> Self {
+        Self { format }
+    }
+}
+
+impl FormatDetector for MagicNumberFormatDetector {
+    fn detect(&self, _filename: &Path) -> Option<&Format> {
+        None
+    }
+}
+
+impl FormatDetector for ExtensionFormatDetector {
+    fn detect(&self, path: &Path) -> Option<&Format> {
+        MANAGER.find(path)
+    }
+}
+
+impl FormatDetector for FixedFormatDetector {
+    fn detect(&self, _path: &Path) -> Option<&Format> {
+        Some(&self.format)
+    }
+}
+
 impl Default for Manager {
     fn default() -> Self {
         Manager::new(vec![
@@ -44,6 +82,20 @@ impl Default for Manager {
 /// Returns `true` if all of the given file names are Some by [find] method.
 pub fn match_all<P: AsRef<Path>>(args: &[P]) -> bool {
     MANAGER.match_all(args)
+}
+
+pub fn find_by_name(name: String) -> Option<&'static Format> {
+    let name = name.to_lowercase();
+    MANAGER.formats.iter().find(|f| f.name.to_lowercase() == name)
+}
+
+pub fn find_by_ext(ext: String) -> Option<&'static Format> {
+    let ext = if ext.chars().next() != Some('.') {
+        format!(".{ext}")
+    } else {
+        ext
+    }.to_lowercase();
+    MANAGER.formats.iter().find(|f| f.exts.contains(&ext))
 }
 
 /// Find the format of the given file name.

@@ -1,4 +1,5 @@
 use clap::{Parser, ValueEnum};
+use totebag::format::FixedFormatDetector;
 use std::{io::BufRead, path::PathBuf};
 
 use totebag::{ArchiveConfig, ExtractConfig, ListConfig};
@@ -54,6 +55,10 @@ pub(crate) struct CliOpts {
 
     #[clap(short = 'm', long = "mode", default_value_t = RunMode::Auto, value_name = "MODE", required = false, ignore_case = true, value_enum, help = "Mode of operation.")]
     pub mode: RunMode,
+
+    #[clap(short, long, value_name = "ARCHIVE_FORMAT", value_enum, ignore_case = true,
+        help = "Specify the archive format for listing mode (default auto). available on list and extract modes.")]
+    pub format: Option<ArchiveFormat>,
 
     #[cfg(debug_assertions)]
     #[clap(
@@ -144,6 +149,18 @@ pub struct ExtractorOpts {
     pub to_archive_name_dir: bool,
 }
 
+#[derive(Parser, Debug, ValueEnum, Clone, PartialEq, Copy)]
+pub enum ArchiveFormat {
+    /// Same as Ext.
+    Auto,
+    /// Detect the format by the file extension.
+    Ext,
+    /// Detect the format by the file signature (header bytes).
+    Header,
+    Cab, Lha, Lzh, SevenZ, Rar, Tar, TarGz, TarBz2, TarXz, TarZstd, Zip,
+    Tgz, Tbz2, Txz, Tzst, Tzstd, Jar, War, Ear,
+}
+
 /// The log level.
 #[derive(Parser, Debug, ValueEnum, Clone, PartialEq, Copy)]
 pub enum LogLevel {
@@ -179,20 +196,40 @@ impl CliOpts {
             match self.mode {
                 RunMode::Auto => {
                     if totebag::format::match_all(&args) {
-                        Ok(to_extract_config(self, args))
+                        to_extract_config(self, args)
                     } else {
-                        Ok(to_archive_config(self, args))
+                        to_archive_config(self, args)
                     }
                 }
-                RunMode::Archive => Ok(to_archive_config(self, args)),
-                RunMode::Extract => Ok(to_extract_config(self, args)),
-                RunMode::List => Ok(to_list_config(self, args)),
+                RunMode::Archive => to_archive_config(self, args),
+                RunMode::Extract => to_extract_config(self, args),
+                RunMode::List => to_list_config(self, args),
+            }
+        }
+    }
+
+    fn format_detector(&self) -> Result<Box<dyn totebag::format::FormatDetector>> {
+        use totebag::format::{ExtensionFormatDetector, MagicNumberFormatDetector};
+        match self.format {
+            Some(ArchiveFormat::Auto) | Some(ArchiveFormat::Ext) | None => {
+                Ok(Box::new(ExtensionFormatDetector {}))
+            }
+            Some(ArchiveFormat::Header) => Ok(Box::new(MagicNumberFormatDetector {})),
+            Some(f) => {
+                let name = format!("{f:?}");
+                let format = totebag::format::find_by_name(name).ok_or_else(|| {
+                    ToteError::UnsupportedFormat(format!(
+                        "The specified archive format '{f:?}' is not supported."
+                    ))
+                })?;
+                Ok(Box::new(FixedFormatDetector::new(format)))
             }
         }
     }
 }
 
-fn to_archive_config(opts: &CliOpts, args: Vec<String>) -> (Mode, Vec<String>) {
+
+fn to_archive_config(opts: &CliOpts, args: Vec<String>) -> Result<(Mode, Vec<String>)> {
     let (dest, args) = if totebag::format::find(&args[0]).is_some() && opts.output.is_none() {
         (Some(args[0].clone().into()), args[1..].to_vec())
     } else {
@@ -206,24 +243,26 @@ fn to_archive_config(opts: &CliOpts, args: Vec<String>) -> (Mode, Vec<String>) {
         .no_recursive(opts.archivers.no_recursive)
         .ignore(opts.archivers.ignores.clone())
         .build();
-    (Mode::Archive(config), args)
+    Ok((Mode::Archive(config), args))
 }
 
-fn to_extract_config(opts: &CliOpts, args: Vec<String>) -> (Mode, Vec<String>) {
+fn to_extract_config(opts: &CliOpts, args: Vec<String>) -> Result<(Mode, Vec<String>)> {
     let dest = opts.output.clone().unwrap_or_else(|| PathBuf::from("."));
     let config = totebag::ExtractConfig::builder()
         .overwrite(opts.overwrite)
         .use_archive_name_dir(opts.extractors.to_archive_name_dir)
         .dest(dest)
+        .format_detector(opts.format_detector()?)
         .build();
-    (Mode::Extract(config), args)
+    Ok((Mode::Extract(config), args))
 }
 
-fn to_list_config(opts: &CliOpts, args: Vec<String>) -> (Mode, Vec<String>) {
-    (
-        Mode::List(totebag::ListConfig::new(opts.listers.format.clone())),
-        args,
-    )
+fn to_list_config(opts: &CliOpts, args: Vec<String>) -> Result<(Mode, Vec<String>)> {
+    let config = totebag::ListConfig::new(
+        opts.listers.format.clone(),
+        opts.format_detector()?,
+    );
+    Ok((Mode::List(config), args))
 }
 
 pub(crate) fn normalize_args(args: Vec<String>) -> Result<Vec<String>> {
