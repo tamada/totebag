@@ -14,7 +14,7 @@ Usage: totebag [OPTIONS] [ARGUMENTS]...
 
 Arguments:
   [ARGUMENTS]...  List of files or directories to be processed.
-                  '-' reads from stdin, and '@<filename>' reads from a file.
+                  '-' reads form stdin, and '@<filename>' reads from a file.
                   In archive mode, the resultant archive file name is determined by the following rule.
                       - if output option is specified, use it.
                       - if the first argument is the archive file name, use it.
@@ -23,14 +23,23 @@ Arguments:
 
 Options:
       --to-archive-name-dir          extract files to DEST/ARCHIVE_NAME directory (extract mode).
-  -C, --dir <DIR>                    Specify the base directory for archiving or extracting. [default: .]
-  -i, --ignore-types <IGNORE_TYPES>  Specify the ignore type. [possible values: default, hidden, git-ignore, git-global, git-exclude, ignore]
-  -L, --level <LEVEL>                Specify the compression level. [default: 5] [possible values: 0-9 (none to finest)]
+  -C, --dir <DIR>                    Specify the base directory for archiving or extracting.
+                                     [default: .]
+  -i, --ignore-types <IGNORE_TYPES>  Specify the ignore type.
+                                     [possible values: default, hidden, git-ignore, git-global, git-exclude, ignore]
+  -L, --level <LEVEL>                Specify the compression level. [default: 5]
+                                     [possible values: 0-9 (none to finest)]
                                      For more details of level of each compression method, see README. [default: 5]
   -n, --no-recursive                 No recursive directory (archive mode).
-  -l, --long                         List entries in the archive file with long format.
-      --log <LOGLEVEL>               Specify the log level [default: warn] [possible values: error, warn, info, debug, trace]
-  -m, --mode <MODE>                  Mode of operation. [default: auto] [possible values: auto archive, extract, list]
+  -f, --output-format <FORMAT>       Specify the format for listing entries in the archive file.
+                                     [default: default] [possible values: default, long, json, pretty-json, xml]
+      --log <LOGLEVEL>               Specify the log level [default: warn]
+                                     [possible values: error, warn, info, debug, trace]
+  -m, --mode <MODE>                  Mode of operation. [default: auto]
+                                     [possible values: auto, archive, extract, list]
+  -F, --from <ARCHIVE_FORMAT>        Specify the archive format for listing mode (default auto). 
+                                     available on list and extract modes.
+                                     [possible values: auto, parse, cab, lha, lzh, seven-z, rar, tar, tar-gz, tar-bz2, tar-xz, tar-zstd, zip, tgz, tbz2, txz, tzst, tzstd, jar, war, ear]
   -o, --output <DEST>                Output file in archive mode, or output directory in extraction mode
       --overwrite                    Overwrite existing files.
   -h, --help                         Print help (see more with '--help')
@@ -50,6 +59,14 @@ docker run -it --rm -v $PWD:/workdir ghcr.io/tamada/totebag:latest [OPTIONS] [AR
 - **User**: `nonroot`
 
 For more detail, see [Containerfile](../Containerfile)
+
+### Detecting the archive format
+
+`totebag` automatically detects the archive format by the extension of the archive file name in the default.
+However, you can explicitly specify the archive format by using the `--from` option in the list and extract modes.
+If `--from` option is absent or `auto`, which means automatic detection by the extension of the archive file name.
+If `--from parse` is specified, the archive format is detected by parsing the magic number of the archive file (read header and detect the format).
+Otherwise, the specified format is used.
 
 ### Examples
 
