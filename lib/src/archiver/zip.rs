@@ -12,6 +12,9 @@ use zip::ZipWriter;
 use crate::archiver::{ArchiveEntry, ToteArchiver};
 use crate::{Result, ToteError};
 
+/// ZIP format archiver implementation.
+///
+/// This archiver creates ZIP archive files.
 pub(super) struct ZipArchiver {}
 
 impl ZipArchiver {

@@ -38,27 +38,59 @@ pub enum IgnoreType {
     Ignore,
 }
 
-/// Define the errors for this library.
+/// Errors that can occur when using this library.
+///
+/// This enum represents all possible errors that can be returned
+/// from archive and extraction operations.
 #[derive(Debug)]
 pub enum ToteError {
+    /// Error from archiving operation with a descriptive message
     Archiver(String),
+    /// Multiple errors occurred during an operation
     Array(Vec<ToteError>),
+    /// The destination path is a directory when a file was expected
     DestIsDir(PathBuf),
+    /// The target directory already exists
     DirExists(PathBuf),
+    /// Error from extraction operation with a descriptive message
     Extractor(String),
+    /// A fatal error from an underlying library
     Fatal(Box<dyn std::error::Error>),
+    /// The specified file was not found
     FileNotFound(PathBuf),
+    /// The file already exists when it shouldn't be overwritten
     FileExists(PathBuf),
+    /// Standard I/O error
     IO(std::io::Error),
+    /// JSON serialization/deserialization error
     Json(serde_json::Error),
+    /// No arguments were provided when some were required
     NoArgumentsGiven,
+    /// A warning message that doesn't halt execution
     Warn(String),
+    /// The archive format could not be determined
     UnknownFormat(String),
+    /// The format is recognized but not supported for the operation
     UnsupportedFormat(String),
+    /// XML serialization/deserialization error
     Xml(serde_xml_rs::Error),
 }
 
 impl ToteError {
+    /// Returns `Ok(ok)` if there are no errors, otherwise returns an appropriate error.
+    ///
+    /// This is a helper method to consolidate multiple errors into a single result.
+    ///
+    /// # Arguments
+    ///
+    /// * `ok` - The success value to return if no errors occurred
+    /// * `errs` - A vector of errors that may have occurred
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(ok)` if `errs` is empty
+    /// * `Err(error)` if `errs` contains a single error
+    /// * `Err(ToteError::Array(errs))` if `errs` contains multiple errors
     pub fn error_or<T>(ok: T, errs: Vec<Self>) -> Result<T> {
         if errs.is_empty() {
             Ok(ok)
@@ -70,6 +102,27 @@ impl ToteError {
     }
 }
 
+/// Extract an archive file to the specified destination directory.
+///
+/// # Arguments
+///
+/// * `archive_file` - The path to the archive file to extract
+/// * `config` - The extraction configuration
+///
+/// # Examples
+///
+/// ```
+/// use totebag::{extract, ExtractConfig};
+///
+/// let config = ExtractConfig::builder()
+///     .dest("output")
+///     .overwrite(true)
+///     .build();
+/// match extract("archive.zip", &config) {
+///     Ok(_) => println!("Extraction successful"),
+///     Err(e) => eprintln!("Error: {:?}", e),
+/// }
+/// ```
 pub fn extract<P: AsRef<Path>>(archive_file: P, config: &ExtractConfig) -> Result<()> {
     let archive_file = archive_file.as_ref();
     let base_dir = config.dest(archive_file)?;
@@ -77,6 +130,23 @@ pub fn extract<P: AsRef<Path>>(archive_file: P, config: &ExtractConfig) -> Resul
     extractor.perform(archive_file.to_path_buf(), base_dir)
 }
 
+/// Configuration for extracting archive files.
+///
+/// This struct holds all the options needed to extract an archive file.
+/// Use the builder pattern to create an instance.
+///
+/// # Examples
+///
+/// ```
+/// use totebag::ExtractConfig;
+/// use std::path::PathBuf;
+///
+/// let config = ExtractConfig::builder()
+///     .dest(PathBuf::from("output"))
+///     .overwrite(true)
+///     .use_archive_name_dir(false)
+///     .build();
+/// ```
 #[derive(TypedBuilder)]
 pub struct ExtractConfig {
     /// The destination directory for extraction.
@@ -88,11 +158,16 @@ pub struct ExtractConfig {
     /// If `true`, the destination path becomes `{dest}/{archive_file.file_stem()}`.
     #[builder(default = false)]
     pub use_archive_name_dir: bool,
+    /// The format detector to use for determining archive format.
     #[builder(default = default_format_detector())]
     pub format_detector: Box<dyn FormatDetector>,
 }
 
 impl ExtractConfig {
+    /// Determines the destination path for extraction based on configuration.
+    ///
+    /// This internal method calculates the final destination path,
+    /// taking into account the `use_archive_name_dir` flag.
     pub(crate) fn dest(&self, archive_file: &Path) -> Result<PathBuf> {
         let dest = if self.use_archive_name_dir {
             let stem = archive_file
@@ -113,13 +188,47 @@ impl ExtractConfig {
         }
     }
 
+    /// Creates an extractor for the given archive file.
+    ///
+    /// # Arguments
+    ///
+    /// * `archive_file` - Path to the archive file
+    ///
+    /// # Returns
+    ///
+    /// Returns a boxed [`ToteExtractor`](crate::extractor::ToteExtractor) for the detected format.
     pub fn extractor(&self, archive_file: &Path) -> Result<Box<dyn crate::extractor::ToteExtractor>> {
         let format = self.format_detector.detect(archive_file);
         crate::extractor::create_with(archive_file, format)
     }
 }
 
-/// Returns the entries in the given archive file.
+/// Returns the entries (file list) in the given archive file.
+///
+/// # Arguments
+///
+/// * `archive_file` - The path to the archive file
+/// * `format_detector` - The format detector to determine archive type
+///
+/// # Returns
+///
+/// Returns a [`Result`] containing [`Entries`] which holds the list of files in the archive.
+///
+/// # Examples
+///
+/// ```
+/// use totebag::{entries, format::default_format_detector};
+///
+/// let detector = default_format_detector();
+/// match entries("archive.zip", &detector) {
+///     Ok(entries) => {
+///         for entry in entries.iter() {
+///             println!("{}", entry.name);
+///         }
+///     }
+///     Err(e) => eprintln!("Error: {:?}", e),
+/// }
+/// ```
 pub fn entries<P: AsRef<Path>>(archive_file: P, format_detector: &Box<dyn FormatDetector>) -> Result<Entries> {
     let archive_file = archive_file.as_ref();
     let format = format_detector.detect(archive_file);
@@ -127,7 +236,29 @@ pub fn entries<P: AsRef<Path>>(archive_file: P, format_detector: &Box<dyn Format
     extractor.list(archive_file.to_path_buf())
 }
 
-/// Returns the string of the entries in the given archive file.
+/// Returns a formatted string representation of the entries in the given archive file.
+///
+/// # Arguments
+///
+/// * `archive_file` - The path to the archive file
+/// * `config` - The list configuration including output format
+///
+/// # Returns
+///
+/// Returns a [`Result`] containing a formatted string of the archive entries.
+/// The format depends on the [`OutputFormat`] specified in the config.
+///
+/// # Examples
+///
+/// ```
+/// use totebag::{list, ListConfig, OutputFormat, format::default_format_detector};
+///
+/// let config = ListConfig::new(OutputFormat::Long, default_format_detector());
+/// match list("archive.zip", &config) {
+///     Ok(output) => println!("{}", output),
+///     Err(e) => eprintln!("Error: {:?}", e),
+/// }
+/// ```
 pub fn list<P: AsRef<Path>>(archive_file: P, config: &ListConfig) -> Result<String> {
     match entries(archive_file, &config.format_detector) {
         Err(e) => Err(e),
@@ -146,7 +277,17 @@ fn format_for_output(entries: Entries, f: &OutputFormat) -> Result<String> {
     }
 }
 
-/// The config object for List mode.
+/// Configuration for listing archive file contents.
+///
+/// This struct holds the options for displaying archive entries.
+///
+/// # Examples
+///
+/// ```
+/// use totebag::{ListConfig, OutputFormat, format::default_format_detector};
+///
+/// let config = ListConfig::new(OutputFormat::Json, default_format_detector());
+/// ```
 pub struct ListConfig {
     /// Specify the output format for listing.
     pub format: OutputFormat,
@@ -159,6 +300,15 @@ impl ListConfig {
     }
 }
 
+/// Output format options for listing archive contents.
+///
+/// # Variants
+///
+/// * `Default` - Simple list of file names, one per line
+/// * `Long` - Detailed format with permissions, sizes, and dates
+/// * `Json` - Compact JSON format
+/// * `PrettyJson` - Human-readable JSON format with indentation
+/// * `Xml` - XML format
 #[derive(ValueEnum, Debug, Clone)]
 pub enum OutputFormat {
     Default,
@@ -202,6 +352,26 @@ fn prepare_targets<P: AsRef<Path>>(targets: &[P]) -> Vec<PathBuf> {
         .collect()
 }
 
+/// Configuration for creating archive files.
+///
+/// This struct holds all the options needed to create an archive file.
+/// Use the builder pattern to create an instance.
+///
+/// # Examples
+///
+/// ```
+/// use totebag::{ArchiveConfig, IgnoreType};
+/// use std::path::PathBuf;
+///
+/// let config = ArchiveConfig::builder()
+///     .dest("output.tar.gz")
+///     .level(9)  // Maximum compression
+///     .rebase_dir(PathBuf::from("root"))
+///     .overwrite(true)
+///     .no_recursive(false)
+///     .ignore(vec![IgnoreType::GitIgnore, IgnoreType::Hidden])
+///     .build();
+/// ```
 #[derive(TypedBuilder, Debug, Clone)]
 pub struct ArchiveConfig {
     /// The destination file for archiving.
@@ -231,6 +401,13 @@ pub struct ArchiveConfig {
 }
 
 impl ArchiveConfig {
+    /// Validates and returns the destination file path.
+    ///
+    /// # Returns
+    ///
+    /// Returns the destination path if valid, or an error if:
+    /// - The file exists and overwrite is false
+    /// - The path is a directory
     pub fn dest_file(&self) -> Result<PathBuf> {
         let dest_path = self.dest.clone();
         if dest_path.exists() {
@@ -246,6 +423,17 @@ impl ArchiveConfig {
         }
     }
 
+    /// Transforms the given path to its representation inside the archive.
+    ///
+    /// If `rebase_dir` is set, the path will be prefixed with it.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - The file path to transform
+    ///
+    /// # Returns
+    ///
+    /// The path as it should appear in the archive.
     pub fn path_in_archive<P: AsRef<Path>>(&self, path: P) -> PathBuf {
         let from_path = path.as_ref();
         let to_path = if let Some(rebase) = &self.rebase_dir {
@@ -257,12 +445,31 @@ impl ArchiveConfig {
         to_path
     }
 
+    /// Creates an iterator over directory entries for the given path.
+    ///
+    /// The iterator respects the ignore settings configured in this config.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - The path to iterate over
+    ///
+    /// # Returns
+    ///
+    /// An iterator over directory entries.
     pub fn iter<P: AsRef<Path>>(&self, path: P) -> impl Iterator<Item = ignore::DirEntry> {
         let mut builder = WalkBuilder::new(path);
         build_walker_impl(self, &mut builder);
         builder.build().flatten()
     }
 
+    /// Returns the list of ignore types to use.
+    ///
+    /// If the ignore list is empty, returns a default set.
+    /// The `Default` ignore type expands to multiple individual types.
+    ///
+    /// # Returns
+    ///
+    /// A vector of ignore types.
     pub fn ignore_types(&self) -> Vec<IgnoreType> {
         if self.ignore.is_empty() {
             vec![

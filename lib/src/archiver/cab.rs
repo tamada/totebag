@@ -6,6 +6,9 @@ use cab::{CabinetBuilder, CabinetWriter};
 use crate::archiver::{ArchiveEntry, ToteArchiver};
 use crate::{Result, ToteError};
 
+/// CAB (Cabinet) format archiver implementation.
+///
+/// This archiver creates Microsoft Cabinet archive files.
 pub(super) struct CabArchiver {}
 
 impl ToteArchiver for CabArchiver {

@@ -7,6 +7,9 @@ use sevenz_rust::{Archive, BlockDecoder, Password, SevenZArchiveEntry};
 
 use crate::extractor::{Entry, Entries, ToteExtractor};
 
+/// 7-Zip format extractor implementation.
+///
+/// This extractor handles 7z archive files.
 pub(super) struct SevenZExtractor {}
 
 impl ToteExtractor for SevenZExtractor {

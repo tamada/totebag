@@ -8,6 +8,9 @@ use zip::read::ZipFile;
 use crate::Result;
 use crate::extractor::{Entry, Entries, ToteExtractor};
 
+/// ZIP format extractor implementation.
+///
+/// This extractor handles ZIP archive files.
 pub(super) struct ZipExtractor {}
 
 impl ToteExtractor for ZipExtractor {

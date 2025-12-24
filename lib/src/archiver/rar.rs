@@ -4,6 +4,10 @@ use std::path::PathBuf;
 use crate::archiver::{ArchiveEntry, ToteArchiver};
 use crate::{Result, ToteError};
 
+/// RAR format archiver implementation.
+///
+/// Note: This archiver is not supported for creating archives,
+/// only extraction is supported for RAR format.
 pub(super) struct RarArchiver {}
 
 impl ToteArchiver for RarArchiver {

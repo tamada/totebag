@@ -1,5 +1,34 @@
 //! Archive format management module.
-//! This module provides a way to manage archive formats.
+//! This module provides detecting the archive formats from the file.
+//! 
+//! ## Format Detection Strategies
+//! 
+//! `totebag` provides the three strategies to detect the archive format of a file:
+//! 
+//! 1. By file extension (default)
+//! 2. By magic number (file signature)
+//! 3. Fixed format (forcing a specific format)
+//! 
+//! ### By File Extension
+//! 
+//! This is the default strategy used by `totebag`.
+//! It detects the archive format based on the file extension.
+//! For example, a file with the extension `.zip` is recognized as a Zip archive.
+//! 
+//! ### By Magic Number
+//! 
+//! This strategy detects the archive format by reading the file's magic number (file signature). 
+//! This method is more reliable than using file extensions, as it examines the actual content of the file.
+//! However, it may be slightly slower due to the need to read the file.
+//! Additonally, this method cannot distinguish just `.gz` file and `tar.gz` file.
+//! See [infer](https://docs.rs/infer/latest/infer/) crate's documentation for more details about supported formats by magic number.
+//! 
+//! ### Fixed format
+//! 
+//! This strategy forces `totebag` to treat the file as a specific archive format, regardless of its extension or content.
+//! This can be useful when dealing with files that have incorrect extensions or when you want to override.
+//! 
+//! 
 //!
 //! ## Examples
 //!
@@ -12,6 +41,8 @@
 //!      .expect("Unexpected error: test.zip");
 //! let format_name = format.name.clone(); // should be "Zip"
 //! ```
+//! 
+//! 
 use std::fmt::Display;
 use std::path::Path;
 use std::sync::LazyLock;
@@ -28,13 +59,21 @@ pub fn default_format_detector() -> Box<dyn FormatDetector> {
     Box::new(ExtensionFormatDetector {})
 }
 
+pub fn magic_number_format_detector() -> Box<dyn FormatDetector> {
+    Box::new(MagicNumberFormatDetector {})
+}
+
+pub fn fixed_format_detector(format: &'static Format) -> Box<dyn FormatDetector> {
+    Box::new(FixedFormatDetector::new(format))
+}
+
 pub trait FormatDetector {
     fn detect(&self, path: &Path) -> Option<&Format>;
 }
 
-pub struct ExtensionFormatDetector;
-pub struct MagicNumberFormatDetector;
-pub struct FixedFormatDetector {
+struct ExtensionFormatDetector;
+struct MagicNumberFormatDetector;
+struct FixedFormatDetector {
     format: &'static Format,
 }
 
@@ -53,16 +92,16 @@ impl FormatDetector for MagicNumberFormatDetector {
             },
             Ok(Some(info)) => {
                 match info.mime_type() {
-                    "application/x-cab" => find_by_name("Cab"),
-                    "application/x-lzh" | "application/x-lha" => find_by_name("Lha"),
-                    "application/x-7z-compressed" => find_by_name("SevenZ"),
-                    "application/vnd.rar" => find_by_name("Rar"),
-                    "application/x-tar" => find_by_name("Tar"),
-                    "application/gzip" => find_by_name("TarGz"),
-                    "application/x-bzip2" => find_by_name("TarBz2"),
-                    "application/x-xz" => find_by_name("TarXz"),
-                    "application/zstd" => find_by_name("TarZstd"),
-                    "application/zip" | "application/java-archive" => find_by_name("Zip"),
+                    "application/x-cab" => find_format_by_name("Cab"),
+                    "application/x-lzh" | "application/x-lha" => find_format_by_name("Lha"),
+                    "application/x-7z-compressed" => find_format_by_name("SevenZ"),
+                    "application/vnd.rar" => find_format_by_name("Rar"),
+                    "application/x-tar" => find_format_by_name("Tar"),
+                    "application/gzip" => find_format_by_name("TarGz"),
+                    "application/x-bzip2" => find_format_by_name("TarBz2"),
+                    "application/x-xz" => find_format_by_name("TarXz"),
+                    "application/zstd" => find_format_by_name("TarZstd"),
+                    "application/zip" | "application/java-archive" => find_format_by_name("Zip"),
                     other => {
                         log::error!("Unknown file format detected by magic number: {:?} (mime-type: {other})", filename);
                         None
@@ -79,7 +118,7 @@ impl FormatDetector for MagicNumberFormatDetector {
 
 impl FormatDetector for ExtensionFormatDetector {
     fn detect(&self, path: &Path) -> Option<&Format> {
-        MANAGER.find(path)
+        MANAGER.formats.iter().find(|f| f.match_exts(path))
     }
 }
 
@@ -107,19 +146,19 @@ impl Default for Manager {
 }
 
 /// Returns `true` if all of the given file names are Some by [find] method.
-pub fn match_all<P: AsRef<Path>>(args: &[P]) -> bool {
-    MANAGER.match_all(args)
+pub fn is_all_archive_file<P: AsRef<Path>>(args: &[P], fd: &Box<dyn FormatDetector>) -> bool {
+    args.iter().all(|p| fd.detect(p.as_ref()).is_some())
 }
 
 /// Find the format by its name.
 /// If the given name is unknown format for totebag, it returns `None`.
-pub fn find_by_name<S: AsRef<str>>(name: S) -> Option<&'static Format> {
+pub fn find_format_by_name<S: AsRef<str>>(name: S) -> Option<&'static Format> {
     let name = name.as_ref().to_lowercase();
     log::debug!("find format by name: {}", name);
     MANAGER.formats.iter().find(|f| f.name.to_lowercase() == name)
 }
 
-pub fn find_by_ext<S: AsRef<str>>(ext: S) -> Option<&'static Format> {
+pub fn find_format_by_ext<S: AsRef<str>>(ext: S) -> Option<&'static Format> {
     let ext = ext.as_ref();
     let ext = if ext.chars().next() != Some('.') {
         format!(".{ext}")
@@ -129,31 +168,9 @@ pub fn find_by_ext<S: AsRef<str>>(ext: S) -> Option<&'static Format> {
     MANAGER.formats.iter().find(|f| f.exts.contains(&ext))
 }
 
-/// Find the format of the given file name.
-/// If the given file name has an unknown extension for totebag, it returns `None`.
-pub fn find<P: AsRef<Path>>(path: P) -> Option<&'static Format> {
-    MANAGER.find(path)
-}
-
 impl Manager {
     pub(crate) fn new(formats: Vec<Format>) -> Self {
         Self { formats }
-    }
-
-    /// Returns `true` if all of the given file names are Some by [find] method.
-    fn match_all<P: AsRef<Path>>(&self, args: &[P]) -> bool {
-        args.iter().all(|p| self.find(p).is_some())
-    }
-
-    /// Find the format of the given file name.
-    /// If the given file name has an unknown extension for totebag, it returns `None`.
-    fn find<P: AsRef<Path>>(&self, path: P) -> Option<&Format> {
-        let name = path
-            .as_ref()
-            .to_str()
-            .expect("unexpected error: invalid path")
-            .to_lowercase();
-        self.formats.iter().find(|f| f.is_match(&name))
     }
 }
 
@@ -193,7 +210,7 @@ impl Format {
     }
 
     /// Returns `true` if the given file name has the extension of this format.
-    pub fn is_match<P: AsRef<Path>>(&self, p: P) -> bool {
+    pub fn match_exts<P: AsRef<Path>>(&self, p: P) -> bool {
         let p = p.as_ref();
         let name = p.to_str().unwrap().to_lowercase();
         for ext in &self.exts {
@@ -211,34 +228,35 @@ mod tests {
 
     #[test]
     fn test_format() {
-        let manager = Manager::default();
-        assert_eq!(manager.find("hoge.unknown"), None);
-        assert_eq!(manager.find("test.cab"), Some(&manager.formats[0]));
-        assert_eq!(manager.find("test.lha"), Some(&manager.formats[1]));
-        assert_eq!(manager.find("test.lzh"), Some(&manager.formats[1]));
-        assert_eq!(manager.find("test.7z"), Some(&manager.formats[2]));
-        assert_eq!(manager.find("test.rar"), Some(&manager.formats[3]));
-        assert_eq!(manager.find("test.tar"), Some(&manager.formats[4]));
-        assert_eq!(manager.find("test.tar.gz"), Some(&manager.formats[5]));
-        assert_eq!(manager.find("test.tgz"), Some(&manager.formats[5]));
-        assert_eq!(manager.find("test.tar.bz2"), Some(&manager.formats[6]));
-        assert_eq!(manager.find("test.tbz2"), Some(&manager.formats[6]));
-        assert_eq!(manager.find("test.tar.xz"), Some(&manager.formats[7]));
-        assert_eq!(manager.find("test.txz"), Some(&manager.formats[7]));
-        assert_eq!(manager.find("test.tar.zst"), Some(&manager.formats[8]));
-        assert_eq!(manager.find("test.tzst"), Some(&manager.formats[8]));
-        assert_eq!(manager.find("test.tar.zstd"), Some(&manager.formats[8]));
-        assert_eq!(manager.find("test.tzstd"), Some(&manager.formats[8]));
-        assert_eq!(manager.find("test.zip"), Some(&manager.formats[9]));
-        assert_eq!(manager.find("test.jar"), Some(&manager.formats[9]));
-        assert_eq!(manager.find("test.ear"), Some(&manager.formats[9]));
-        assert_eq!(manager.find("test.war"), Some(&manager.formats[9]));
+        use std::path::PathBuf;
+        let fd = default_format_detector();
+        assert_eq!(fd.detect(&PathBuf::from("hoge.unknown")), None);
+        assert_eq!(fd.detect(&PathBuf::from("test.cab")), Some(&MANAGER.formats[0]));
+        assert_eq!(fd.detect(&PathBuf::from("test.lha")), Some(&MANAGER.formats[1]));
+        assert_eq!(fd.detect(&PathBuf::from("test.lzh")), Some(&MANAGER.formats[1]));
+        assert_eq!(fd.detect(&PathBuf::from("test.7z")), Some(&MANAGER.formats[2]));
+        assert_eq!(fd.detect(&PathBuf::from("test.rar")), Some(&MANAGER.formats[3]));
+        assert_eq!(fd.detect(&PathBuf::from("test.tar")), Some(&MANAGER.formats[4]));
+        assert_eq!(fd.detect(&PathBuf::from("test.tar.gz")), Some(&MANAGER.formats[5]));
+        assert_eq!(fd.detect(&PathBuf::from("test.tgz")), Some(&MANAGER.formats[5]));
+        assert_eq!(fd.detect(&PathBuf::from("test.tar.bz2")), Some(&MANAGER.formats[6]));
+        assert_eq!(fd.detect(&PathBuf::from("test.tbz2")), Some(&MANAGER.formats[6]));
+        assert_eq!(fd.detect(&PathBuf::from("test.tar.xz")), Some(&MANAGER.formats[7]));
+        assert_eq!(fd.detect(&PathBuf::from("test.txz")), Some(&MANAGER.formats[7]));
+        assert_eq!(fd.detect(&PathBuf::from("test.tar.zst")), Some(&MANAGER.formats[8]));
+        assert_eq!(fd.detect(&PathBuf::from("test.tzst")), Some(&MANAGER.formats[8]));
+        assert_eq!(fd.detect(&PathBuf::from("test.tar.zstd")), Some(&MANAGER.formats[8]));
+        assert_eq!(fd.detect(&PathBuf::from("test.tzstd")), Some(&MANAGER.formats[8]));
+        assert_eq!(fd.detect(&PathBuf::from("test.zip")), Some(&MANAGER.formats[9]));
+        assert_eq!(fd.detect(&PathBuf::from("test.jar")), Some(&MANAGER.formats[9]));
+        assert_eq!(fd.detect(&PathBuf::from("test.ear")), Some(&MANAGER.formats[9]));
+        assert_eq!(fd.detect(&PathBuf::from("test.war")), Some(&MANAGER.formats[9]));
     }
 
     #[test]
     fn test_is_all_args_archives() {
-        let manager = Manager::default();
-        assert!(manager.match_all(&[
+        let fd = default_format_detector();
+        assert!(is_all_archive_file(&[
             "test.zip",
             "test.tar",
             "test.tar.gz",
@@ -246,26 +264,26 @@ mod tests {
             "test.tar.bz2",
             "test.tbz2",
             "test.rar",
-        ]));
+        ], &fd));
     }
 
     #[test]
     fn test_find_by_name() {
-        let format = find_by_name("zip").unwrap();
+        let format = find_format_by_name("zip").unwrap();
         assert_eq!(format.name, "Zip");
-        let format = find_by_name("TaRZsTd").unwrap();
+        let format = find_format_by_name("TaRZsTd").unwrap();
         assert_eq!(format.name, "TarZstd");
-        let format = find_by_name("unknown");
+        let format = find_format_by_name("unknown");
         assert!(format.is_none());
     }
 
     #[test]
     fn test_find_by_ext() {
-        let format = find_by_ext(".ZIP").unwrap();
+        let format = find_format_by_ext(".ZIP").unwrap();
         assert_eq!(format.name, "Zip");
-        let format = find_by_ext("tAr.Gz").unwrap();
+        let format = find_format_by_ext("tAr.Gz").unwrap();
         assert_eq!(format.name, "TarGz");
-        let format = find_by_ext(".unknown");
+        let format = find_format_by_ext(".unknown");
         assert!(format.is_none());
     }
 
@@ -299,7 +317,7 @@ mod tests {
 
     #[test]
     fn test_fixed_format_detector() {
-        let format = find_by_name("Zip").unwrap();
+        let format = find_format_by_name("Zip").unwrap();
         let detector = FixedFormatDetector::new(format);
         let detected_format = detector.detect(Path::new("anyfile.anyext")).unwrap();
         assert_eq!(detected_format.name, "Zip");

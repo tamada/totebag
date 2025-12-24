@@ -1,5 +1,5 @@
 use clap::{Parser, ValueEnum};
-use totebag::format::FixedFormatDetector;
+use totebag::format::default_format_detector;
 use std::{io::BufRead, path::PathBuf};
 
 use totebag::{ArchiveConfig, ExtractConfig, ListConfig};
@@ -193,7 +193,8 @@ impl CliOpts {
         } else {
             match self.mode {
                 RunMode::Auto => {
-                    if totebag::format::match_all(&args) {
+                    let fd = default_format_detector();
+                    if totebag::format::is_all_archive_file(&args, &fd) {
                         to_extract_config(self, args)
                     } else {
                         to_archive_config(self, args)
@@ -207,20 +208,20 @@ impl CliOpts {
     }
 
     fn format_detector(&self) -> Result<Box<dyn totebag::format::FormatDetector>> {
-        use totebag::format::{ExtensionFormatDetector, MagicNumberFormatDetector};
+        use totebag::format::{default_format_detector, fixed_format_detector, magic_number_format_detector};
         match self.from {
             Some(ArchiveFormat::Auto) | None => {
-                Ok(Box::new(ExtensionFormatDetector {}))
+                Ok(default_format_detector())
             }
-            Some(ArchiveFormat::Parse) => Ok(Box::new(MagicNumberFormatDetector {})),
+            Some(ArchiveFormat::Parse) => Ok(magic_number_format_detector()),
             Some(f) => {
                 let name = format!("{f:?}");
-                let format = totebag::format::find_by_name(name).ok_or_else(|| {
+                let format = totebag::format::find_format_by_name(name).ok_or_else(|| {
                     ToteError::UnsupportedFormat(format!(
                         "The specified archive format '{f:?}' is not supported."
                     ))
                 })?;
-                Ok(Box::new(FixedFormatDetector::new(format)))
+                Ok(fixed_format_detector(format))
             }
         }
     }
@@ -228,7 +229,8 @@ impl CliOpts {
 
 
 fn to_archive_config(opts: &CliOpts, args: Vec<String>) -> Result<(Mode, Vec<String>)> {
-    let (dest, args) = if totebag::format::find(&args[0]).is_some() && opts.output.is_none() {
+    let fd = default_format_detector();
+    let (dest, args) = if fd.detect(&PathBuf::from(&args[0])).is_some() && opts.output.is_none() {
         (Some(args[0].clone().into()), args[1..].to_vec())
     } else {
         (None, args)

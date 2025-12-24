@@ -215,7 +215,7 @@ mod tests {
     #[test]
     fn test_list_entries_for_camouflaged_archive() {
         let archive_file = PathBuf::from("../testdata/camouflage_of_zip.rar");
-        let format = crate::format::find_by_ext(".zip");
+        let format = crate::format::find_format_by_ext(".zip");
         let extractor = create_with(&archive_file, format).unwrap();
         let entries = extractor.list(archive_file).unwrap();
         assert_eq!(entries.len(), 19);

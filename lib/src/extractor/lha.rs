@@ -8,6 +8,9 @@ use delharc::{LhaDecodeReader, LhaHeader};
 use crate::extractor::{Entries, Entry, ToteExtractor};
 use crate::{Result, ToteError};
 
+/// LHA/LZH format extractor implementation.
+///
+/// This extractor handles LHA and LZH archive files.
 pub(super) struct LhaExtractor {}
 
 impl ToteExtractor for LhaExtractor {

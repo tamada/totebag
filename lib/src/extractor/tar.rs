@@ -7,14 +7,20 @@ use tar::Archive;
 use xz2::read::XzDecoder;
 
 use crate::extractor::{Entry as ToteEntry, Entries, ToteExtractor};
+
+/// TAR format extractor implementation.
 pub(super) struct TarExtractor {}
 
+/// TAR+GZIP format extractor implementation.
 pub(super) struct TarGzExtractor {}
 
+/// TAR+BZIP2 format extractor implementation.
 pub(super) struct TarBz2Extractor {}
 
+/// TAR+XZ format extractor implementation.
 pub(super) struct TarXzExtractor {}
 
+/// TAR+ZSTD format extractor implementation.
 pub(super) struct TarZstdExtractor {}
 
 impl ToteExtractor for TarExtractor {

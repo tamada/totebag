@@ -8,6 +8,9 @@ use crate::{Result, ToteError};
 
 use crate::extractor::{Entry, Entries, ToteExtractor};
 
+/// RAR format extractor implementation.
+///
+/// This extractor handles RAR archive files.
 pub(super) struct RarExtractor {}
 
 impl ToteExtractor for RarExtractor {

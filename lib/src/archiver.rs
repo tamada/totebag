@@ -22,6 +22,7 @@
 use std::fs::File;
 use std::path::{Path, PathBuf};
 
+use crate::format::default_format_detector;
 use crate::{Result, ToteError};
 
 mod cab;
@@ -117,7 +118,8 @@ pub fn create<P: AsRef<Path>>(dest: P) -> Result<Box<dyn ToteArchiver>> {
     use crate::archiver::zip::ZipArchiver;
 
     let dest = dest.as_ref();
-    let format = crate::format::find(dest);
+    let fd = default_format_detector();
+    let format = fd.detect(dest);
     match format {
         Some(format) => {
             let archiver: Box<dyn ToteArchiver> = match format.name.as_str() {

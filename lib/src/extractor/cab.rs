@@ -6,6 +6,9 @@ use cab::{Cabinet, FileEntry};
 use crate::extractor::{Entries, Entry, ToteExtractor};
 use crate::{Result, ToteError};
 
+/// CAB (Cabinet) format extractor implementation.
+///
+/// This extractor handles Microsoft Cabinet archive files.
 pub(super) struct CabExtractor {}
 
 impl ToteExtractor for CabExtractor {
