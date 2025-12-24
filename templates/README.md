@@ -17,6 +17,8 @@ The one big problem with using the tools is that their interfaces are slightly d
 Then, the `totebag` treats the archive files as the same interface.
 The tool can extract archive files and archive files and directories.
 
+This repository composed the two parts: [API](./lib/README.md) and [CLI interface](./cli/README.md).
+
 ## About
 
 ### Authors
