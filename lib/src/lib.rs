@@ -18,7 +18,7 @@ use crate::archiver::ArchiveEntries;
 use crate::extractor::Entries;
 use crate::format::{default_format_detector, FormatDetector};
 
-/// Define the result type for the this library.
+/// Define the result type for this library.
 pub type Result<T> = std::result::Result<T, ToteError>;
 
 /// Define the ignore types for directory traversing.
@@ -118,7 +118,7 @@ impl ToteError {
 ///     .dest("output")
 ///     .overwrite(true)
 ///     .build();
-/// match extract("archive.zip", &config) {
+/// match extract("../testdata/test.zip", &config) {
 ///     Ok(_) => println!("Extraction successful"),
 ///     Err(e) => eprintln!("Error: {:?}", e),
 /// }
@@ -220,7 +220,7 @@ impl ExtractConfig {
 /// use totebag::{entries, format::default_format_detector};
 ///
 /// let detector = default_format_detector();
-/// match entries("archive.zip", &detector) {
+/// match entries("../testdata/test.zip", detector.as_ref()) {
 ///     Ok(entries) => {
 ///         for entry in entries.iter() {
 ///             println!("{}", entry.name);
@@ -229,7 +229,7 @@ impl ExtractConfig {
 ///     Err(e) => eprintln!("Error: {:?}", e),
 /// }
 /// ```
-pub fn entries<P: AsRef<Path>>(archive_file: P, format_detector: &Box<dyn FormatDetector>) -> Result<Entries> {
+pub fn entries<P: AsRef<Path>>(archive_file: P, format_detector: &dyn FormatDetector) -> Result<Entries> {
     let archive_file = archive_file.as_ref();
     let format = format_detector.detect(archive_file);
     let extractor = crate::extractor::create_with(archive_file, format)?;
@@ -254,13 +254,13 @@ pub fn entries<P: AsRef<Path>>(archive_file: P, format_detector: &Box<dyn Format
 /// use totebag::{list, ListConfig, OutputFormat, format::default_format_detector};
 ///
 /// let config = ListConfig::new(OutputFormat::Long, default_format_detector());
-/// match list("archive.zip", &config) {
+/// match list("../testdata/test.zip", &config) {
 ///     Ok(output) => println!("{}", output),
 ///     Err(e) => eprintln!("Error: {:?}", e),
 /// }
 /// ```
 pub fn list<P: AsRef<Path>>(archive_file: P, config: &ListConfig) -> Result<String> {
-    match entries(archive_file, &config.format_detector) {
+    match entries(archive_file, config.format_detector.as_ref()) {
         Err(e) => Err(e),
         Ok(entries) => format_for_output(entries, &config.format),
     }
@@ -318,6 +318,32 @@ pub enum OutputFormat {
     Xml,
 }
 
+/// Create an archive file from the specified targets.
+/// 
+//// # Arguments
+/// 
+/// * `archive_targets` - A slice of paths to files or directories to archive
+/// * `config` - The archive configuration
+/// 
+/// # Returns
+/// 
+/// Returns a [`Result`] containing [`ArchiveEntries`] which holds details about the created archive.
+/// 
+/// # Examples
+/// ```
+/// use totebag::{archive, ArchiveConfig};
+/// use std::path::PathBuf;
+/// let config = ArchiveConfig::builder()
+///     .dest("output.tar.gz")  // Destination archive file and its format (by file extension).
+///     .level(9)               // Maximum compression level
+///     .overwrite(true)        // set overwrite flag of the destination file.
+///     // .no_recursive(false) // Default is false.
+///     .build();
+/// let targets = vec!["src", "Cargo.toml"].iter() // files to be archived.
+///    .map(|s| PathBuf::from(s)).collect::<Vec<PathBuf>>();
+/// archive(&targets, &config)
+///     .expect("Archiving should succeed");
+/// ``` 
 pub fn archive<P: AsRef<Path>>(
     archive_targets: &[P],
     config: &ArchiveConfig,

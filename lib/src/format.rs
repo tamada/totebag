@@ -1,9 +1,9 @@
 //! Archive format management module.
-//! This module provides detecting the archive formats from the file.
+//! This module detects archive formats from file.
 //! 
 //! ## Format Detection Strategies
 //! 
-//! `totebag` provides the three strategies to detect the archive format of a file:
+//! `totebag` provides three strategies to detect the archive format of a file:
 //! 
 //! 1. By file extension (default)
 //! 2. By magic number (file signature)
@@ -15,34 +15,41 @@
 //! It detects the archive format based on the file extension.
 //! For example, a file with the extension `.zip` is recognized as a Zip archive.
 //! 
+//! ```rust
+//! use std::path::PathBuf;
+//! let fd = totebag::format::default_format_detector();
+//! let format = fd.detect(&PathBuf::from("../testdata/test.zip"))
+//!     .expect("zip format should be recognized by its file extension");
+//! ```
+//! 
 //! ### By Magic Number
 //! 
 //! This strategy detects the archive format by reading the file's magic number (file signature). 
 //! This method is more reliable than using file extensions, as it examines the actual content of the file.
 //! However, it may be slightly slower due to the need to read the file.
-//! Additonally, this method cannot distinguish just `.gz` file and `tar.gz` file.
+//! Additionally, this method cannot distinguish just `.gz` file and `tar.gz` file.
 //! See [infer](https://docs.rs/infer/latest/infer/) crate's documentation for more details about supported formats by magic number.
+//! 
+//! ```rust
+//! use std::path::PathBuf;
+//! let fd = totebag::format::magic_number_format_detector();
+//! let format = fd.detect(&PathBuf::from("../testdata/test.rar"))
+//!     .expect("rar format should be recognized by its magic number");
+//! ```
 //! 
 //! ### Fixed format
 //! 
 //! This strategy forces `totebag` to treat the file as a specific archive format, regardless of its extension or content.
-//! This can be useful when dealing with files that have incorrect extensions or when you want to override.
+//! This can be useful when dealing with files that have incorrect extensions or when you want to override the default format detection behavior.
 //! 
-//! 
-//!
-//! ## Examples
-//!
-//! `totebag` recognizes the following formats by the file extensions:
-//! Cab, Lha, SevenZ, Rar, Tar, TarGz, TarBz2, TarXz, TarZstd, and Zip.
-//!
-//! ```
+//! ```rust
 //! use std::path::PathBuf;
-//! let format = totebag::format::find(PathBuf::from("test.zip"))
-//!      .expect("Unexpected error: test.zip");
-//! let format_name = format.name.clone(); // should be "Zip"
+//! let fd = totebag::format::fixed_format_detector(
+//!     totebag::format::find_format_by_name("Rar").unwrap()
+//! );
+//! let format = fd.detect(&PathBuf::from("../testdata/test.zip"))
+//!     .expect("this method always returns the fixed format (this example returns always rar format)");
 //! ```
-//! 
-//! 
 use std::fmt::Display;
 use std::path::Path;
 use std::sync::LazyLock;
@@ -55,19 +62,25 @@ struct Manager {
     formats: Vec<Format>,
 }
 
+/// Returns an instance of the format detector by file extension.
 pub fn default_format_detector() -> Box<dyn FormatDetector> {
     Box::new(ExtensionFormatDetector {})
 }
 
+/// Returns an instance of the format detector by the magic number of file header.
 pub fn magic_number_format_detector() -> Box<dyn FormatDetector> {
     Box::new(MagicNumberFormatDetector {})
 }
 
+/// Returns an instance of the format detector for the given format.
 pub fn fixed_format_detector(format: &'static Format) -> Box<dyn FormatDetector> {
     Box::new(FixedFormatDetector::new(format))
 }
 
+/// The trait for detecting the archive format of a file.
 pub trait FormatDetector {
+    /// Detects the archive format of the given file path.
+    /// Returns `Some(&`[`Format`]`)` if the format is recognized, otherwise returns `None`.
     fn detect(&self, path: &Path) -> Option<&Format>;
 }
 
@@ -78,7 +91,7 @@ struct FixedFormatDetector {
 }
 
 impl FixedFormatDetector {
-    pub fn new(format: &'static Format) -> Self {
+    pub(crate) fn new(format: &'static Format) -> Self {
         Self { format }
     }
 }
@@ -145,8 +158,8 @@ impl Default for Manager {
     }
 }
 
-/// Returns `true` if all of the given file names are Some by [find] method.
-pub fn is_all_archive_file<P: AsRef<Path>>(args: &[P], fd: &Box<dyn FormatDetector>) -> bool {
+/// Returns `true` if all of the given file names are Some by the given [`FormatDetector::detect`] method.
+pub fn is_all_archive_file<P: AsRef<Path>>(args: &[P], fd: &dyn FormatDetector) -> bool {
     args.iter().all(|p| fd.detect(p.as_ref()).is_some())
 }
 
@@ -158,6 +171,7 @@ pub fn find_format_by_name<S: AsRef<str>>(name: S) -> Option<&'static Format> {
     MANAGER.formats.iter().find(|f| f.name.to_lowercase() == name)
 }
 
+/// Find the instance of [`Format`] from the given file extension.
 pub fn find_format_by_ext<S: AsRef<str>>(ext: S) -> Option<&'static Format> {
     let ext = ext.as_ref();
     let ext = if ext.chars().next() != Some('.') {
@@ -264,7 +278,7 @@ mod tests {
             "test.tar.bz2",
             "test.tbz2",
             "test.rar",
-        ], &fd));
+        ], fd.as_ref()));
     }
 
     #[test]

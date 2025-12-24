@@ -14,7 +14,7 @@ Usage: totebag [OPTIONS] [ARGUMENTS]...
 
 Arguments:
   [ARGUMENTS]...  List of files or directories to be processed.
-                  '-' reads form stdin, and '@<filename>' reads from a file.
+                  '-' reads from stdin, and '@<filename>' reads from a file.
                   In archive mode, the resultant archive file name is determined by the following rule.
                       - if output option is specified, use it.
                       - if the first argument is the archive file name, use it.
@@ -62,9 +62,9 @@ For more detail, see [Containerfile](../Containerfile)
 
 ### Detecting the archive format
 
-`totebag` automatically detects the archive format by the extension of the archive file name in the default.
+`totebag` automatically detects the archive format by the extension of the archive file name by default.
 However, you can explicitly specify the archive format by using the `--from` option in the list and extract modes.
-If `--from` option is absent or `auto`, which means automatic detection by the extension of the archive file name.
+If the `--from` option is absent or set to `auto`, the format is automatically detected by the extension of the archive file name.
 If `--from parse` is specified, the archive format is detected by parsing the magic number of the archive file (read header and detect the format).
 Otherwise, the specified format is used.
 

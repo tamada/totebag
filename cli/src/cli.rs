@@ -194,7 +194,7 @@ impl CliOpts {
             match self.mode {
                 RunMode::Auto => {
                     let fd = default_format_detector();
-                    if totebag::format::is_all_archive_file(&args, &fd) {
+                    if totebag::format::is_all_archive_file(&args, fd.as_ref()) {
                         to_extract_config(self, args)
                     } else {
                         to_archive_config(self, args)

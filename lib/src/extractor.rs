@@ -3,11 +3,14 @@
 //! 
 //! # Example: listing the entries in the archive file
 //! 
-//! ```
+//! ```rust
 //! use std::path::PathBuf;
 //! 
 //! let file = PathBuf::from("../testdata/test.zip");
-//! let config = totebag::ListConfig::new(totebag::OutputFormat::Default);
+//! let config = totebag::ListConfig::new(
+//!     totebag::OutputFormat::Default,
+//!     totebag::format::default_format_detector(),
+//! );
 //! match totebag::list(file, &config) {
 //!     Ok(entries) => println!("{:?}", entries),
 //!     Err(e) => println!("error: {:?}", e),
