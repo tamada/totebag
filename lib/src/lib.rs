@@ -24,7 +24,7 @@ pub type Result<T> = std::result::Result<T, ToteError>;
 /// Define the ignore types for directory traversing.
 #[derive(Debug, Clone, ValueEnum, PartialEq, Copy, Hash, Eq)]
 pub enum IgnoreType {
-    /// [IgnoreType::GitIgnore], [IgnoreType::GitGlobal], [IgnoreType::GitExclude], and [IgnoreType::Ignore].
+    /// use `git-ignore`, `.gitglobal`, `.gitexclude`, and `.ignore`.
     Default,
     /// ignore hidden files and directories.
     Hidden,
@@ -115,7 +115,7 @@ impl ExtractConfig {
 
     pub fn extractor(&self, archive_file: &Path) -> Result<Box<dyn crate::extractor::ToteExtractor>> {
         let format = self.format_detector.detect(archive_file);
-        crate::extractor::create(archive_file, format)
+        crate::extractor::create_with(archive_file, format)
     }
 }
 
@@ -123,7 +123,7 @@ impl ExtractConfig {
 pub fn entries<P: AsRef<Path>>(archive_file: P, format_detector: &Box<dyn FormatDetector>) -> Result<Entries> {
     let archive_file = archive_file.as_ref();
     let format = format_detector.detect(archive_file);
-    let extractor = crate::extractor::create(archive_file, format)?;
+    let extractor = crate::extractor::create_with(archive_file, format)?;
     extractor.list(archive_file.to_path_buf())
 }
 

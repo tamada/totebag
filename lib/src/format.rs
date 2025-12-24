@@ -45,8 +45,35 @@ impl FixedFormatDetector {
 }
 
 impl FormatDetector for MagicNumberFormatDetector {
-    fn detect(&self, _filename: &Path) -> Option<&Format> {
-        None
+    fn detect(&self, filename: &Path) -> Option<&Format> {
+        match infer::get_from_path(filename) {
+            Err(e) => {
+                log::error!("Failed to read file for format detection: {:?}", e);
+                None
+            },
+            Ok(Some(info)) => {
+                match info.mime_type() {
+                    "application/x-cab" => find_by_name("Cab"),
+                    "application/x-lzh" | "application/x-lha" => find_by_name("Lha"),
+                    "application/x-7z-compressed" => find_by_name("SevenZ"),
+                    "application/vnd.rar" => find_by_name("Rar"),
+                    "application/x-tar" => find_by_name("Tar"),
+                    "application/gzip" => find_by_name("TarGz"),
+                    "application/x-bzip2" => find_by_name("TarBz2"),
+                    "application/x-xz" => find_by_name("TarXz"),
+                    "application/zstd" => find_by_name("TarZstd"),
+                    "application/zip" | "application/java-archive" => find_by_name("Zip"),
+                    other => {
+                        log::error!("Unknown file format detected by magic number: {:?} (mime-type: {other})", filename);
+                        None
+                    }
+                }
+            },
+            Ok(None) => {
+                log::error!("Could not detect file format from magic number: {:?}", filename);
+                None
+            }
+        }
     }
 }
 
@@ -84,16 +111,20 @@ pub fn match_all<P: AsRef<Path>>(args: &[P]) -> bool {
     MANAGER.match_all(args)
 }
 
-pub fn find_by_name(name: String) -> Option<&'static Format> {
-    let name = name.to_lowercase();
+/// Find the format by its name.
+/// If the given name is unknown format for totebag, it returns `None`.
+pub fn find_by_name<S: AsRef<str>>(name: S) -> Option<&'static Format> {
+    let name = name.as_ref().to_lowercase();
+    log::debug!("find format by name: {}", name);
     MANAGER.formats.iter().find(|f| f.name.to_lowercase() == name)
 }
 
-pub fn find_by_ext(ext: String) -> Option<&'static Format> {
+pub fn find_by_ext<S: AsRef<str>>(ext: S) -> Option<&'static Format> {
+    let ext = ext.as_ref();
     let ext = if ext.chars().next() != Some('.') {
         format!(".{ext}")
     } else {
-        ext
+        ext.to_string()
     }.to_lowercase();
     MANAGER.formats.iter().find(|f| f.exts.contains(&ext))
 }
@@ -216,5 +247,61 @@ mod tests {
             "test.tbz2",
             "test.rar",
         ]));
+    }
+
+    #[test]
+    fn test_find_by_name() {
+        let format = find_by_name("zip").unwrap();
+        assert_eq!(format.name, "Zip");
+        let format = find_by_name("TaRZsTd").unwrap();
+        assert_eq!(format.name, "TarZstd");
+        let format = find_by_name("unknown");
+        assert!(format.is_none());
+    }
+
+    #[test]
+    fn test_find_by_ext() {
+        let format = find_by_ext(".ZIP").unwrap();
+        assert_eq!(format.name, "Zip");
+        let format = find_by_ext("tAr.Gz").unwrap();
+        assert_eq!(format.name, "TarGz");
+        let format = find_by_ext(".unknown");
+        assert!(format.is_none());
+    }
+
+    #[test]
+    fn test_extension_format_detector() {
+        let detector = ExtensionFormatDetector {};
+        let format = detector.detect(Path::new("test.zip")).unwrap();
+        assert_eq!(format.name, "Zip");
+        let format = detector.detect(Path::new("test.tar.gz")).unwrap();
+        assert_eq!(format.name, "TarGz");
+        let format = detector.detect(Path::new("test.rar")).unwrap();
+        assert_eq!(format.name, "Rar");
+        let format = detector.detect(Path::new("test.unknown"));
+        assert!(format.is_none());
+    }
+
+    #[test]
+    fn test_magic_number_format_detector() {
+        let detector = MagicNumberFormatDetector {};
+        let format = detector.detect(Path::new("../testdata/test.zip")).unwrap();
+        assert_eq!(format.name, "Zip");
+        let format = detector.detect(Path::new("../testdata/test.tar.gz")).unwrap();
+        assert_eq!(format.name, "TarGz");
+        let format = detector.detect(Path::new("../testdata/test.rar")).unwrap();
+        assert_eq!(format.name, "Rar");
+        let format = detector.detect(Path::new("../testdata/camouflage_of_zip.rar")).unwrap();
+        assert_eq!(format.name, "Zip");
+        let format = detector.detect(Path::new("../testdata/not_exist_file.rar"));
+        assert!(format.is_none());
+    }
+
+    #[test]
+    fn test_fixed_format_detector() {
+        let format = find_by_name("Zip").unwrap();
+        let detector = FixedFormatDetector::new(format);
+        let detected_format = detector.detect(Path::new("anyfile.anyext")).unwrap();
+        assert_eq!(detected_format.name, "Zip");
     }
 }

@@ -1,36 +1,35 @@
-/*!
- * This module provides the extractor for the archive file.
- * The supported formats are `cab`, `lha`, `rar`, `7z`, `tar`, `tar.gz`, `tar.bz2`, `tar.xz`, `tar.zst`, and `zip`.
- *
- * # Example: listing the entries in the archive file
- *
- * ```
- * use std::path::PathBuf;
- *
- * let file = PathBuf::from("../testdata/test.zip");
- * let config = totebag::ListConfig::new(totebag::OutputFormat::Default);
- * match totebag::list(file, &config) {
- *     Ok(entries) => println!("{:?}", entries),
- *     Err(e) => println!("error: {:?}", e),
- * }
- * ```
- *
- * # Example: extracting the archive file
- *
- * The destination for extraction is the current directory in the following example.
- *
- * ```
- * use std::path::PathBuf;
- *
- * let config = totebag::ExtractConfig::builder()
- *     .dest("results")
- *     .build();
- * match totebag::extract("../testdata/test.zip", &config) {
- *     Ok(r) => println!("{:?}", r),
- *     Err(e) => println!("error: {:?}", e),
- * }
- * ```
- */
+//! This module provides the extractor for the archive file.
+//! The supported formats are `cab`, `lha`, `rar`, `7z`, `tar`, `tar.gz`, `tar.bz2`, `tar.xz`, `tar.zst`, and `zip`.
+//! 
+//! # Example: listing the entries in the archive file
+//! 
+//! ```
+//! use std::path::PathBuf;
+//! 
+//! let file = PathBuf::from("../testdata/test.zip");
+//! let config = totebag::ListConfig::new(totebag::OutputFormat::Default);
+//! match totebag::list(file, &config) {
+//!     Ok(entries) => println!("{:?}", entries),
+//!     Err(e) => println!("error: {:?}", e),
+//! }
+//! ```
+//! 
+//! # Example: extracting the archive file
+//! 
+//! The destination for extraction is the current directory in the following example.
+//!
+//! ```
+//! use std::path::PathBuf;
+//!
+//! let config = totebag::ExtractConfig::builder()
+//!     .dest("results")
+//!     .build();
+//! match totebag::extract("../testdata/test.zip", &config) {
+//!     Ok(r) => println!("{:?}", r),
+//!     Err(e) => println!("error: {:?}", e),
+//! }
+//! ```
+
 use chrono::NaiveDateTime;
 use serde::Serialize;
 use std::fmt::Display;
@@ -151,8 +150,17 @@ pub trait ToteExtractor {
 }
 
 /// Returns the extractor for the given archive file.
+#[allow(dead_code)]
+pub(super) fn create<P: AsRef<Path>>(file: P) -> Result<Box<dyn ToteExtractor>> {
+    let file = file.as_ref();
+    let binding = crate::format::default_format_detector();
+    let format = binding.detect(file);
+    create_with(file, format)
+}
+
+/// Returns the extractor for the given archive file.
 /// The supported format is `cab`, `lha`, `rar`, `7z`, `tar`, `tar.gz`, `tar.bz2`, `tar.xz`, `tar.zst`, and `zip`.
-pub(super) fn create<P: AsRef<Path>>(file: P, format: Option<&Format>) -> Result<Box<dyn ToteExtractor>> {
+pub(super) fn create_with<P: AsRef<Path>>(file: P, format: Option<&Format>) -> Result<Box<dyn ToteExtractor>> {
     let file = file.as_ref();
     match format {
         Some(format) => match format.name.as_str() {
@@ -194,5 +202,22 @@ mod tests {
         let opts2 = crate::ExtractConfig::builder().build();
         let dest = opts2.dest(&archive_file).unwrap();
         assert_eq!(dest, PathBuf::from("."));
+    }
+
+    #[test]
+    fn test_list_entries() {
+        let archive_file = PathBuf::from("../testdata/test.zip");
+        let extractor = create(&archive_file).unwrap();
+        let entries = extractor.list(archive_file).unwrap();
+        assert_eq!(entries.len(), 19);
+    }
+
+    #[test]
+    fn test_list_entries_for_camouflaged_archive() {
+        let archive_file = PathBuf::from("../testdata/camouflage_of_zip.rar");
+        let format = crate::format::find_by_ext(".zip");
+        let extractor = create_with(&archive_file, format).unwrap();
+        let entries = extractor.list(archive_file).unwrap();
+        assert_eq!(entries.len(), 19);
     }
 }

@@ -56,9 +56,9 @@ pub(crate) struct CliOpts {
     #[clap(short = 'm', long = "mode", default_value_t = RunMode::Auto, value_name = "MODE", required = false, ignore_case = true, value_enum, help = "Mode of operation.")]
     pub mode: RunMode,
 
-    #[clap(short, long, value_name = "ARCHIVE_FORMAT", value_enum, ignore_case = true,
+    #[clap(short = 'F', long, value_name = "ARCHIVE_FORMAT", value_enum, ignore_case = true,
         help = "Specify the archive format for listing mode (default auto). available on list and extract modes.")]
-    pub format: Option<ArchiveFormat>,
+    pub from: Option<ArchiveFormat>,
 
     #[cfg(debug_assertions)]
     #[clap(
@@ -98,11 +98,11 @@ The format is determined by the extension of the resultant file name."###
 #[derive(Parser, Debug)]
 pub struct ListerOpts {
     #[clap(
-        short, long, value_name = "FORMAT", value_enum, ignore_case = true,
+        short = 'f', long, value_name = "FORMAT", value_enum, ignore_case = true,
         default_value_t = OutputFormat::Default,
         help = "Specify the format for listing entries in the archive file."
     )]
-    pub format: OutputFormat,
+    pub output_format: OutputFormat,
 }
 
 #[derive(Parser, Debug)]
@@ -151,12 +151,10 @@ pub struct ExtractorOpts {
 
 #[derive(Parser, Debug, ValueEnum, Clone, PartialEq, Copy)]
 pub enum ArchiveFormat {
-    /// Same as Ext.
-    Auto,
     /// Detect the format by the file extension.
-    Ext,
+    Auto,
     /// Detect the format by the file signature (header bytes).
-    Header,
+    Parse,
     Cab, Lha, Lzh, SevenZ, Rar, Tar, TarGz, TarBz2, TarXz, TarZstd, Zip,
     Tgz, Tbz2, Txz, Tzst, Tzstd, Jar, War, Ear,
 }
@@ -210,11 +208,11 @@ impl CliOpts {
 
     fn format_detector(&self) -> Result<Box<dyn totebag::format::FormatDetector>> {
         use totebag::format::{ExtensionFormatDetector, MagicNumberFormatDetector};
-        match self.format {
-            Some(ArchiveFormat::Auto) | Some(ArchiveFormat::Ext) | None => {
+        match self.from {
+            Some(ArchiveFormat::Auto) | None => {
                 Ok(Box::new(ExtensionFormatDetector {}))
             }
-            Some(ArchiveFormat::Header) => Ok(Box::new(MagicNumberFormatDetector {})),
+            Some(ArchiveFormat::Parse) => Ok(Box::new(MagicNumberFormatDetector {})),
             Some(f) => {
                 let name = format!("{f:?}");
                 let format = totebag::format::find_by_name(name).ok_or_else(|| {
@@ -259,7 +257,7 @@ fn to_extract_config(opts: &CliOpts, args: Vec<String>) -> Result<(Mode, Vec<Str
 
 fn to_list_config(opts: &CliOpts, args: Vec<String>) -> Result<(Mode, Vec<String>)> {
     let config = totebag::ListConfig::new(
-        opts.listers.format.clone(),
+        opts.listers.output_format.clone(),
         opts.format_detector()?,
     );
     Ok((Mode::List(config), args))
