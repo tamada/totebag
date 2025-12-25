@@ -1,0 +1,24 @@
+name: cross-compile
+on:
+    push:
+        branches:
+            # - "test_workflow"
+            - "**"
+jobs:
+    cross-compile:
+        runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                include:
+                    - target: x86_64-unknown-linux-musl
+                    - target: aarch64-unknown-linux-musl
+                    - target: aarch64-apple-darwin
+                    - target: x86_64-apple-darwin
+        steps:
+            - name: Checkout the project
+              uses: actions/checkout@v4
+
+            - name: Cross compile
+              uses: ./.github/actions/cross-compile
+              with:
+                  target: ${{ matrix.target }}
