@@ -4,6 +4,10 @@ use std::path::PathBuf;
 use crate::archiver::{ArchiveEntry, ToteArchiver};
 use crate::{Result, ToteError};
 
+/// LHA/LZH format archiver implementation.
+///
+/// Note: This archiver is not supported for creating archives,
+/// only extraction is supported for LHA/LZH format.
 pub(super) struct LhaArchiver {}
 
 impl ToteArchiver for LhaArchiver {

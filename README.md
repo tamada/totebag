@@ -1,8 +1,8 @@
 # totebag
 
-[![Version](https://shields.io/badge/Version-0.8.3-blue)](https://github.com/tamada/totebag/releases/tag/v0.8.3)
+[![Version](https://shields.io/badge/Version-0.8.4-blue)](https://github.com/tamada/totebag/releases/tag/v0.8.4)
 [![MIT License](https://shields.io/badge/License-MIT-blue)](https://github.com/tamada/totebag/blob/main/LICENSE)
-[![Docker](https://shields.io/badge/Docker-0.8.3-blue?logo=docker)](https://github.com/tamada/totebag/pkgs/container/totebag)
+[![Docker](https://shields.io/badge/Docker-0.8.4-blue?logo=docker)](https://github.com/tamada/totebag/pkgs/container/totebag)
 
 [![build](https://github.com/tamada/totebag/actions/workflows/build.yaml/badge.svg)](https://github.com/tamada/totebag/actions/workflows/build.yaml)
 [![Rust Report Card](https://rust-reportcard.xuri.me/badge/github.com/tamada/totebag)](https://rust-reportcard.xuri.me/report/github.com/tamada/totebag)
@@ -16,6 +16,8 @@ There are many archive formats and their tools.
 The one big problem with using the tools is that their interfaces are slightly different and it makes us confused.
 Then, the `totebag` treats the archive files as the same interface.
 The tool can extract archive files and archive files and directories.
+
+This repository composed the two parts: [API](./lib/README.md) and [CLI interface](./cli/README.md).
 
 ## About
 

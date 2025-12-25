@@ -6,6 +6,9 @@ use sevenz_rust::{SevenZArchiveEntry, SevenZMethod, SevenZMethodConfiguration, S
 use crate::archiver::{ArchiveEntry, ToteArchiver};
 use crate::{Result, ToteError};
 
+/// 7-Zip format archiver implementation.
+///
+/// This archiver creates 7z archive files.
 pub(super) struct SevenZArchiver {}
 
 impl ToteArchiver for SevenZArchiver {

@@ -9,10 +9,19 @@ use xz2::write::XzEncoder;
 use crate::archiver::{ArchiveEntry, ToteArchiver};
 use crate::{Result, ToteError};
 
+/// TAR format archiver implementation.
 pub(super) struct TarArchiver {}
+
+/// TAR+GZIP format archiver implementation.
 pub(super) struct TarGzArchiver {}
+
+/// TAR+BZIP2 format archiver implementation.
 pub(super) struct TarBz2Archiver {}
+
+/// TAR+XZ format archiver implementation.
 pub(super) struct TarXzArchiver {}
+
+/// TAR+ZSTD format archiver implementation.
 pub(super) struct TarZstdArchiver {}
 
 impl ToteArchiver for TarArchiver {

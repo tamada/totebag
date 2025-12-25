@@ -1,6 +1,19 @@
+//! Output formatting utilities for archive entries.
+//!
+//! This module provides functions to format archive entries in various formats.
+
 use crate::Result;
 use crate::extractor::{Entries, Entry};
 
+/// Convert entries to a simple string format (one filename per line).
+///
+/// # Arguments
+///
+/// * `entries` - The archive entries to format
+///
+/// # Returns
+///
+/// Returns a string with one filename per line.
 pub fn to_string(entries: &Entries) -> Result<String> {
     Ok(entries
         .iter()
@@ -9,6 +22,17 @@ pub fn to_string(entries: &Entries) -> Result<String> {
         .join("\n"))
 }
 
+/// Convert entries to a detailed long format string.
+///
+/// Each line includes permissions, compressed/original sizes, date, and filename.
+///
+/// # Arguments
+///
+/// * `entries` - The archive entries to format
+///
+/// # Returns
+///
+/// Returns a formatted string with detailed information for each entry.
 pub fn to_string_long(entries: &Entries) -> Result<String> {
     Ok(entries
         .iter()
@@ -41,6 +65,15 @@ fn format_size(compressed: Option<u64>, original: Option<u64>) -> String {
     }
 }
 
+/// Convert a Unix permission mode to a human-readable string.
+///
+/// # Arguments
+///
+/// * `mode` - Optional Unix permission mode (e.g., 0o644)
+///
+/// # Returns
+///
+/// Returns a string like "-rw-r--r--" representing the permission mode.
 pub fn to_unix_mode(mode: Option<u32>) -> String {
     if let Some(mode) = mode {
         format!(
@@ -72,6 +105,18 @@ fn format_mode(mode: u8) -> String {
 use chrono::NaiveDateTime;
 use serde::Serializer;
 
+/// Serialize an optional u32 value as an octal string for Serde.
+///
+/// This is used to serialize Unix permission modes in octal format.
+///
+/// # Arguments
+///
+/// * `value` - Optional u32 value to serialize
+/// * `serializer` - The Serde serializer
+///
+/// # Returns
+///
+/// Returns the serialization result.
 pub fn serialize_option_u32_octal<S>(
     value: &Option<u32>,
     serializer: S,
