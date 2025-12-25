@@ -1,0 +1,37 @@
+name: cross-compile
+description: >
+  Cross compile the Rust project for multiple target platforms.
+inputs:
+  target:
+    description: 'The target triple to compile for (e.g., x86_64-unknown-linux-musl)'
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Build (x86 Linux)
+      if: inputs.target == 'x86_64-unknown-linux-musl'
+      uses: addnab/docker-run-action@v3
+      with:
+        image: rust:alpine
+        options: >
+          -v ${{ github.workspace }}:/io
+          -w /io
+        run: |
+          apk add --no-cache musl musl-dev build-base
+          rustup target add ${{ inputs.target }}
+          cargo build --release --target ${{ inputs.target }}
+
+    - name: Build with cargo-zigbuild
+      uses: addnab/docker-run-action@v3
+      if: inputs.target != 'x86_64-unknown-linux-musl'
+      with:
+        image: ghcr.io/rust-cross/cargo-zigbuild:latest
+        options: >
+          -v ${{ github.workspace }}:/io
+          -w /io
+        run: |
+          rustup toolchain install 1.88.0 # the newest version of rust
+          rustup default 1.88.0
+          rustup target add ${{ matrix.target }}
+          cargo zigbuild --release --target ${{ matrix.target }}
