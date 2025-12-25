@@ -35,3 +35,6 @@ runs:
           rustup default 1.88.0
           rustup target add ${{ matrix.target }}
           cargo zigbuild --release --target ${{ matrix.target }}
+
+    - name: List the artifacts
+      run: ls target/${{ inputs.target }}/release/
