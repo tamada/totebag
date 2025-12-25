@@ -1,9 +1,9 @@
-name: cross-compile
+name: cross-compile for testing
 on:
     push:
         branches:
-            # - "test_workflow"
-            - "**"
+            - "test_workflow"
+            # - "**"
 jobs:
     cross-compile:
         runs-on: ubuntu-latest
