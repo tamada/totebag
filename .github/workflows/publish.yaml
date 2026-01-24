@@ -22,6 +22,12 @@ jobs:
           echo "GITHUB_HEAD_REF: $GITHUB_HEAD_REF (${GITHUB_HEAD_REF##*/v})"
           echo "tag=${GITHUB_HEAD_REF##*/v}" >> $GITHUB_OUTPUT
 
+      - name: Checkout the project
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0 # Fetch all history for .GitInfo and .Lastmod
+
       - name: Create a release
         id: create_release
         env:
