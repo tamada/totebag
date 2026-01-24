@@ -23,7 +23,7 @@ impl ToteArchiver for Archiver {
         let mut builder = CabinetBuilder::new();
         let ctype = compression_type(config.level);
         let folder = builder.add_folder(ctype);
-        let list = collect_entries(targets, config);
+        let list = super::collect_entries(targets, config);
         for path in list.iter() {
             entries.push(ArchiveEntry::from(path));
             folder.add_file(config.path_in_archive(path).to_str().unwrap());
@@ -69,19 +69,6 @@ fn write_entry(writer: &mut CabinetWriter<File>, path: &Path) -> Result<()> {
         (Err(e), _) => Err(ToteError::IO(e)),
         (_, Err(e)) => Err(ToteError::Archiver(e.to_string())),
     }
-}
-
-fn collect_entries<P: AsRef<Path>>(targets: &[P], config: &crate::ArchiveConfig) -> Vec<PathBuf> {
-    let mut r = vec![];
-    for path in targets {
-        for entry in config.iter(path) {
-            let path = entry.into_path();
-            if path.is_file() {
-                r.push(path)
-            }
-        }
-    }
-    r
 }
 
 #[cfg(test)]

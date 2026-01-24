@@ -26,6 +26,7 @@ use crate::format::default_format_detector;
 use crate::{Result, ToteError};
 
 mod cab;
+mod cpio;
 mod lha;
 mod os;
 mod rar;
@@ -107,6 +108,19 @@ pub trait ToteArchiver {
     fn enable(&self) -> bool;
 }
 
+pub(crate) fn collect_entries<P: AsRef<Path>>(targets: &[P], config: &crate::ArchiveConfig) -> Vec<PathBuf> {
+    let mut r = vec![];
+    for path in targets {
+        for entry in config.iter(path) {
+            let path = entry.into_path();
+            if path.is_file() {
+                r.push(path)
+            }
+        }
+    }
+    r
+}
+
 pub fn create<P: AsRef<Path>>(dest: P) -> Result<Box<dyn ToteArchiver>> {
     use crate::archiver::*;
 
@@ -117,6 +131,7 @@ pub fn create<P: AsRef<Path>>(dest: P) -> Result<Box<dyn ToteArchiver>> {
         Some(format) => {
             let archiver: Box<dyn ToteArchiver> = match format.name.as_str() {
                 "Cab" => Box::new(cab::Archiver {}),
+                "Cpio" => Box::new(cpio::Archiver {}),
                 "Lha" => Box::new(lha::Archiver {}),
                 "Rar" => Box::new(rar::Archiver {}),
                 "SevenZ" => Box::new(sevenz::Archiver {}),
