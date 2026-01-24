@@ -9,7 +9,8 @@ It abstracts the differences between various archive formats, providing a consis
 
 #### Supported archive formats
 
-- [Cab](https://github.com/mdsteele/rust-cab)
+- [Cab](https://crates.io/crates/cab)
+- [Cpio](https://crates.io/crates/kpea)
 - [Tar](https://crates.io/crates/tar)
 - Tar+[Gzip](https://crates.io/crates/flate2)
 - Tar+[Bzip2](https://crates.io/crates/bzip2)
@@ -17,7 +18,7 @@ It abstracts the differences between various archive formats, providing a consis
 - Tar+[Zstd](https://crates.io/crates/zstd)
 - [Zip](https://crates.io/crates/zip)
 - [7z](https://crates.io/crates/sevenz-rust)
-- [Lha, Lzh](https://github.com/royaltm/rust-delharc) (extraction only)
+- [Lha, Lzh](https://crates.io/crates/delharc) (extraction only)
 - [Rar](https://crates.io/crates/unrar) (extraction only)
 
 ### :walking: How to use
