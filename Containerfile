@@ -1,6 +1,6 @@
 FROM rust:1-bullseye AS builder
 
-ARG VERSION=0.8.7
+ARG VERSION=0.8.8
 ARG TARGETPLATFORM
 
 WORKDIR /app
@@ -10,7 +10,7 @@ RUN cargo build --release
 
 FROM debian:bullseye-slim
 
-ARG VERSION=0.8.7
+ARG VERSION=0.8.8
 
 LABEL org.opencontainers.image.source=https://github.com/tamada/totebag \
       org.opencontainers.image.version=${VERSION} \
