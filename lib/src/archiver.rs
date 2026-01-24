@@ -108,14 +108,7 @@ pub trait ToteArchiver {
 }
 
 pub fn create<P: AsRef<Path>>(dest: P) -> Result<Box<dyn ToteArchiver>> {
-    use crate::archiver::cab::CabArchiver;
-    use crate::archiver::lha::LhaArchiver;
-    use crate::archiver::rar::RarArchiver;
-    use crate::archiver::sevenz::SevenZArchiver;
-    use crate::archiver::tar::{
-        TarArchiver, TarBz2Archiver, TarGzArchiver, TarXzArchiver, TarZstdArchiver,
-    };
-    use crate::archiver::zip::ZipArchiver;
+    use crate::archiver::*;
 
     let dest = dest.as_ref();
     let fd = default_format_detector();
@@ -123,16 +116,16 @@ pub fn create<P: AsRef<Path>>(dest: P) -> Result<Box<dyn ToteArchiver>> {
     match format {
         Some(format) => {
             let archiver: Box<dyn ToteArchiver> = match format.name.as_str() {
-                "Cab" => Box::new(CabArchiver {}),
-                "Lha" => Box::new(LhaArchiver {}),
-                "Rar" => Box::new(RarArchiver {}),
-                "SevenZ" => Box::new(SevenZArchiver {}),
-                "Tar" => Box::new(TarArchiver {}),
-                "TarBz2" => Box::new(TarBz2Archiver {}),
-                "TarGz" => Box::new(TarGzArchiver {}),
-                "TarXz" => Box::new(TarXzArchiver {}),
-                "TarZstd" => Box::new(TarZstdArchiver {}),
-                "Zip" => Box::new(ZipArchiver::new()),
+                "Cab" => Box::new(cab::Archiver {}),
+                "Lha" => Box::new(lha::Archiver {}),
+                "Rar" => Box::new(rar::Archiver {}),
+                "SevenZ" => Box::new(sevenz::Archiver {}),
+                "Tar" => Box::new(tar::Archiver {}),
+                "TarBz2" => Box::new(tar::Bz2Archiver {}),
+                "TarGz" => Box::new(tar::GzArchiver {}),
+                "TarXz" => Box::new(tar::XzArchiver {}),
+                "TarZstd" => Box::new(tar::ZstdArchiver {}),
+                "Zip" => Box::new(zip::Archiver::new()),
                 _ => {
                     return Err(ToteError::UnknownFormat(format!(
                         "{}: unknown format",

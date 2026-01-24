@@ -8,9 +8,9 @@ use crate::{Result, ToteError};
 ///
 /// Note: This archiver is not supported for creating archives,
 /// only extraction is supported for RAR format.
-pub(super) struct RarArchiver {}
+pub(super) struct Archiver {}
 
-impl ToteArchiver for RarArchiver {
+impl ToteArchiver for Archiver {
     fn perform(
         &self,
         _: File,

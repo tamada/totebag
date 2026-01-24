@@ -15,9 +15,9 @@ use crate::{Result, ToteError};
 /// ZIP format archiver implementation.
 ///
 /// This archiver creates ZIP archive files.
-pub(super) struct ZipArchiver {}
+pub(super) struct Archiver {}
 
-impl ZipArchiver {
+impl Archiver {
     pub fn new() -> Self {
         Self {}
     }
@@ -42,7 +42,7 @@ impl ZipArchiver {
     }
 }
 
-impl ToteArchiver for ZipArchiver {
+impl ToteArchiver for Archiver {
     fn perform(
         &self,
         file: File,

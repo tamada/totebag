@@ -9,9 +9,9 @@ use crate::{Result, ToteError};
 /// CAB (Cabinet) format archiver implementation.
 ///
 /// This archiver creates Microsoft Cabinet archive files.
-pub(super) struct CabArchiver {}
+pub(super) struct Archiver {}
 
-impl ToteArchiver for CabArchiver {
+impl ToteArchiver for Archiver {
     fn perform(
         &self,
         file: File,
