@@ -1,8 +1,8 @@
 # totebag
 
-[![Version](https://shields.io/badge/Version-0.8.8-blue)](https://github.com/tamada/totebag/releases/tag/v0.8.8)
+[![Version](https://shields.io/badge/Version-0.8.9-blue)](https://github.com/tamada/totebag/releases/tag/v0.8.9)
 [![MIT License](https://shields.io/badge/License-MIT-blue)](https://github.com/tamada/totebag/blob/main/LICENSE)
-[![Docker](https://shields.io/badge/Docker-0.8.8-blue?logo=docker)](https://github.com/tamada/totebag/pkgs/container/totebag)
+[![Docker](https://shields.io/badge/Docker-0.8.9-blue?logo=docker)](https://github.com/tamada/totebag/pkgs/container/totebag)
 
 [![build](https://github.com/tamada/totebag/actions/workflows/build.yaml/badge.svg)](https://github.com/tamada/totebag/actions/workflows/build.yaml)
 [![Rust Report Card](https://rust-reportcard.xuri.me/badge/github.com/tamada/totebag)](https://rust-reportcard.xuri.me/report/github.com/tamada/totebag)
