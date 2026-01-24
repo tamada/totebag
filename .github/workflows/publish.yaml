@@ -102,7 +102,7 @@ jobs:
           cp -r LICENSE assets target/${{ matrix.target }}/release/${{ matrix.artifact_name }} dist/$DIST/$DIR
           cat README.md lib/README.md cli/README.md > dist/$DIST/$DIR/README.md
           tar cvfz dist/${{ matrix.asset_name }}.tar.gz -C dist/$DIST $DIR
-          gh release upload v${{ steps.vars.outputs.tag }} dist/${{ matrix.asset_name }}.tar.gz --repo $GITHUB_REPOSITORY
+          gh release upload v${{ needs.setup.outputs.tag }} dist/${{ matrix.asset_name }}.tar.gz --repo $GITHUB_REPOSITORY
 
   finalize_release:
     needs: publish
