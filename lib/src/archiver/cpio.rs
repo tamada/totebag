@@ -4,9 +4,9 @@ use std::path::PathBuf;
 use crate::archiver::{ArchiveEntry, ToteArchiver};
 use crate::{Result, ToteError};
 
-/// CAB (Cabinet) format archiver implementation.
+/// CPIO format archiver implementation.
 ///
-/// This archiver creates Microsoft Cabinet archive files.
+/// This archiver creates CPIO archive files.
 pub(super) struct Archiver {}
 
 impl ToteArchiver for Archiver {

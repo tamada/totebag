@@ -60,7 +60,7 @@ match totebag::extract("extracting_archive_file.zip", &config) {
 |       | Level                                                        |
 | ----- | ------------------------------------------------------------ |
 | Cab   | 0: None, otherwise: MsZIP; see [CompressionType](https://docs.rs/cab/latest/cab/enum.CompressionType.html). |
-| Cpio  | 0-3: Odc, 4-6: Newc, 7: Bin(LittleEndian), 8: Bin(BigEndian), 9: Crc; see [`kpea::Format`](https://docs.rs/kpea/0.2.5/kpea/enum.Format.html). |
+| Cpio  | 0-3: Odc, 4-6: Newc, 7: Crc, 8: Bin(LittleEndian), 9: Bin(BigEndian); see [`kpea::Format`](https://docs.rs/kpea/0.2.5/kpea/enum.Format.html). |
 | Gzip  | See [Compression](https://docs.rs/flate2/1.0.35/flate2/struct.Compression.html#method.new). |
 | Bzip2 | See [Compression](https://docs.rs/bzip2/latest/bzip2/struct.Compression.html#method.new). |
 | Xz    | See [XzEncoder](https://docs.rs/xz/latest/xz/write/struct.XzEncoder.html#method.new). |
