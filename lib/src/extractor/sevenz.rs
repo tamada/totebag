@@ -10,9 +10,9 @@ use crate::extractor::{Entry, Entries, ToteExtractor};
 /// 7-Zip format extractor implementation.
 ///
 /// This extractor handles 7z archive files.
-pub(super) struct SevenZExtractor {}
+pub(super) struct Extractor {}
 
-impl ToteExtractor for SevenZExtractor {
+impl ToteExtractor for Extractor {
     fn list(&self, archive_file: PathBuf) -> Result<Entries> {
         let mut reader = File::open(&archive_file).unwrap();
         let len = reader.metadata().unwrap().len();
@@ -78,7 +78,7 @@ mod tests {
     #[test]
     fn test_list() {
         let file = PathBuf::from("../testdata/test.7z");
-        let extractor = SevenZExtractor {};
+        let extractor = Extractor {};
         match extractor.list(file) {
             Ok(r) => {
                 let r = r.iter().map(|e| e.name.clone()).collect::<Vec<_>>();

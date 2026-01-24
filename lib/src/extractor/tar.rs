@@ -9,21 +9,21 @@ use xz2::read::XzDecoder;
 use crate::extractor::{Entry as ToteEntry, Entries, ToteExtractor};
 
 /// TAR format extractor implementation.
-pub(super) struct TarExtractor {}
+pub(super) struct Extractor {}
 
 /// TAR+GZIP format extractor implementation.
-pub(super) struct TarGzExtractor {}
+pub(super) struct GzExtractor {}
 
 /// TAR+BZIP2 format extractor implementation.
-pub(super) struct TarBz2Extractor {}
+pub(super) struct Bz2Extractor {}
 
 /// TAR+XZ format extractor implementation.
-pub(super) struct TarXzExtractor {}
+pub(super) struct XzExtractor {}
 
 /// TAR+ZSTD format extractor implementation.
-pub(super) struct TarZstdExtractor {}
+pub(super) struct ZstdExtractor {}
 
-impl ToteExtractor for TarExtractor {
+impl ToteExtractor for Extractor {
     fn list(&self, archive_file: PathBuf) -> Result<Entries> {
         open_tar_file(&archive_file, |f| f)
             .and_then(|archive| list_tar(archive, archive_file))
@@ -34,7 +34,7 @@ impl ToteExtractor for TarExtractor {
     }
 }
 
-impl ToteExtractor for TarGzExtractor {
+impl ToteExtractor for GzExtractor {
     fn list(&self, archive_file: PathBuf) -> Result<Entries> {
         open_tar_file(&archive_file, flate2::read::GzDecoder::new)
             .and_then(|archive| list_tar(archive, archive_file))
@@ -45,7 +45,7 @@ impl ToteExtractor for TarGzExtractor {
     }
 }
 
-impl ToteExtractor for TarBz2Extractor {
+impl ToteExtractor for Bz2Extractor {
     fn list(&self, archive_file: PathBuf) -> Result<Entries> {
         open_tar_file(&archive_file, bzip2::read::BzDecoder::new)
             .and_then(|archive| list_tar(archive, archive_file))
@@ -57,7 +57,7 @@ impl ToteExtractor for TarBz2Extractor {
     }
 }
 
-impl ToteExtractor for TarXzExtractor {
+impl ToteExtractor for XzExtractor {
     fn list(&self, archive_file: PathBuf) -> Result<Entries> {
         open_tar_file(&archive_file, XzDecoder::new)
             .and_then(|archive| list_tar(archive, archive_file))
@@ -69,7 +69,7 @@ impl ToteExtractor for TarXzExtractor {
     }
 }
 
-impl ToteExtractor for TarZstdExtractor {
+impl ToteExtractor for ZstdExtractor {
     fn list(&self, archive_file: PathBuf) -> Result<Entries> {
         open_tar_file(&archive_file, |f| zstd::Decoder::new(f).unwrap())
             .and_then(|archive| list_tar(archive, archive_file))
@@ -148,7 +148,7 @@ mod tests {
     #[test]
     fn test_list_tar_file() {
         let file = PathBuf::from("../testdata/test.tar");
-        let extractor = TarExtractor {};
+        let extractor = Extractor {};
         match extractor.list(file) {
             Ok(r) => {
                 let r = r.iter().map(|e| e.name.clone()).collect::<Vec<_>>();
@@ -165,7 +165,7 @@ mod tests {
     #[test]
     fn test_list_tarbz2_file() {
         let file = PathBuf::from("../testdata/test.tar.bz2");
-        let extractor = TarBz2Extractor {};
+        let extractor = Bz2Extractor {};
         match extractor.list(file) {
             Ok(r) => {
                 let r = r.iter().map(|e| e.name.clone()).collect::<Vec<_>>();
@@ -182,7 +182,7 @@ mod tests {
     #[test]
     fn test_list_targz_file() {
         let file = PathBuf::from("../testdata/test.tar.gz");
-        let extractor = TarGzExtractor {};
+        let extractor = GzExtractor {};
         match extractor.list(file) {
             Ok(r) => {
                 let r = r.iter().map(|e| e.name.clone()).collect::<Vec<_>>();
@@ -199,7 +199,7 @@ mod tests {
     #[test]
     fn test_list_tarzstd_file() {
         let file = PathBuf::from("../testdata/test.tar.zst");
-        let extractor = TarZstdExtractor {};
+        let extractor = ZstdExtractor {};
         match extractor.list(file) {
             Ok(r) => {
                 let r = r.iter().map(|e| e.name.clone()).collect::<Vec<_>>();

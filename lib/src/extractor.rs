@@ -168,17 +168,17 @@ pub(super) fn create_with<P: AsRef<Path>>(file: P, format: Option<&Format>) -> R
     let file = file.as_ref();
     match format {
         Some(format) => match format.name.as_str() {
-            "Cab" => Ok(Box::new(cab::CabExtractor {})),
+            "Cab" => Ok(Box::new(cab::Extractor {})),
             "Cpio" => Ok(Box::new(cpio::Extractor {})),
-            "Lha" => Ok(Box::new(lha::LhaExtractor {})),
-            "Rar" => Ok(Box::new(rar::RarExtractor {})),
-            "SevenZ" => Ok(Box::new(sevenz::SevenZExtractor {})),
-            "Tar" => Ok(Box::new(tar::TarExtractor {})),
-            "TarBz2" => Ok(Box::new(tar::TarBz2Extractor {})),
-            "TarGz" => Ok(Box::new(tar::TarGzExtractor {})),
-            "TarXz" => Ok(Box::new(tar::TarXzExtractor {})),
-            "TarZstd" => Ok(Box::new(tar::TarZstdExtractor {})),
-            "Zip" => Ok(Box::new(zip::ZipExtractor {})),
+            "Lha" => Ok(Box::new(lha::Extractor {})),
+            "Rar" => Ok(Box::new(rar::Extractor {})),
+            "SevenZ" => Ok(Box::new(sevenz::Extractor {})),
+            "Tar" => Ok(Box::new(tar::Extractor {})),
+            "TarBz2" => Ok(Box::new(tar::Bz2Extractor {})),
+            "TarGz" => Ok(Box::new(tar::GzExtractor {})),
+            "TarXz" => Ok(Box::new(tar::XzExtractor {})),
+            "TarZstd" => Ok(Box::new(tar::ZstdExtractor {})),
+            "Zip" => Ok(Box::new(zip::Extractor {})),
             s => Err(ToteError::UnknownFormat(format!("{s}: unknown format"))),
         },
         None => Err(ToteError::Extractor(format!(

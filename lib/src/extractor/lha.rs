@@ -11,9 +11,9 @@ use crate::{Result, ToteError};
 /// LHA/LZH format extractor implementation.
 ///
 /// This extractor handles LHA and LZH archive files.
-pub(super) struct LhaExtractor {}
+pub(super) struct Extractor {}
 
-impl ToteExtractor for LhaExtractor {
+impl ToteExtractor for Extractor {
     fn list(&self, archive_file: PathBuf) -> Result<Entries> {
         let mut result = vec![];
         let mut reader = delharc::parse_file(&archive_file).map_err(ToteError::IO)?;
@@ -97,7 +97,7 @@ mod tests {
     #[test]
     fn test_list_archives() {
         let file = PathBuf::from("../testdata/test.lzh");
-        let extractor = LhaExtractor {};
+        let extractor = Extractor {};
         match extractor.list(file) {
             Ok(r) => {
                 let r = r.iter().map(|e| e.name.clone()).collect::<Vec<_>>();

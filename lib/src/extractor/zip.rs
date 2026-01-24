@@ -11,9 +11,9 @@ use crate::extractor::{Entry, Entries, ToteExtractor};
 /// ZIP format extractor implementation.
 ///
 /// This extractor handles ZIP archive files.
-pub(super) struct ZipExtractor {}
+pub(super) struct Extractor {}
 
-impl ToteExtractor for ZipExtractor {
+impl ToteExtractor for Extractor {
     fn list(&self, archive_file: PathBuf) -> Result<Entries> {
         let zip_file = File::open(&archive_file).unwrap();
         let mut zip = zip::ZipArchive::new(zip_file).unwrap();
@@ -83,7 +83,7 @@ mod tests {
     #[test]
     fn test_list_archives() {
         let file = PathBuf::from("../testdata/test.zip");
-        let extractor = ZipExtractor {};
+        let extractor = Extractor {};
         match extractor.list(file) {
             Ok(r) => {
                 assert_eq!(r.len(), 19);
