@@ -37,4 +37,5 @@ runs:
           cargo zigbuild --release --target ${{ matrix.target }}
 
     - name: List the artifacts
+      shell: bash
       run: ls target/${{ inputs.target }}/release/
