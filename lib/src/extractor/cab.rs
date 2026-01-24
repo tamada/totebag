@@ -9,14 +9,12 @@ use crate::{Result, ToteError};
 /// CAB (Cabinet) format extractor implementation.
 ///
 /// This extractor handles Microsoft Cabinet archive files.
-pub(super) struct CabExtractor {}
+pub(super) struct Extractor {}
 
-impl ToteExtractor for CabExtractor {
+impl ToteExtractor for Extractor {
     fn list(&self, target: PathBuf) -> Result<Entries> {
-        match list_impl(&target, convert) {
-            Ok(r) => Ok(Entries::new(target, r)),
-            Err(e) => Err(e),
-        }
+        list_impl(&target, convert)
+            .map(|r| Entries::new(target, r))
     }
 
     fn perform(&self, target: PathBuf, base: PathBuf) -> Result<()> {
@@ -30,11 +28,7 @@ impl ToteExtractor for CabExtractor {
                 errs.push(e);
             }
         }
-        if errs.is_empty() {
-            Ok(())
-        } else {
-            Err(ToteError::Array(errs))
-        }
+        ToteError::error_or((), errs)
     }
 }
 
@@ -90,7 +84,7 @@ fn convert(f: &FileEntry) -> Entry {
     Entry::builder()
         .name(name)
         .original_size(uncompressed_size as u64)
-        .date(mtime.unwrap())
+        .date(mtime)
         .build()
 }
 
@@ -108,7 +102,7 @@ mod tests {
     #[test]
     fn test_list_archives() {
         let file = PathBuf::from("../testdata/test.cab");
-        let extractor = CabExtractor {};
+        let extractor = Extractor {};
         match extractor.list(file) {
             Ok(r) => {
                 let r = r.iter().map(|e| e.name.clone()).collect::<Vec<_>>();

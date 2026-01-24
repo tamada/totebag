@@ -9,9 +9,9 @@ use crate::{Result, ToteError};
 /// 7-Zip format archiver implementation.
 ///
 /// This archiver creates 7z archive files.
-pub(super) struct SevenZArchiver {}
+pub(super) struct Archiver {}
 
-impl ToteArchiver for SevenZArchiver {
+impl ToteArchiver for Archiver {
     fn perform(
         &self,
         file: File,

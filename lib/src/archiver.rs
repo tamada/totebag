@@ -26,6 +26,7 @@ use crate::format::default_format_detector;
 use crate::{Result, ToteError};
 
 mod cab;
+mod cpio;
 mod lha;
 mod os;
 mod rar;
@@ -107,15 +108,21 @@ pub trait ToteArchiver {
     fn enable(&self) -> bool;
 }
 
+pub(crate) fn collect_entries<P: AsRef<Path>>(targets: &[P], config: &crate::ArchiveConfig) -> Vec<PathBuf> {
+    let mut r = vec![];
+    for path in targets {
+        for entry in config.iter(path) {
+            let path = entry.into_path();
+            if path.is_file() {
+                r.push(path)
+            }
+        }
+    }
+    r
+}
+
 pub fn create<P: AsRef<Path>>(dest: P) -> Result<Box<dyn ToteArchiver>> {
-    use crate::archiver::cab::CabArchiver;
-    use crate::archiver::lha::LhaArchiver;
-    use crate::archiver::rar::RarArchiver;
-    use crate::archiver::sevenz::SevenZArchiver;
-    use crate::archiver::tar::{
-        TarArchiver, TarBz2Archiver, TarGzArchiver, TarXzArchiver, TarZstdArchiver,
-    };
-    use crate::archiver::zip::ZipArchiver;
+    use crate::archiver::*;
 
     let dest = dest.as_ref();
     let fd = default_format_detector();
@@ -123,16 +130,17 @@ pub fn create<P: AsRef<Path>>(dest: P) -> Result<Box<dyn ToteArchiver>> {
     match format {
         Some(format) => {
             let archiver: Box<dyn ToteArchiver> = match format.name.as_str() {
-                "Cab" => Box::new(CabArchiver {}),
-                "Lha" => Box::new(LhaArchiver {}),
-                "Rar" => Box::new(RarArchiver {}),
-                "SevenZ" => Box::new(SevenZArchiver {}),
-                "Tar" => Box::new(TarArchiver {}),
-                "TarBz2" => Box::new(TarBz2Archiver {}),
-                "TarGz" => Box::new(TarGzArchiver {}),
-                "TarXz" => Box::new(TarXzArchiver {}),
-                "TarZstd" => Box::new(TarZstdArchiver {}),
-                "Zip" => Box::new(ZipArchiver::new()),
+                "Cab" => Box::new(cab::Archiver {}),
+                "Cpio" => Box::new(cpio::Archiver {}),
+                "Lha" => Box::new(lha::Archiver {}),
+                "Rar" => Box::new(rar::Archiver {}),
+                "SevenZ" => Box::new(sevenz::Archiver {}),
+                "Tar" => Box::new(tar::Archiver {}),
+                "TarBz2" => Box::new(tar::Bz2Archiver {}),
+                "TarGz" => Box::new(tar::GzArchiver {}),
+                "TarXz" => Box::new(tar::XzArchiver {}),
+                "TarZstd" => Box::new(tar::ZstdArchiver {}),
+                "Zip" => Box::new(zip::Archiver::new()),
                 _ => {
                     return Err(ToteError::UnknownFormat(format!(
                         "{}: unknown format",

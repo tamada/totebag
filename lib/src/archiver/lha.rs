@@ -8,9 +8,9 @@ use crate::{Result, ToteError};
 ///
 /// Note: This archiver is not supported for creating archives,
 /// only extraction is supported for LHA/LZH format.
-pub(super) struct LhaArchiver {}
+pub(super) struct Archiver {}
 
-impl ToteArchiver for LhaArchiver {
+impl ToteArchiver for Archiver {
     fn perform(
         &self,
         _: File,

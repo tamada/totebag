@@ -10,21 +10,21 @@ use crate::archiver::{ArchiveEntry, ToteArchiver};
 use crate::{Result, ToteError};
 
 /// TAR format archiver implementation.
-pub(super) struct TarArchiver {}
+pub(super) struct Archiver {}
 
 /// TAR+GZIP format archiver implementation.
-pub(super) struct TarGzArchiver {}
+pub(super) struct GzArchiver {}
 
 /// TAR+BZIP2 format archiver implementation.
-pub(super) struct TarBz2Archiver {}
+pub(super) struct Bz2Archiver {}
 
 /// TAR+XZ format archiver implementation.
-pub(super) struct TarXzArchiver {}
+pub(super) struct XzArchiver {}
 
 /// TAR+ZSTD format archiver implementation.
-pub(super) struct TarZstdArchiver {}
+pub(super) struct ZstdArchiver {}
 
-impl ToteArchiver for TarArchiver {
+impl ToteArchiver for Archiver {
     fn perform(
         &self,
         file: File,
@@ -38,7 +38,7 @@ impl ToteArchiver for TarArchiver {
     }
 }
 
-impl ToteArchiver for TarGzArchiver {
+impl ToteArchiver for GzArchiver {
     fn perform(
         &self,
         file: File,
@@ -57,7 +57,7 @@ impl ToteArchiver for TarGzArchiver {
     }
 }
 
-impl ToteArchiver for TarBz2Archiver {
+impl ToteArchiver for Bz2Archiver {
     fn perform(
         &self,
         file: File,
@@ -76,7 +76,7 @@ impl ToteArchiver for TarBz2Archiver {
     }
 }
 
-impl ToteArchiver for TarXzArchiver {
+impl ToteArchiver for XzArchiver {
     fn perform(
         &self,
         file: File,
@@ -91,7 +91,7 @@ impl ToteArchiver for TarXzArchiver {
     }
 }
 
-impl ToteArchiver for TarZstdArchiver {
+impl ToteArchiver for ZstdArchiver {
     fn perform(
         &self,
         file: File,

@@ -11,9 +11,9 @@ use crate::{Result, ToteError};
 /// LHA/LZH format extractor implementation.
 ///
 /// This extractor handles LHA and LZH archive files.
-pub(super) struct LhaExtractor {}
+pub(super) struct Extractor {}
 
-impl ToteExtractor for LhaExtractor {
+impl ToteExtractor for Extractor {
     fn list(&self, archive_file: PathBuf) -> Result<Entries> {
         let mut result = vec![];
         let mut reader = delharc::parse_file(&archive_file).map_err(ToteError::IO)?;
@@ -50,11 +50,7 @@ impl ToteExtractor for LhaExtractor {
                 Err(e) => return Err(ToteError::Fatal(Box::new(e))),
             }
         }
-        if errs.is_empty() {
-            Ok(())
-        } else {
-            Err(ToteError::Array(errs))
-        }
+        ToteError::error_or((), errs)
     }
 }
 
@@ -85,7 +81,7 @@ fn convert(h: &LhaHeader) -> Entry {
     let original_size = h.original_size;
     let mtime = h.last_modified as i64;
     let dt = DateTime::from_timestamp(mtime, 0)
-        .map(|dt| dt.naive_local()).unwrap();
+        .map(|dt| dt.naive_local());
     Entry::builder()
         .name(name)
         .compressed_size(compressed_size)
@@ -101,7 +97,7 @@ mod tests {
     #[test]
     fn test_list_archives() {
         let file = PathBuf::from("../testdata/test.lzh");
-        let extractor = LhaExtractor {};
+        let extractor = Extractor {};
         match extractor.list(file) {
             Ok(r) => {
                 let r = r.iter().map(|e| e.name.clone()).collect::<Vec<_>>();

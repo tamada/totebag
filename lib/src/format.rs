@@ -100,12 +100,13 @@ impl FormatDetector for MagicNumberFormatDetector {
     fn detect(&self, filename: &Path) -> Option<&Format> {
         match infer::get_from_path(filename) {
             Err(e) => {
-                log::error!("Failed to read file for format detection: {:?}", e);
+                log::error!("Failed to read file for format detection: {e:?}");
                 None
             },
             Ok(Some(info)) => {
                 match info.mime_type() {
                     "application/x-cab" => find_format_by_name("Cab"),
+                    "application/x-cpio" => find_format_by_name("Cpio"),
                     "application/x-lzh" | "application/x-lha" => find_format_by_name("Lha"),
                     "application/x-7z-compressed" => find_format_by_name("SevenZ"),
                     "application/vnd.rar" => find_format_by_name("Rar"),
@@ -116,13 +117,13 @@ impl FormatDetector for MagicNumberFormatDetector {
                     "application/zstd" => find_format_by_name("TarZstd"),
                     "application/zip" | "application/java-archive" => find_format_by_name("Zip"),
                     other => {
-                        log::error!("Unknown file format detected by magic number: {:?} (mime-type: {other})", filename);
+                        log::error!("Unknown file format detected by magic number: {filename:?} (mime-type: {other})");
                         None
                     }
                 }
             },
             Ok(None) => {
-                log::error!("Could not detect file format from magic number: {:?}", filename);
+                log::error!("Could not detect file format from magic number: {filename:?}");
                 None
             }
         }
@@ -137,7 +138,7 @@ impl FormatDetector for ExtensionFormatDetector {
 
 impl FormatDetector for FixedFormatDetector {
     fn detect(&self, _path: &Path) -> Option<&Format> {
-        Some(&self.format)
+        Some(self.format)
     }
 }
 
@@ -145,6 +146,7 @@ impl Default for Manager {
     fn default() -> Self {
         Manager::new(vec![
             Format::new("Cab", vec![".cab"]),
+            Format::new("Cpio", vec![".cpio"]),
             Format::new("Lha", vec![".lha", ".lzh"]),
             Format::new("SevenZ", vec![".7z"]),
             Format::new("Rar", vec![".rar"]),
@@ -167,14 +169,14 @@ pub fn is_all_archive_file<P: AsRef<Path>>(args: &[P], fd: &dyn FormatDetector) 
 /// If the given name is unknown format for totebag, it returns `None`.
 pub fn find_format_by_name<S: AsRef<str>>(name: S) -> Option<&'static Format> {
     let name = name.as_ref().to_lowercase();
-    log::debug!("find format by name: {}", name);
+    log::debug!("find format by name: {name}");
     MANAGER.formats.iter().find(|f| f.name.to_lowercase() == name)
 }
 
 /// Find the instance of [`Format`] from the given file extension.
 pub fn find_format_by_ext<S: AsRef<str>>(ext: S) -> Option<&'static Format> {
     let ext = ext.as_ref();
-    let ext = if ext.chars().next() != Some('.') {
+    let ext = if !ext.starts_with('.') {
         format!(".{ext}")
     } else {
         ext.to_string()
@@ -246,25 +248,26 @@ mod tests {
         let fd = default_format_detector();
         assert_eq!(fd.detect(&PathBuf::from("hoge.unknown")), None);
         assert_eq!(fd.detect(&PathBuf::from("test.cab")), Some(&MANAGER.formats[0]));
-        assert_eq!(fd.detect(&PathBuf::from("test.lha")), Some(&MANAGER.formats[1]));
-        assert_eq!(fd.detect(&PathBuf::from("test.lzh")), Some(&MANAGER.formats[1]));
-        assert_eq!(fd.detect(&PathBuf::from("test.7z")), Some(&MANAGER.formats[2]));
-        assert_eq!(fd.detect(&PathBuf::from("test.rar")), Some(&MANAGER.formats[3]));
-        assert_eq!(fd.detect(&PathBuf::from("test.tar")), Some(&MANAGER.formats[4]));
-        assert_eq!(fd.detect(&PathBuf::from("test.tar.gz")), Some(&MANAGER.formats[5]));
-        assert_eq!(fd.detect(&PathBuf::from("test.tgz")), Some(&MANAGER.formats[5]));
-        assert_eq!(fd.detect(&PathBuf::from("test.tar.bz2")), Some(&MANAGER.formats[6]));
-        assert_eq!(fd.detect(&PathBuf::from("test.tbz2")), Some(&MANAGER.formats[6]));
-        assert_eq!(fd.detect(&PathBuf::from("test.tar.xz")), Some(&MANAGER.formats[7]));
-        assert_eq!(fd.detect(&PathBuf::from("test.txz")), Some(&MANAGER.formats[7]));
-        assert_eq!(fd.detect(&PathBuf::from("test.tar.zst")), Some(&MANAGER.formats[8]));
-        assert_eq!(fd.detect(&PathBuf::from("test.tzst")), Some(&MANAGER.formats[8]));
-        assert_eq!(fd.detect(&PathBuf::from("test.tar.zstd")), Some(&MANAGER.formats[8]));
-        assert_eq!(fd.detect(&PathBuf::from("test.tzstd")), Some(&MANAGER.formats[8]));
-        assert_eq!(fd.detect(&PathBuf::from("test.zip")), Some(&MANAGER.formats[9]));
-        assert_eq!(fd.detect(&PathBuf::from("test.jar")), Some(&MANAGER.formats[9]));
-        assert_eq!(fd.detect(&PathBuf::from("test.ear")), Some(&MANAGER.formats[9]));
-        assert_eq!(fd.detect(&PathBuf::from("test.war")), Some(&MANAGER.formats[9]));
+        assert_eq!(fd.detect(&PathBuf::from("test.cpio")), Some(&MANAGER.formats[1]));
+        assert_eq!(fd.detect(&PathBuf::from("test.lha")), Some(&MANAGER.formats[2]));
+        assert_eq!(fd.detect(&PathBuf::from("test.lzh")), Some(&MANAGER.formats[2]));
+        assert_eq!(fd.detect(&PathBuf::from("test.7z")), Some(&MANAGER.formats[3]));
+        assert_eq!(fd.detect(&PathBuf::from("test.rar")), Some(&MANAGER.formats[4]));
+        assert_eq!(fd.detect(&PathBuf::from("test.tar")), Some(&MANAGER.formats[5]));
+        assert_eq!(fd.detect(&PathBuf::from("test.tar.gz")), Some(&MANAGER.formats[6]));
+        assert_eq!(fd.detect(&PathBuf::from("test.tgz")), Some(&MANAGER.formats[6]));
+        assert_eq!(fd.detect(&PathBuf::from("test.tar.bz2")), Some(&MANAGER.formats[7]));
+        assert_eq!(fd.detect(&PathBuf::from("test.tbz2")), Some(&MANAGER.formats[7]));
+        assert_eq!(fd.detect(&PathBuf::from("test.tar.xz")), Some(&MANAGER.formats[8]));
+        assert_eq!(fd.detect(&PathBuf::from("test.txz")), Some(&MANAGER.formats[8]));
+        assert_eq!(fd.detect(&PathBuf::from("test.tar.zst")), Some(&MANAGER.formats[9]));
+        assert_eq!(fd.detect(&PathBuf::from("test.tzst")), Some(&MANAGER.formats[9]));
+        assert_eq!(fd.detect(&PathBuf::from("test.tar.zstd")), Some(&MANAGER.formats[9]));
+        assert_eq!(fd.detect(&PathBuf::from("test.tzstd")), Some(&MANAGER.formats[9]));
+        assert_eq!(fd.detect(&PathBuf::from("test.zip")), Some(&MANAGER.formats[10]));
+        assert_eq!(fd.detect(&PathBuf::from("test.jar")), Some(&MANAGER.formats[10]));
+        assert_eq!(fd.detect(&PathBuf::from("test.ear")), Some(&MANAGER.formats[10]));
+        assert_eq!(fd.detect(&PathBuf::from("test.war")), Some(&MANAGER.formats[10]));
     }
 
     #[test]

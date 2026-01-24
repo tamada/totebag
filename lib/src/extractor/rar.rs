@@ -11,9 +11,9 @@ use crate::extractor::{Entry, Entries, ToteExtractor};
 /// RAR format extractor implementation.
 ///
 /// This extractor handles RAR archive files.
-pub(super) struct RarExtractor {}
+pub(super) struct Extractor {}
 
-impl ToteExtractor for RarExtractor {
+impl ToteExtractor for Extractor {
     fn list(&self, archive_file: PathBuf) -> Result<Entries> {
         let mut r = vec![];
         for entry in unrar::Archive::new(&archive_file)
@@ -58,7 +58,7 @@ fn convert(fh: FileHeader) -> Entry {
     Entry::builder()
         .name(name)
         .original_size(uncompressed_size)
-        .date(dt.map(|dt| dt.naive_local()).unwrap())
+        .date(dt.map(|dt| dt.naive_local()))
         .build()
 }
 
@@ -68,7 +68,7 @@ mod tests {
 
     #[test]
     fn test_list_archives() {
-        let extractor = RarExtractor {};
+        let extractor = Extractor {};
         let file = PathBuf::from("../testdata/test.rar");
         match extractor.list(file) {
             Ok(r) => {

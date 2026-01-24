@@ -9,7 +9,8 @@ It abstracts the differences between various archive formats, providing a consis
 
 #### Supported archive formats
 
-- [Cab](https://github.com/mdsteele/rust-cab)
+- [Cab](https://crates.io/crates/cab)
+- [Cpio](https://crates.io/crates/kpea)
 - [Tar](https://crates.io/crates/tar)
 - Tar+[Gzip](https://crates.io/crates/flate2)
 - Tar+[Bzip2](https://crates.io/crates/bzip2)
@@ -17,7 +18,7 @@ It abstracts the differences between various archive formats, providing a consis
 - Tar+[Zstd](https://crates.io/crates/zstd)
 - [Zip](https://crates.io/crates/zip)
 - [7z](https://crates.io/crates/sevenz-rust)
-- [Lha, Lzh](https://github.com/royaltm/rust-delharc) (extraction only)
+- [Lha, Lzh](https://crates.io/crates/delharc) (extraction only)
 - [Rar](https://crates.io/crates/unrar) (extraction only)
 
 ### :walking: How to use
@@ -59,10 +60,11 @@ match totebag::extract("extracting_archive_file.zip", &config) {
 |       | Level                                                        |
 | ----- | ------------------------------------------------------------ |
 | Cab   | 0: None, otherwise: MsZIP; see [CompressionType](https://docs.rs/cab/latest/cab/enum.CompressionType.html). |
+| Cpio  | 0-3: Odc, 4-6: Newc, 7: Crc, 8: Bin(LittleEndian), 9: Bin(BigEndian); see [`kpea::Format`](https://docs.rs/kpea/0.2.5/kpea/enum.Format.html). |
 | Gzip  | See [Compression](https://docs.rs/flate2/1.0.35/flate2/struct.Compression.html#method.new). |
 | Bzip2 | See [Compression](https://docs.rs/bzip2/latest/bzip2/struct.Compression.html#method.new). |
 | Xz    | See [XzEncoder](https://docs.rs/xz/latest/xz/write/struct.XzEncoder.html#method.new). |
-| Zstd  | Map 0-9 to 1-22, See [Encoder](https://docs.rs/zstd/latest/zstd/stream/write/struct.Encoder.html#method.new). |
+| Zstd  | Map 1-22 to 0-9 See [Encoder](https://docs.rs/zstd/latest/zstd/stream/write/struct.Encoder.html#method.new). |
 | Zip   | 0: No compression, 1-3: Deflate (10, 24, 264), 4-6: Bzip2 (1, 6, 9), 7-9: Zstd (-7, 3, 22); see [FileOptions.](https://docs.rs/zip/2.2.2/zip/write/struct.FileOptions.html#method.compression_level) |
 | 7z    | 0-4: LZMA, 5-9: LZMA64 ([SevenZMethod](https://docs.rs/sevenz-rust/latest/sevenz_rust/struct.SevenZMethod.html)) |
 

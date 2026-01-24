@@ -53,10 +53,8 @@ fn perform_extract(config: totebag::ExtractConfig, args: Vec<String>) -> Result<
         let path = PathBuf::from(item);
         if !path.exists() {
             errs.push(ToteError::FileNotFound(path))
-        } else {
-            if let Err(e) = totebag::extract(path, &config) {
-                errs.push(e);
-            }
+        } else if let Err(e) = totebag::extract(path, &config) {
+            errs.push(e);
         }
     }
     ToteError::error_or((), errs)
