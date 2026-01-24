@@ -320,7 +320,7 @@ pub enum OutputFormat {
 
 /// Create an archive file from the specified targets.
 /// 
-//// # Arguments
+/// # Arguments
 /// 
 /// * `archive_targets` - A slice of paths to files or directories to archive
 /// * `config` - The archive configuration

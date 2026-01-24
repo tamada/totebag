@@ -39,8 +39,8 @@ impl ToteArchiver for Archiver {
 fn find_format(level: u8) -> cpio::Format {
     use cpio::ByteOrder::{LittleEndian, BigEndian};
     match level {
-        0 | 1 | 2 | 3 => cpio::Format::Odc,
-        4 | 5 | 6 => cpio::Format::Newc,
+        0..=3 => cpio::Format::Odc,
+        4..=6 => cpio::Format::Newc,
         7 => cpio::Format::Crc,
         8 => cpio::Format::Bin(LittleEndian),
         9 => cpio::Format::Bin(BigEndian),
