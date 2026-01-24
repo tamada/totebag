@@ -22,12 +22,14 @@ jobs:
           echo "GITHUB_HEAD_REF: $GITHUB_HEAD_REF (${GITHUB_HEAD_REF##*/v})"
           echo "tag=${GITHUB_HEAD_REF##*/v}" >> $GITHUB_OUTPUT
 
-      - name: Create release
+      - name: Create a release
         id: create_release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run:
-          gh release create ${{ steps.vars.outputs.tag }} --repo $GITHUB_REPOSITORY --title "Release v${{ steps.vars.outputs.tag }}" --generate-notes --draft
+        run: |
+          git tag v${{ steps.vars.outputs.tag }}
+          git push origin v${{ steps.vars.outputs.tag }}
+          gh release create v${{ steps.vars.outputs.tag }} --repo $GITHUB_REPOSITORY --title "Release v${{ steps.vars.outputs.tag }}" --generate-notes --draft
 
   publish:
     runs-on: ubuntu-latest
