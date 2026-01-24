@@ -43,6 +43,7 @@ use crate::format::Format;
 use crate::{Result, ToteError};
 
 mod cab;
+mod cpio;
 mod lha;
 mod rar;
 mod sevenz;
@@ -88,7 +89,7 @@ pub struct Entry {
     pub unix_mode: Option<u32>,
 
     /// The date of this entry.
-    #[builder(setter(into, strip_option), default = None)]
+    #[builder(setter(into), default = None)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub date: Option<NaiveDateTime>,
 }
@@ -168,6 +169,7 @@ pub(super) fn create_with<P: AsRef<Path>>(file: P, format: Option<&Format>) -> R
     match format {
         Some(format) => match format.name.as_str() {
             "Cab" => Ok(Box::new(cab::CabExtractor {})),
+            "Cpio" => Ok(Box::new(cpio::Extractor {})),
             "Lha" => Ok(Box::new(lha::LhaExtractor {})),
             "Rar" => Ok(Box::new(rar::RarExtractor {})),
             "SevenZ" => Ok(Box::new(sevenz::SevenZExtractor {})),

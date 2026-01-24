@@ -84,7 +84,7 @@ fn convert(f: &FileEntry) -> Entry {
     Entry::builder()
         .name(name)
         .original_size(uncompressed_size as u64)
-        .date(mtime.unwrap())
+        .date(mtime)
         .build()
 }
 

@@ -58,7 +58,7 @@ fn convert(fh: FileHeader) -> Entry {
     Entry::builder()
         .name(name)
         .original_size(uncompressed_size)
-        .date(dt.map(|dt| dt.naive_local()).unwrap())
+        .date(dt.map(|dt| dt.naive_local()))
         .build()
 }
 

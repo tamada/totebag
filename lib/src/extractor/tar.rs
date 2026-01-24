@@ -137,7 +137,7 @@ fn tar_entry_to_entry<R: Read>(e: tar::Entry<R>) -> ToteEntry {
         .name(path)
         .original_size(size.unwrap())
         .unix_mode(mode)
-        .date(datetime.map(|dt| dt.naive_local()).unwrap())
+        .date(datetime.map(|dt| dt.naive_local()))
         .build()
 }
 

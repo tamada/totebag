@@ -57,7 +57,7 @@ fn convert<R: std::io::Read>(zfile: ZipFile<R>) -> Entry {
         .compressed_size(compressed_size)
         .original_size(uncompresseed_size)
         .unix_mode(mode.unwrap())
-        .date(mtime.unwrap())
+        .date(mtime)
         .build()
 }
 

@@ -47,7 +47,7 @@ fn convert(e: &SevenZArchiveEntry) -> Entry {
         .name(name)
         .compressed_size(compressed_size)
         .original_size(uncompressed_size)
-        .date(dt.map(|dt| dt.naive_local()).unwrap())
+        .date(dt.map(|dt| dt.naive_local()))
         .build()
 }
 
