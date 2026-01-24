@@ -50,11 +50,7 @@ impl ToteExtractor for LhaExtractor {
                 Err(e) => return Err(ToteError::Fatal(Box::new(e))),
             }
         }
-        if errs.is_empty() {
-            Ok(())
-        } else {
-            Err(ToteError::Array(errs))
-        }
+        ToteError::error_or((), errs)
     }
 }
 

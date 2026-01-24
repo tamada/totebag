@@ -13,10 +13,8 @@ pub(super) struct CabExtractor {}
 
 impl ToteExtractor for CabExtractor {
     fn list(&self, target: PathBuf) -> Result<Entries> {
-        match list_impl(&target, convert) {
-            Ok(r) => Ok(Entries::new(target, r)),
-            Err(e) => Err(e),
-        }
+        list_impl(&target, convert)
+            .map(|r| Entries::new(target, r))
     }
 
     fn perform(&self, target: PathBuf, base: PathBuf) -> Result<()> {
@@ -30,11 +28,7 @@ impl ToteExtractor for CabExtractor {
                 errs.push(e);
             }
         }
-        if errs.is_empty() {
-            Ok(())
-        } else {
-            Err(ToteError::Array(errs))
-        }
+        ToteError::error_or((), errs)
     }
 }
 
