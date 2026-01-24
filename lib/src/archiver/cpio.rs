@@ -12,7 +12,9 @@ pub(super) struct Archiver {}
 impl ToteArchiver for Archiver {
     fn perform(&self, file: File, targets: &[PathBuf], config: &crate::ArchiveConfig) -> Result<Vec<ArchiveEntry>> {
         let entries = super::collect_entries(targets, config);
+        let format = find_format(config.level);
         let mut builder = cpio::Builder::new(file);
+        builder.set_format(format);
         let mut errs = vec![];
         for path in entries.iter() {
             let path_in_archive = config.path_in_archive(path);
@@ -31,6 +33,18 @@ impl ToteArchiver for Archiver {
 
     fn enable(&self) -> bool {
         true
+    }
+}
+
+fn find_format(level: u8) -> cpio::Format {
+    use cpio::ByteOrder::{LittleEndian, BigEndian};
+    match level {
+        0 | 1 | 2 | 3 => cpio::Format::Odc,
+        4 | 5 | 6 => cpio::Format::Newc,
+        7 => cpio::Format::Crc,
+        8 => cpio::Format::Bin(LittleEndian),
+        9 => cpio::Format::Bin(BigEndian),
+        _ => cpio::Format::Newc,
     }
 }
 
