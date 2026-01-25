@@ -19,7 +19,7 @@ LABEL org.opencontainers.image.source=https://github.com/tamada/totebag \
 
 RUN adduser --disabled-password --disabled-login --home /app nonroot \
   && mkdir -p /app
-COPY --from=builder /app/target/release/totebag /opt/totebag/totebag
+COPY --from=builder /app/target/release/totebag-cli /opt/totebag/totebag
 
 WORKDIR /app
 USER nonroot
