@@ -3,7 +3,7 @@ members = [ "lib", "cli" ]
 resolver = "3"
 
 [workspace.package]
-version = "0.8.13"
+version = "0.8.14"
 edition = "2024"
 repository = "https://github.com/tamada/totebag"
 readme = "README.md"
@@ -11,5 +11,4 @@ authors = [
     "Haruaki Tamada <tamada_f@ke_cafebabe.jp>"
 ]
 license-file = "LICENSE"
-categories = ["command-line-utilities", "compression", "archivers"]
 keywords = [ "cli", "archiver" ]

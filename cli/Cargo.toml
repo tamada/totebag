@@ -2,7 +2,8 @@
 name = "totebag-cli"
 readme = "README.md"
 description = "A tool for extracting/archiving files and directories in multiple formats."
-categories = ["command-line-utilities", "compression", "archivers"]
+categories = ["command-line-utilities", "compression", "filesystem" ]
+keywords = ["archiver", "extractor", "compressison", "cli" ]
 version.workspace = true
 repository.workspace = true
 authors.workspace = true
