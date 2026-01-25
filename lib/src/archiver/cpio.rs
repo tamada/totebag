@@ -26,7 +26,7 @@ impl ToteArchiver for Archiver {
             Ok(_) => Ok(entries.into_iter().map(ArchiveEntry::from).collect()),
             Err(e) => {
                 errs.push(ToteError::Archiver(e.to_string()));
-                ToteError::error_or(vec![], errs)
+                ToteError::error_or_else(Vec::new, errs)
             },
         }
     }

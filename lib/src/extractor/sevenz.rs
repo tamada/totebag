@@ -24,15 +24,13 @@ impl ToteExtractor for Extractor {
                 }
                 Ok(Entries::new(archive_file, r))
             }
-            Err(e) => Err(ToteError::Fatal(Box::new(e))),
+            Err(e) => Err(ToteError::Extractor(e.to_string())),
         }
     }
 
     fn perform(&self, archive_file: PathBuf, base: PathBuf) -> Result<()> {
-        let file = match File::open(archive_file) {
-            Ok(file) => file,
-            Err(e) => return Err(ToteError::IO(e)),
-        };
+        let file = File::open(archive_file)
+            .map_err(ToteError::IO)?;
         extract(&file, base)
     }
 }

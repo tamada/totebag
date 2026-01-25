@@ -85,7 +85,7 @@ fn list_ar<R: Read>(mut archive: ar::Archive<R>, path: PathBuf) -> Result<Entrie
         };
         result.push(convert_to_entry(entry.header()));
     }
-    ToteError::error_or(Entries::new(path, result), errs)
+    ToteError::error_or_else(|| Entries::new(path, result), errs)
 }
 
 fn convert_to_entry(e: &ar::Header) -> ToteEntry {
