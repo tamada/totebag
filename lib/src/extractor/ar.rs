@@ -3,7 +3,7 @@ use std::io::Read;
 use std::path::Path;
 use std::{fs::File, path::PathBuf};
 
-use crate::{Result, ToteError};
+use crate::{Result, Error};
 use ar::Archive;
 
 use crate::extractor::{Entry as ToteEntry, Entries, ToteExtractor};
@@ -14,13 +14,13 @@ pub(super) struct Extractor {}
 impl ToteExtractor for Extractor {
     fn list(&self, archive_file: PathBuf) -> Result<Entries> {
         File::open(&archive_file)
-            .map_err(ToteError::IO)
+            .map_err(Error::IO)
             .map(Archive::new)
             .and_then(|archive| list_ar(archive, archive_file))
     }
     fn perform(&self, archive_file: PathBuf, base: PathBuf) -> Result<()> {
         File::open(&archive_file)
-            .map_err(ToteError::IO)
+            .map_err(Error::IO)
             .map(Archive::new)
             .and_then(|archive| extract_ar(archive, base))
     }
@@ -31,13 +31,13 @@ fn extract_ar<R: Read>(mut archive: ar::Archive<R>, base: PathBuf) -> Result<()>
     while let Some(entry) = archive.next_entry() {
         let mut entry = match entry {
             Ok(e) => e,
-            Err(e) => { errs.push(ToteError::IO(e)); continue; }
+            Err(e) => { errs.push(Error::IO(e)); continue; }
         };
         let header = entry.header();
         let path = match str::from_utf8(header.identifier()) {
             Ok(p) => PathBuf::from(p),
             Err(e) => {
-                errs.push(ToteError::Archiver(e.to_string()));
+                errs.push(Error::Archiver(e.to_string()));
                 continue;
             }
         };
@@ -57,11 +57,11 @@ fn extract_ar<R: Read>(mut archive: ar::Archive<R>, base: PathBuf) -> Result<()>
     Ok(())
 }
 
-fn write_to<R: Read>(entry: &mut ar::Entry<R>, dest: &Path, errs: &mut Vec<ToteError>) -> Result<()> {
+fn write_to<R: Read>(entry: &mut ar::Entry<R>, dest: &Path, errs: &mut Vec<Error>) -> Result<()> {
     create_dir_all(dest.parent().unwrap()).unwrap();
-    let mut dest_file = File::create(dest).map_err(ToteError::IO)?;
+    let mut dest_file = File::create(dest).map_err(Error::IO)?;
     if let Err(e) = std::io::copy(entry, &mut dest_file) {
-        errs.push(ToteError::IO(e));
+        errs.push(Error::IO(e));
     }
     Ok(())
 }
@@ -81,11 +81,11 @@ fn list_ar<R: Read>(mut archive: ar::Archive<R>, path: PathBuf) -> Result<Entrie
     while let Some(entry) = archive.next_entry() {
         let entry = match entry {
             Ok(e) => e,
-            Err(e) => { errs.push(ToteError::IO(e)); continue; }
+            Err(e) => { errs.push(Error::IO(e)); continue; }
         };
         result.push(convert_to_entry(entry.header()));
     }
-    ToteError::error_or_else(|| Entries::new(path, result), errs)
+    Error::error_or_else(|| Entries::new(path, result), errs)
 }
 
 fn convert_to_entry(e: &ar::Header) -> ToteEntry {
@@ -121,5 +121,24 @@ mod tests {
             }
             Err(_) => assert!(false),
         }
+    }
+
+    #[test]
+    fn test_extract_archive() {
+        let archive_file = PathBuf::from("../testdata/test.ar");
+        let dest = PathBuf::from("results/ar");
+        let opts = crate::ExtractConfig::builder()
+            .dest(dest)
+            .use_archive_name_dir(true)
+            .build();
+
+        match crate::extract(archive_file, &opts) {
+            Ok(_) => {
+                assert!(true);
+                assert!(PathBuf::from("results/ar/test/Cargo.toml").exists());
+                std::fs::remove_dir_all(PathBuf::from("results/ar")).unwrap();
+            }
+            Err(_) => assert!(false),
+        };
     }
 }

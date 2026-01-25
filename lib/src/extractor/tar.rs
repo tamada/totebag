@@ -2,7 +2,7 @@ use std::fs::create_dir_all;
 use std::io::Read;
 use std::{fs::File, path::PathBuf};
 
-use crate::{Result, ToteError};
+use crate::{Result, Error};
 use tar::Archive;
 use xz2::read::XzDecoder;
 
@@ -86,7 +86,7 @@ where
 {
     let file = match File::open(file) {
         Ok(f) => f,
-        Err(e) => return Err(ToteError::IO(e)),
+        Err(e) => return Err(Error::IO(e)),
     };
     let writer = opener(file);
     Ok(Archive::new(writer))
@@ -214,7 +214,24 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_archive() {
+    fn test_list_tar_xz_file() {
+        let file = PathBuf::from("../testdata/test.tar.xz");
+        let extractor = XzExtractor {};
+        match extractor.list(file) {
+            Ok(r) => {
+                let r = r.iter().map(|e| e.name.clone()).collect::<Vec<_>>();
+                assert_eq!(r.len(), 16);
+                assert_eq!(r.get(0), Some("Cargo.toml".to_string()).as_ref());
+                assert_eq!(r.get(1), Some("build.rs".to_string()).as_ref());
+                assert_eq!(r.get(2), Some("LICENSE".to_string()).as_ref());
+                assert_eq!(r.get(3), Some("README.md".to_string()).as_ref());
+            }
+            Err(_) => assert!(false),
+        }
+    }
+
+    #[test]
+    fn test_extract_tar_archive() {
         let archive_file = PathBuf::from("../testdata/test.tar");
         let opts = crate::ExtractConfig::builder().dest("results/tar").build();
         match crate::extract(archive_file, &opts) {
@@ -222,6 +239,62 @@ mod tests {
                 assert!(true);
                 assert!(PathBuf::from("results/tar/Cargo.toml").exists());
                 std::fs::remove_dir_all(PathBuf::from("results/tar")).unwrap();
+            }
+            Err(_) => assert!(false),
+        };
+    }
+
+    #[test]
+    fn test_extract_targz_archive() {
+        let archive_file = PathBuf::from("../testdata/test.tar.gz");
+        let opts = crate::ExtractConfig::builder().dest("results/targz").build();
+        match crate::extract(archive_file, &opts) {
+            Ok(_) => {
+                assert!(true);
+                assert!(PathBuf::from("results/targz/Cargo.toml").exists());
+                std::fs::remove_dir_all(PathBuf::from("results/targz")).unwrap();
+            }
+            Err(_) => assert!(false),
+        };
+    }
+
+    #[test]
+    fn test_extract_tarbz2_archive() {
+        let archive_file = PathBuf::from("../testdata/test.tar.bz2");
+        let opts = crate::ExtractConfig::builder().dest("results/tarbz2").build();
+        match crate::extract(archive_file, &opts) {
+            Ok(_) => {
+                assert!(true);
+                assert!(PathBuf::from("results/tarbz2/Cargo.toml").exists());
+                std::fs::remove_dir_all(PathBuf::from("results/tarbz2")).unwrap();
+            }
+            Err(_) => assert!(false),
+        };
+    }
+
+    #[test]
+    fn test_extract_tarxz_archive() {
+        let archive_file = PathBuf::from("../testdata/test.tar.xz");
+        let opts = crate::ExtractConfig::builder().dest("results/tarxz").build();
+        match crate::extract(archive_file, &opts) {
+            Ok(_) => {
+                assert!(true);
+                assert!(PathBuf::from("results/tarxz/Cargo.toml").exists());
+                std::fs::remove_dir_all(PathBuf::from("results/tarxz")).unwrap();
+            }
+            Err(_) => assert!(false),
+        };
+    }
+
+    #[test]
+    fn test_extract_tarzstd_archive() {
+        let archive_file = PathBuf::from("../testdata/test.tar.zst");
+        let opts = crate::ExtractConfig::builder().dest("results/tarzstd").build();
+        match crate::extract(archive_file, &opts) {
+            Ok(_) => {
+                assert!(true);
+                assert!(PathBuf::from("results/tarzstd/Cargo.toml").exists());
+                std::fs::remove_dir_all(PathBuf::from("results/tarzstd")).unwrap();
             }
             Err(_) => assert!(false),
         };

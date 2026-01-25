@@ -3,7 +3,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use crate::archiver::{ArchiveEntry, ToteArchiver};
-use crate::{Result, ToteError};
+use crate::{Result, Error};
 
 /// TAR format archiver implementation.
 pub(super) struct Archiver {}
@@ -29,7 +29,7 @@ impl ToteArchiver for Archiver {
                 }
             }
         }
-        ToteError::error_or(entries, errs)
+        Error::error_or(entries, errs)
     }
 
     fn enable(&self) -> bool {
@@ -39,18 +39,18 @@ impl ToteArchiver for Archiver {
 
 fn append_dir<W: Write>(builder: &mut ar::Builder<W>, dest_path: &Path, src_path: &Path) -> Result<()> {
     let identifier = dest_path.to_str().unwrap().to_string();
-    let metadata = std::fs::metadata(src_path).map_err(ToteError::IO)?;
+    let metadata = std::fs::metadata(src_path).map_err(Error::IO)?;
     let header = ar::Header::from_metadata(identifier.into_bytes(), &metadata);
-    builder.append(&header, &mut std::io::empty()).map_err(ToteError::IO)
+    builder.append(&header, &mut std::io::empty()).map_err(Error::IO)
 }
 
 fn process_file<W: Write>(builder: &mut ar::Builder<W>, target: &Path, dest_path: &Path) -> Result<()> {
     match std::fs::File::open(target) {
-        Err(e) => Err(ToteError::IO(e)),
+        Err(e) => Err(Error::IO(e)),
         Ok(mut file) => {
             let name = dest_path.to_str().unwrap();
             builder.append_file(name.as_bytes(), &mut file)
-                .map_err(ToteError::IO)
+                .map_err(Error::IO)
         }
     }
 }

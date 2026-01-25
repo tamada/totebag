@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use cli::LogLevel;
 use totebag::archiver::ArchiveEntries;
-use totebag::{Result, ToteError};
+use totebag::{Result, Error};
 
 use crate::cli::Mode;
 
@@ -52,12 +52,12 @@ fn perform_extract(config: totebag::ExtractConfig, args: Vec<String>) -> Result<
     for item in args {
         let path = PathBuf::from(item);
         if !path.exists() {
-            errs.push(ToteError::FileNotFound(path))
+            errs.push(Error::FileNotFound(path))
         } else if let Err(e) = totebag::extract(path, &config) {
             errs.push(e);
         }
     }
-    ToteError::error_or((), errs)
+    Error::error_or((), errs)
 }
 
 fn perform_list(config: totebag::ListConfig, args: Vec<String>) -> Result<Vec<String>> {
@@ -66,7 +66,7 @@ fn perform_list(config: totebag::ListConfig, args: Vec<String>) -> Result<Vec<St
     for item in args {
         let path = PathBuf::from(item);
         if !path.exists() {
-            errs.push(ToteError::FileNotFound(path))
+            errs.push(Error::FileNotFound(path))
         } else {
             match totebag::list(path, &config) {
                 Ok(r) => results.push(r),
@@ -74,7 +74,7 @@ fn perform_list(config: totebag::ListConfig, args: Vec<String>) -> Result<Vec<St
             }
         }
     }
-    ToteError::error_or(results, errs)
+    Error::error_or(results, errs)
 }
 
 fn perform_archive(config: totebag::ArchiveConfig, args: Vec<String>) -> Result<ArchiveEntries> {
@@ -86,7 +86,7 @@ fn perform_archive(config: totebag::ArchiveConfig, args: Vec<String>) -> Result<
 
 fn main() -> Result<()> {
     if let Err(e) = perform(cli::CliOpts::parse()) {
-        print_error(&e);
+        println!("{e}");
         std::process::exit(1);
     }
     Ok(())
@@ -122,34 +122,10 @@ fn print_archive_result_impl(result: ArchiveEntries) {
     );
 }
 
-fn print_error(e: &ToteError) {
-    match e {
-        ToteError::Archiver(s) => println!("Archive error: {s}"),
-        ToteError::Array(errs) => {
-            for err in errs.iter() {
-                print_error(err);
-            }
-        }
-        ToteError::DestIsDir(p) => println!("{}: destination is a directory", p.to_str().unwrap()),
-        ToteError::DirExists(p) => println!("{}: directory already exists", p.to_str().unwrap()),
-        ToteError::Extractor(s) => println!("Extractor error: {s}"),
-        ToteError::Fatal(e) => println!("Error: {e}"),
-        ToteError::FileNotFound(p) => println!("{}: file not found", p.to_str().unwrap()),
-        ToteError::FileExists(p) => println!("{}: file already exists", p.to_str().unwrap()),
-        ToteError::IO(e) => println!("IO error: {e}"),
-        ToteError::Json(e) => println!("Json error: {e}"),
-        ToteError::NoArgumentsGiven => println!("No arguments given. Use --help for usage."),
-        ToteError::Warn(s) => println!("Unknown error: {s}"),
-        ToteError::UnknownFormat(f) => println!("{f}: unknown format"),
-        ToteError::UnsupportedFormat(f) => println!("{f}: unsupported format"),
-        ToteError::Xml(e) => println!("xml error: {e}"),
-    }
-}
-
 #[cfg(debug_assertions)]
 mod gencomp {
     use crate::cli::CliOpts;
-    use totebag::{Result, ToteError};
+    use totebag::{Result, Error};
 
     use clap::{Command, CommandFactory};
     use clap_complete::Shell;
@@ -158,10 +134,10 @@ mod gencomp {
     fn generate_impl(app: &mut Command, shell: Shell, dest: PathBuf) -> Result<()> {
         log::info!("generate completion for {shell:?} to {dest:?}");
         if let Err(e) = std::fs::create_dir_all(dest.parent().unwrap()) {
-            return Err(ToteError::IO(e));
+            return Err(Error::IO(e));
         }
         match std::fs::File::create(dest) {
-            Err(e) => Err(ToteError::IO(e)),
+            Err(e) => Err(Error::IO(e)),
             Ok(mut out) => {
                 clap_complete::generate(shell, app, "totebag", &mut out);
                 Ok(())
@@ -188,7 +164,7 @@ mod gencomp {
         if errs.is_empty() {
             Ok(())
         } else {
-            Err(ToteError::Array(errs))
+            Err(Error::Array(errs))
         }
     }
 }

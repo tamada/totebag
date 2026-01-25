@@ -6,7 +6,7 @@ use chrono::DateTime;
 use delharc::{LhaDecodeReader, LhaHeader};
 
 use crate::extractor::{Entries, Entry, ToteExtractor};
-use crate::{Result, ToteError};
+use crate::{Result, Error};
 
 /// LHA/LZH format extractor implementation.
 ///
@@ -16,7 +16,7 @@ pub(super) struct Extractor {}
 impl ToteExtractor for Extractor {
     fn list(&self, archive_file: PathBuf) -> Result<Entries> {
         let mut result = vec![];
-        let mut reader = delharc::parse_file(&archive_file).map_err(ToteError::IO)?;
+        let mut reader = delharc::parse_file(&archive_file).map_err(Error::IO)?;
         loop {
             let header = reader.header();
             if !header.is_directory() {
@@ -28,14 +28,14 @@ impl ToteExtractor for Extractor {
                         break;
                     }
                 }
-                Err(e) => return Err(ToteError::Fatal(Box::new(e))),
+                Err(e) => return Err(Error::Fatal(Box::new(e))),
             }
         }
         Ok(Entries::new(archive_file, result))
     }
 
     fn perform(&self, archive_file: PathBuf, base: PathBuf) -> Result<()> {
-        let mut reader = delharc::parse_file(archive_file).map_err(ToteError::IO)?;
+        let mut reader = delharc::parse_file(archive_file).map_err(Error::IO)?;
         let mut errs = vec![];
         loop {
             if let Err(e) = write_data_impl(&mut reader, &base) {
@@ -47,10 +47,10 @@ impl ToteExtractor for Extractor {
                         break;
                     }
                 }
-                Err(e) => return Err(ToteError::Fatal(Box::new(e))),
+                Err(e) => return Err(Error::Fatal(Box::new(e))),
             }
         }
-        ToteError::error_or((), errs)
+        Error::error_or((), errs)
     }
 }
 
@@ -61,10 +61,10 @@ fn write_data_impl(reader: &mut LhaDecodeReader<File>, base: &Path) -> Result<()
     if reader.is_decoder_supported() {
         log::info!("extracting {:?} ({} bytes)", &name, header.original_size);
         create_dir_all(dest.parent().unwrap()).unwrap();
-        let mut dest = File::create(dest).map_err(ToteError::IO)?;
-        copy(reader, &mut dest).map_err(ToteError::IO)?;
+        let mut dest = File::create(dest).map_err(Error::IO)?;
+        copy(reader, &mut dest).map_err(Error::IO)?;
         if let Err(e) = reader.crc_check() {
-            return Err(ToteError::Fatal(Box::new(e)));
+            return Err(Error::Fatal(Box::new(e)));
         };
     } else if !header.is_directory() {
         log::info!(

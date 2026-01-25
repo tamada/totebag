@@ -2,7 +2,7 @@ use std::fs::File;
 use std::path::PathBuf;
 
 use crate::archiver::{ArchiveEntry, ToteArchiver};
-use crate::{Result, ToteError};
+use crate::{Result, Error};
 
 /// LHA/LZH format archiver implementation.
 ///
@@ -17,7 +17,7 @@ impl ToteArchiver for Archiver {
         _: &[PathBuf],
         _config: &crate::ArchiveConfig,
     ) -> Result<Vec<ArchiveEntry>> {
-        Err(ToteError::UnsupportedFormat(
+        Err(Error::UnsupportedFormat(
             "only extraction support for lha".to_string(),
         ))
     }
@@ -40,7 +40,7 @@ mod tests {
         let v: Vec<PathBuf> = Vec::new();
         let r = crate::archive(&v, &config);
         assert!(r.is_err());
-        if let Err(ToteError::UnsupportedFormat(e)) = r {
+        if let Err(Error::UnsupportedFormat(e)) = r {
             assert_eq!(e, "Lha: unsupported format (archiving)");
         } else {
             panic!("unexpected result: {:?}", r);

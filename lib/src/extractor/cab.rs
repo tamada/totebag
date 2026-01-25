@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use cab::{Cabinet, FileEntry};
 
 use crate::extractor::{Entries, Entry, ToteExtractor};
-use crate::{Result, ToteError};
+use crate::{Result, Error};
 
 /// CAB (Cabinet) format extractor implementation.
 ///
@@ -28,7 +28,7 @@ impl ToteExtractor for Extractor {
                 errs.push(e);
             }
         }
-        ToteError::error_or((), errs)
+        Error::error_or((), errs)
     }
 }
 
@@ -38,28 +38,28 @@ fn write_file_impl(cabinet: &mut Cabinet<File>, file: (String, u32), base: &Path
     log::info!("extracting {file_name} ({} bytes)", file.1);
     match create_dir_all(dest_file.parent().unwrap()) {
         Ok(_) => {}
-        Err(e) => return Err(ToteError::IO(e)),
+        Err(e) => return Err(Error::IO(e)),
     }
     match File::create(dest_file) {
         Ok(mut dest) => {
             let mut file_from = cabinet.read_file(&file_name).unwrap();
             match std::io::copy(&mut file_from, &mut dest) {
                 Ok(_) => Ok(()),
-                Err(e) => Err(ToteError::IO(e)),
+                Err(e) => Err(Error::IO(e)),
             }
         }
-        Err(e) => Err(ToteError::IO(e)),
+        Err(e) => Err(Error::IO(e)),
     }
 }
 
 fn open_cabinet(archive_file: &PathBuf) -> Result<Cabinet<File>> {
     let cab_file = match File::open(archive_file) {
         Ok(f) => f,
-        Err(e) => return Err(ToteError::IO(e)),
+        Err(e) => return Err(Error::IO(e)),
     };
     match Cabinet::new(cab_file) {
         Ok(c) => Ok(c),
-        Err(e) => Err(ToteError::IO(e)),
+        Err(e) => Err(Error::IO(e)),
     }
 }
 

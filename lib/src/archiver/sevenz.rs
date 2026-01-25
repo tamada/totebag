@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use sevenz_rust::{SevenZArchiveEntry, SevenZMethod, SevenZMethodConfiguration, SevenZWriter};
 
 use crate::archiver::{ArchiveEntry, ToteArchiver};
-use crate::{Result, ToteError};
+use crate::{Result, Error};
 
 /// 7-Zip format archiver implementation.
 ///
@@ -20,7 +20,7 @@ impl ToteArchiver for Archiver {
     ) -> Result<Vec<ArchiveEntry>> {
         let mut w = match SevenZWriter::new(file) {
             Ok(writer) => writer,
-            Err(e) => return Err(ToteError::Archiver(e.to_string())),
+            Err(e) => return Err(Error::Archiver(e.to_string())),
         };
         set_compression_level(&mut w, config.level);
         let mut errs = vec![];
@@ -37,9 +37,9 @@ impl ToteArchiver for Archiver {
             }
         }
         if let Err(e) = w.finish() {
-            errs.push(ToteError::Archiver(e.to_string()));
+            errs.push(Error::Archiver(e.to_string()));
         }
-        ToteError::error_or(entries, errs)
+        Error::error_or(entries, errs)
     }
 
     fn enable(&self) -> bool {
@@ -61,7 +61,7 @@ fn process_file(szw: &mut SevenZWriter<File>, target: &PathBuf, dest_path: &Path
         SevenZArchiveEntry::from_path(dest_path, name.to_string()),
         Some(File::open(target).unwrap()),
     ) {
-        return Err(ToteError::Archiver(e.to_string()));
+        return Err(Error::Archiver(e.to_string()));
     }
     Ok(())
 }

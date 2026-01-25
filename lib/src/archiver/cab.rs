@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use cab::{CabinetBuilder, CabinetWriter};
 
 use crate::archiver::{ArchiveEntry, ToteArchiver};
-use crate::{Result, ToteError};
+use crate::{Result, Error};
 
 /// CAB (Cabinet) format archiver implementation.
 ///
@@ -30,7 +30,7 @@ impl ToteArchiver for Archiver {
         }
         let mut writer = match builder.build(file) {
             Ok(w) => w,
-            Err(e) => return Err(ToteError::Archiver(e.to_string())),
+            Err(e) => return Err(Error::Archiver(e.to_string())),
         };
         for path in list.iter() {
             if let Err(e) = write_entry(&mut writer, path) {
@@ -39,7 +39,7 @@ impl ToteArchiver for Archiver {
         }
         match writer.finish() {
             Ok(_) => Ok(entries),
-            Err(e) => Err(ToteError::Archiver(e.to_string())),
+            Err(e) => Err(Error::Archiver(e.to_string())),
         }
     }
 
@@ -59,15 +59,15 @@ fn write_entry(writer: &mut CabinetWriter<File>, path: &Path) -> Result<()> {
     match (File::open(path), writer.next_file()) {
         (Ok(mut reader), Ok(Some(mut w))) => match std::io::copy(&mut reader, &mut w) {
             Ok(_) => Ok(()),
-            Err(e) => Err(ToteError::IO(e)),
+            Err(e) => Err(Error::IO(e)),
         },
-        (_, Ok(None)) => Err(ToteError::Archiver("cab writer error".to_string())),
-        (Err(e1), Err(e2)) => Err(ToteError::Array(vec![
-            ToteError::IO(e1),
-            ToteError::Fatal(Box::new(e2)),
+        (_, Ok(None)) => Err(Error::Archiver("cab writer error".to_string())),
+        (Err(e1), Err(e2)) => Err(Error::Array(vec![
+            Error::IO(e1),
+            Error::Fatal(Box::new(e2)),
         ])),
-        (Err(e), _) => Err(ToteError::IO(e)),
-        (_, Err(e)) => Err(ToteError::Archiver(e.to_string())),
+        (Err(e), _) => Err(Error::IO(e)),
+        (_, Err(e)) => Err(Error::Archiver(e.to_string())),
     }
 }
 

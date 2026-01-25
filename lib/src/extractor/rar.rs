@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use chrono::DateTime;
 use unrar::FileHeader;
 
-use crate::{Result, ToteError};
+use crate::{Result, Error};
 
 use crate::extractor::{Entry, Entries, ToteExtractor};
 
@@ -39,7 +39,7 @@ impl ToteExtractor for Extractor {
                     header.entry().unpacked_size
                 );
                 if let Err(e) = create_dir_all(dest.parent().unwrap()) {
-                    return Err(ToteError::IO(e));
+                    return Err(Error::IO(e));
                 }
                 header.extract_to(&dest).unwrap()
             } else {

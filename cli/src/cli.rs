@@ -3,7 +3,7 @@ use totebag::format::default_format_detector;
 use std::{io::BufRead, path::PathBuf};
 
 use totebag::{ArchiveConfig, ExtractConfig, ListConfig};
-use totebag::{IgnoreType, OutputFormat, Result, ToteError};
+use totebag::{IgnoreType, OutputFormat, Result, Error};
 
 pub(crate) enum Mode {
     Archive(ArchiveConfig),
@@ -189,7 +189,7 @@ impl CliOpts {
     pub(crate) fn find_mode(&self) -> Result<(Mode, Vec<String>)> {
         let args = normalize_args(self.args.clone())?;
         if args.is_empty() {
-            Err(ToteError::NoArgumentsGiven)
+            Err(Error::NoArgumentsGiven)
         } else {
             match self.mode {
                 RunMode::Auto => {
@@ -217,7 +217,7 @@ impl CliOpts {
             Some(f) => {
                 let name = format!("{f:?}");
                 let format = totebag::format::find_format_by_name(name).ok_or_else(|| {
-                    ToteError::UnsupportedFormat(format!(
+                    Error::UnsupportedFormat(format!(
                         "The specified archive format '{f:?}' is not supported."
                     ))
                 })?;
@@ -275,8 +275,8 @@ pub(crate) fn normalize_args(args: Vec<String>) -> Result<Vec<String>> {
             .into_iter()
             .filter(|r| r.is_err())
             .flat_map(|r| r.err())
-            .collect::<Vec<ToteError>>();
-        Err(ToteError::Array(errs))
+            .collect::<Vec<Error>>();
+        Err(Error::Array(errs))
     } else {
         let results = results
             .into_iter()
@@ -301,11 +301,11 @@ fn reads_file_or_stdin_if_needed<S: AsRef<str>>(s: S) -> Result<Vec<String>> {
 fn reads_from_file<S: AsRef<str>>(s: S) -> Result<Vec<String>> {
     let path = PathBuf::from(s.as_ref());
     if !path.exists() {
-        Err(ToteError::FileNotFound(path))
+        Err(Error::FileNotFound(path))
     } else {
         match std::fs::File::open(path) {
             Ok(f) => reads_from_reader(f),
-            Err(e) => Err(ToteError::IO(e)),
+            Err(e) => Err(Error::IO(e)),
         }
     }
 }

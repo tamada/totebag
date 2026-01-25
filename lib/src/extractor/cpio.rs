@@ -13,11 +13,11 @@ impl ToteExtractor for Extractor {
         log::info!("listing CPIO archive: {target:?}");
         let mut file = std::fs::File::open(&target)
             .map(cpio::Archive::new)
-            .map_err(crate::ToteError::IO)?;
+            .map_err(crate::Error::IO)?;
         let mut entries: Vec<Entry> = vec![];
         loop {
             let entry = file.read_entry()
-                .map_err(crate::ToteError::IO)?;
+                .map_err(crate::Error::IO)?;
             match entry {
                 Some(entry) => {
                     if entry.metadata.is_file() {
@@ -34,7 +34,7 @@ impl ToteExtractor for Extractor {
         log::info!("extracting CPIO archive: {target:?}");
         let mut file = std::fs::File::open(&target)
             .map(cpio::Archive::new)
-            .map_err(crate::ToteError::IO)?;
+            .map_err(crate::Error::IO)?;
         let mut errs = vec![];
         loop {
             let r = file.read_entry();
@@ -49,10 +49,10 @@ impl ToteExtractor for Extractor {
                     }
                 },
                 Ok(None) => break,
-                Err(e) => errs.push(crate::ToteError::IO(e)),
+                Err(e) => errs.push(crate::Error::IO(e)),
             }
         };
-        crate::ToteError::error_or((), errs)
+        crate::Error::error_or((), errs)
     }
 }
 
@@ -61,19 +61,19 @@ fn prepare_write(entry: &cpio::Entry<std::fs::File>, base: &Path) -> Result<Path
     log::info!("extracting {:?} ({} bytes) to {dest_path:?}", &entry.path, entry.metadata.size());
     if let Some(parent) = dest_path.parent() {
         std::fs::create_dir_all(parent)
-            .map_err(crate::ToteError::IO)?;
+            .map_err(crate::Error::IO)?;
     };
     Ok(dest_path)
 }
 
-fn write_to(mut entry: cpio::Entry<std::fs::File>, dest_path: &Path, errs: &mut Vec<crate::ToteError>) {
+fn write_to(mut entry: cpio::Entry<std::fs::File>, dest_path: &Path, errs: &mut Vec<crate::Error>) {
     match std::fs::File::create(dest_path) {
         Ok(mut dest_file) => if let Err(e) = std::io::copy(&mut entry.reader, &mut dest_file) {
-            errs.push(crate::ToteError::IO(e));
+            errs.push(crate::Error::IO(e));
         },
         Err(e) => {
             log::error!("failed to create file {dest_path:?}: {e}");
-            errs.push(crate::ToteError::IO(e));
+            errs.push(crate::Error::IO(e));
         }
     }
 }

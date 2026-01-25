@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 use zip::ZipWriter;
 
 use crate::archiver::{ArchiveEntry, ToteArchiver};
-use crate::{Result, ToteError};
+use crate::{Result, Error};
 
 /// ZIP format archiver implementation.
 ///
@@ -31,12 +31,12 @@ impl Archiver {
         let opts = os::create_file_opts(target, level as i64);
         let name = dest_path.to_str().unwrap();
         if let Err(e) = zw.start_file(name, opts) {
-            Err(ToteError::Fatal(Box::new(e)))
+            Err(Error::Fatal(Box::new(e)))
         } else {
             let mut file = BufReader::new(File::open(target).unwrap());
             match std::io::copy(&mut file, zw) {
                 Ok(_) => Ok(()),
-                Err(e) => Err(ToteError::IO(e)),
+                Err(e) => Err(Error::IO(e)),
             }
         }
     }
@@ -71,8 +71,8 @@ impl ToteArchiver for Archiver {
         match zw.finish() {
             Ok(_) => Ok(entries),
             Err(e) => {
-                errs.push(ToteError::Archiver(e.to_string()));
-                Err(ToteError::Array(errs))
+                errs.push(Error::Archiver(e.to_string()));
+                Err(Error::Array(errs))
             }
         }
     }
