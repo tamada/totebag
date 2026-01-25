@@ -11,5 +11,4 @@ authors = [
     "Haruaki Tamada <tamada_f@ke_cafebabe.jp>"
 ]
 license-file = "LICENSE"
-categories = ["command-line-utilities", "compression", "archivers"]
 keywords = [ "cli", "archiver" ]

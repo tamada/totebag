@@ -2,7 +2,8 @@
 name = "totebag"
 readme = "README.md"
 description = "An API for extracting/archiving files and directories in multiple formats."
-categories = ["command-line-utilities", "compression", "archivers"]
+categories = ["development-tools", "compression", "filesystem"]
+keywords = [ "archiver", "extractor", "compression" ]
 version.workspace = true
 repository.workspace = true
 authors.workspace = true
