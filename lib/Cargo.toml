@@ -6,6 +6,7 @@ categories = ["command-line-utilities", "compression", "archivers"]
 version.workspace = true
 repository.workspace = true
 authors.workspace = true
+license-file.workspace = true
 edition.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
