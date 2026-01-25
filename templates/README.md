@@ -1,5 +1,6 @@
 # totebag
 
+[![crates.io](https://img.shields.io/badge/crates.io-v$VERSION-blue)](https://crates.io/crates/totebag)
 [![Version](https://shields.io/badge/Version-$VERSION-blue)](https://github.com/tamada/totebag/releases/tag/v$VERSION)
 [![MIT License](https://shields.io/badge/License-MIT-blue)](https://github.com/tamada/totebag/blob/main/LICENSE)
 [![Docker](https://shields.io/badge/Docker-$VERSION-blue?logo=docker)](https://github.com/tamada/totebag/pkgs/container/totebag)
@@ -7,6 +8,7 @@
 [![build](https://github.com/tamada/totebag/actions/workflows/build.yaml/badge.svg)](https://github.com/tamada/totebag/actions/workflows/build.yaml)
 [![Rust Report Card](https://rust-reportcard.xuri.me/badge/github.com/tamada/totebag)](https://rust-reportcard.xuri.me/report/github.com/tamada/totebag)
 [![Coverage Status](https://coveralls.io/repos/github/tamada/totebag/badge.svg)](https://coveralls.io/github/tamada/totebag)
+[![dependency status](https://deps.rs/repo/github/tamada/totebag/status.svg)](https://deps.rs/repo/github/tamada/totebag)
 
 A tool for extracting/archiving files and directories in multiple formats.
 
