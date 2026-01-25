@@ -10,16 +10,27 @@ pub(super) fn create_file_opts(target: &Path, level: i64) -> SimpleFileOptions {
     create_file_option(metadata, level)
 }
 
+pub(crate) fn permission(metadata: &Metadata) -> u32 {
+    #[cfg(target_os = "windows")]
+    {
+        0o644
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        metadata.permissions().mode()
+    }
+}
+
 #[cfg(not(target_os = "windows"))]
 fn create_file_option(metadata: Metadata, level: i64) -> SimpleFileOptions {
-    use std::os::unix::fs::PermissionsExt;
     let mod_time = DateTime::try_from(OffsetDateTime::from(metadata.modified().unwrap()));
     let (method, level) = method_and_level(level);
     SimpleFileOptions::default()
         .last_modified_time(mod_time.unwrap())
         .compression_method(method)
         .compression_level(level)
-        .unix_permissions(metadata.permissions().mode())
+        .unix_permissions(permission(&metadata))
 }
 
 #[cfg(target_os = "windows")]

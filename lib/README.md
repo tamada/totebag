@@ -9,6 +9,7 @@ It abstracts the differences between various archive formats, providing a consis
 
 #### Supported archive formats
 
+- [Ar](https://crates.io/crates/ar)
 - [Cab](https://crates.io/crates/cab)
 - [Cpio](https://crates.io/crates/kpea)
 - [Tar](https://crates.io/crates/tar)
@@ -59,6 +60,7 @@ match totebag::extract("extracting_archive_file.zip", &config) {
 
 |       | Level                                                        |
 | ----- | ------------------------------------------------------------ |
+| Ar    | N/A                                                          |
 | Cab   | 0: None, otherwise: MsZIP; see [CompressionType](https://docs.rs/cab/latest/cab/enum.CompressionType.html). |
 | Cpio  | 0-3: Odc, 4-6: Newc, 7: Crc, 8: Bin(LittleEndian), 9: Bin(BigEndian); see [`kpea::Format`](https://docs.rs/kpea/0.2.5/kpea/enum.Format.html). |
 | Gzip  | See [Compression](https://docs.rs/flate2/1.0.35/flate2/struct.Compression.html#method.new). |
