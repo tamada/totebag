@@ -40,7 +40,7 @@ use std::path::{Path, PathBuf};
 use typed_builder::TypedBuilder;
 
 use crate::format::Format;
-use crate::{Result, ToteError};
+use crate::{Result, Error};
 
 mod ar;
 mod cab;
@@ -181,9 +181,9 @@ pub(super) fn create_with<P: AsRef<Path>>(file: P, format: Option<&Format>) -> R
             "TarXz" => Ok(Box::new(tar::XzExtractor {})),
             "TarZstd" => Ok(Box::new(tar::ZstdExtractor {})),
             "Zip" => Ok(Box::new(zip::Extractor {})),
-            s => Err(ToteError::UnknownFormat(format!("{s}: unknown format"))),
+            s => Err(Error::UnknownFormat(format!("{s}: unknown format"))),
         },
-        None => Err(ToteError::Extractor(format!(
+        None => Err(Error::Extractor(format!(
             "{file:?} no suitable extractor"
         ))),
     }
@@ -192,6 +192,19 @@ pub(super) fn create_with<P: AsRef<Path>>(file: P, format: Option<&Format>) -> R
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_create_with(){
+        let r = create_with(PathBuf::from("../testdata/test.zip"), None);
+        assert!(r.is_err());
+    }
+
+    #[test]
+    fn test_create_with_unknown_format() {
+        let format = Format::new("Hoge", vec![".hoge"]);
+        let r = create_with(PathBuf::from("../testdata/test.zip"), Some(&format));
+        assert!(r.is_err());
+    }
 
     #[test]
     fn test_destination1() {

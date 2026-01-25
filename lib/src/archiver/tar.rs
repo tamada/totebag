@@ -7,7 +7,7 @@ use tar::Builder;
 use xz2::write::XzEncoder;
 
 use crate::archiver::{ArchiveEntry, ToteArchiver};
-use crate::{Result, ToteError};
+use crate::{Result, Error};
 
 /// TAR format archiver implementation.
 pub(super) struct Archiver {}
@@ -128,15 +128,15 @@ fn write_tar<W: Write>(
                 }
             } else if path.is_dir() {
                 if let Err(e) = builder.append_dir(&dest_dir, &path) {
-                    errs.push(ToteError::Archiver(e.to_string()));
+                    errs.push(Error::Archiver(e.to_string()));
                 }
             }
         }
     }
     if let Err(e) = builder.finish() {
-        errs.push(ToteError::Archiver(e.to_string()));
+        errs.push(Error::Archiver(e.to_string()));
     }
-    ToteError::error_or(entries, errs)
+    Error::error_or(entries, errs)
 }
 
 fn process_file<W: Write>(
@@ -145,7 +145,7 @@ fn process_file<W: Write>(
     dest_path: &PathBuf,
 ) -> Result<()> {
     if let Err(e) = builder.append_path_with_name(target, dest_path) {
-        Err(ToteError::Archiver(e.to_string()))
+        Err(Error::Archiver(e.to_string()))
     } else {
         Ok(())
     }

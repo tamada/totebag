@@ -23,7 +23,7 @@ use std::fs::File;
 use std::path::{Path, PathBuf};
 
 use crate::format::default_format_detector;
-use crate::{Result, ToteError};
+use crate::{Result, Error};
 
 mod ar;
 mod cab;
@@ -144,14 +144,14 @@ pub fn create<P: AsRef<Path>>(dest: P) -> Result<Box<dyn ToteArchiver>> {
                 "TarZstd" => Box::new(tar::ZstdArchiver {}),
                 "Zip" => Box::new(zip::Archiver::new()),
                 _ => {
-                    return Err(ToteError::UnknownFormat(format!(
+                    return Err(Error::UnknownFormat(format!(
                         "{}: unknown format",
                         format.name
                     )));
                 }
             };
             if !archiver.enable() {
-                Err(ToteError::UnsupportedFormat(format!(
+                Err(Error::UnsupportedFormat(format!(
                     "{}: unsupported format (archiving)",
                     format.name
                 )))
@@ -159,7 +159,7 @@ pub fn create<P: AsRef<Path>>(dest: P) -> Result<Box<dyn ToteArchiver>> {
                 Ok(archiver)
             }
         }
-        None => Err(ToteError::Archiver(format!(
+        None => Err(Error::Archiver(format!(
             "{:?}: no suitable archiver",
             dest.file_name().unwrap()
         ))),

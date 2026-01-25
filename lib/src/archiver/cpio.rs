@@ -2,7 +2,7 @@ use std::fs::File;
 use std::path::PathBuf;
 
 use crate::archiver::{ArchiveEntry, ToteArchiver};
-use crate::{Result, ToteError};
+use crate::{Result, Error};
 
 /// CPIO format archiver implementation.
 ///
@@ -19,14 +19,14 @@ impl ToteArchiver for Archiver {
         for path in entries.iter() {
             let path_in_archive = config.path_in_archive(path);
             if let Err(e) = builder.append_path(path, &path_in_archive) {
-                errs.push(ToteError::Archiver(e.to_string()));
+                errs.push(Error::Archiver(e.to_string()));
             };
         }
         match builder.finish() {
             Ok(_) => Ok(entries.into_iter().map(ArchiveEntry::from).collect()),
             Err(e) => {
-                errs.push(ToteError::Archiver(e.to_string()));
-                ToteError::error_or_else(Vec::new, errs)
+                errs.push(Error::Archiver(e.to_string()));
+                Error::error_or_else(Vec::new, errs)
             },
         }
     }

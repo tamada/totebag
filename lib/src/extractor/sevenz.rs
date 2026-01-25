@@ -1,7 +1,7 @@
 use std::fs::File;
 use std::path::PathBuf;
 
-use crate::{Result, ToteError};
+use crate::{Result, Error};
 use chrono::DateTime;
 use sevenz_rust::{Archive, BlockDecoder, Password, SevenZArchiveEntry};
 
@@ -24,13 +24,13 @@ impl ToteExtractor for Extractor {
                 }
                 Ok(Entries::new(archive_file, r))
             }
-            Err(e) => Err(ToteError::Extractor(e.to_string())),
+            Err(e) => Err(Error::Extractor(e.to_string())),
         }
     }
 
     fn perform(&self, archive_file: PathBuf, base: PathBuf) -> Result<()> {
         let file = File::open(archive_file)
-            .map_err(ToteError::IO)?;
+            .map_err(Error::IO)?;
         extract(&file, base)
     }
 }
@@ -54,7 +54,7 @@ fn extract(mut file: &File, base: PathBuf) -> Result<()> {
     let password = Password::empty();
     let archive = match Archive::read(&mut file, len, password.as_ref()) {
         Ok(reader) => reader,
-        Err(e) => return Err(ToteError::Fatal(Box::new(e))),
+        Err(e) => return Err(Error::Fatal(Box::new(e))),
     };
     let folder_count = archive.folders.len();
     for findex in 0..folder_count {
@@ -63,7 +63,7 @@ fn extract(mut file: &File, base: PathBuf) -> Result<()> {
             let d = base.join(&entry.name);
             sevenz_rust::default_entry_extract_fn(entry, reader, &d)
         }) {
-            return Err(ToteError::Fatal(Box::new(e)));
+            return Err(Error::Fatal(Box::new(e)));
         }
     }
     Ok(())

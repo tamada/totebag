@@ -10,6 +10,7 @@ pub(crate) mod outputs;
 use clap::ValueEnum;
 use ignore::WalkBuilder;
 use std::collections::HashSet;
+use std::fmt::Display;
 use std::path::{Path, PathBuf};
 
 use typed_builder::TypedBuilder;
@@ -19,7 +20,7 @@ use crate::extractor::Entries;
 use crate::format::{default_format_detector, FormatDetector};
 
 /// Define the result type for this library.
-pub type Result<T> = std::result::Result<T, ToteError>;
+pub type Result<T> = std::result::Result<T, Error>;
 
 /// Define the ignore types for directory traversing.
 #[derive(Debug, Clone, ValueEnum, PartialEq, Copy, Hash, Eq)]
@@ -43,11 +44,11 @@ pub enum IgnoreType {
 /// This enum represents all possible errors that can be returned
 /// from archive and extraction operations.
 #[derive(Debug)]
-pub enum ToteError {
+pub enum Error {
     /// Error from archiving operation with a descriptive message
     Archiver(String),
     /// Multiple errors occurred during an operation
-    Array(Vec<ToteError>),
+    Array(Vec<Error>),
     /// The destination path is a directory when a file was expected
     DestIsDir(PathBuf),
     /// The target directory already exists
@@ -76,7 +77,35 @@ pub enum ToteError {
     Xml(serde_xml_rs::Error),
 }
 
-impl ToteError {
+impl Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Error::Archiver(s) => write!(f, "Archiver error: {s}"),
+            Error::Array(errs) => {
+                errs.iter()
+                    .map(std::string::ToString::to_string)
+                    .collect::<Vec<_>>()
+                    .join("\n")
+                    .fmt(f)
+            },
+            Error::DestIsDir(p) => write!(f, "{}: Destination is a directory", p.to_str().unwrap()),
+            Error::DirExists(p) => write!(f, "{}: Directory already exists", p.to_str().unwrap()),
+            Error::Extractor(s) => write!(f, "Extractor error: {s}"),
+            Error::Fatal(e) => write!(f, "Error: {e}"),
+            Error::FileNotFound(p) => write!(f, "{}: File not found", p.to_str().unwrap()),
+            Error::FileExists(p) => write!(f, "{}: File already exists", p.to_str().unwrap()),
+            Error::IO(e) => write!(f, "IO error: {e}"),
+            Error::Json(e) => write!(f, "Json error: {e}"),
+            Error::NoArgumentsGiven => write!(f, "No arguments given. Use --help for usage."),
+            Error::Warn(s) => write!(f, "Unknown error: {s}"),
+            Error::UnknownFormat(s) => write!(f, "{s}: Unknown format"),
+            Error::UnsupportedFormat(s) => write!(f, "{s}: Unsupported format"),
+            Error::Xml(e) => write!(f, "Xml error: {e}"),
+        }
+    }
+}
+
+impl Error {
     /// Returns `Ok(ok)` if there are no errors, otherwise returns an appropriate error.
     ///
     /// This is a helper method to consolidate multiple errors into a single result.
@@ -90,17 +119,19 @@ impl ToteError {
     ///
     /// * `Ok(ok)` if `errs` is empty
     /// * `Err(error)` if `errs` contains a single error
-    /// * `Err(ToteError::Array(errs))` if `errs` contains multiple errors
+    /// * `Err(Error::Array(errs))` if `errs` contains multiple errors
     pub fn error_or<T>(ok: T, errs: Vec<Self>) -> Result<T> {
         if errs.is_empty() {
             Ok(ok)
         } else if errs.len() == 1 {
             Err(errs.into_iter().next().unwrap())
         } else {
-            Err(ToteError::Array(errs))
+            Err(Error::Array(errs))
         }
     }
 
+    /// Returns `Ok(ok())` if there are no errors, otherwise returns an appropriate error.
+    /// see [`Error::error_or`] for details of error handling.
     pub fn error_or_else<F, O>(ok: F, errs: Vec<Self>) -> Result<O>
     where
         F: FnOnce() -> O,
@@ -110,7 +141,7 @@ impl ToteError {
         } else if errs.len() == 1 {
             Err(errs.into_iter().next().unwrap())
         } else {
-            Err(ToteError::Array(errs))
+            Err(Error::Array(errs))
         }
     }
 }
@@ -194,7 +225,7 @@ impl ExtractConfig {
             if dest == PathBuf::from(".") || dest == PathBuf::from("..") {
                 Ok(dest)
             } else {
-                Err(ToteError::DirExists(dest))
+                Err(Error::DirExists(dest))
             }
         } else {
             Ok(dest)
@@ -284,9 +315,9 @@ fn format_for_output(entries: Entries, f: &OutputFormat) -> Result<String> {
     match f {
         Default => outputs::to_string(&entries),
         Long => outputs::to_string_long(&entries),
-        Json => serde_json::to_string(&entries).map_err(ToteError::Json),
-        PrettyJson => serde_json::to_string_pretty(&entries).map_err(ToteError::Json),
-        Xml => serde_xml_rs::to_string(&entries).map_err(ToteError::Xml),
+        Json => serde_json::to_string(&entries).map_err(Error::Json),
+        PrettyJson => serde_json::to_string_pretty(&entries).map_err(Error::Json),
+        Xml => serde_xml_rs::to_string(&entries).map_err(Error::Xml),
     }
 }
 
@@ -367,7 +398,7 @@ pub fn archive<P: AsRef<Path>>(
     if let Some(parent) = dest_file.parent() {
         if !parent.exists() {
             if let Err(e) = std::fs::create_dir_all(parent) {
-                return Err(ToteError::IO(e));
+                return Err(Error::IO(e));
             }
         }
     }
@@ -380,7 +411,7 @@ pub fn archive<P: AsRef<Path>>(
             }
             Err(e) => Err(e),
         },
-        Err(e) => Err(ToteError::IO(e)),
+        Err(e) => Err(Error::IO(e)),
     }
 }
 
@@ -451,9 +482,9 @@ impl ArchiveConfig {
         let dest_path = self.dest.clone();
         if dest_path.exists() {
             if dest_path.is_file() && !self.overwrite {
-                Err(ToteError::FileExists(dest_path))
+                Err(Error::FileExists(dest_path))
             } else if self.dest.is_dir() {
-                Err(ToteError::DestIsDir(dest_path))
+                Err(Error::DestIsDir(dest_path))
             } else {
                 Ok(dest_path)
             }
@@ -548,5 +579,79 @@ fn build_walker_impl(opts: &ArchiveConfig, w: &mut WalkBuilder) {
             IgnoreType::Hidden => w.hidden(true),
             IgnoreType::Ignore => w.ignore(true),
         };
+    }
+}
+
+mod tests {
+
+    #[test]
+    fn test_error_message() {
+        use crate::Error;
+        use std::path::PathBuf;
+
+        assert_eq!(
+            Error::Archiver("hoge".into()).to_string(),
+            "Archiver error: hoge"
+        );
+        assert_eq!(
+            Error::Extractor("hoge".into()).to_string(),
+            "Extractor error: hoge"
+        );
+        assert_eq!(
+            Error::DestIsDir(PathBuf::from("hoge")).to_string(),
+            "hoge: Destination is a directory"
+        );
+        assert_eq!(
+            Error::DirExists(PathBuf::from("hoge")).to_string(),
+            "hoge: Directory already exists"
+        );
+        assert_eq!(
+            Error::Fatal(Box::new(std::io::Error::new(std::io::ErrorKind::Other, "hoge"))).to_string(),
+            "Error: hoge"
+        );        
+        assert_eq!(
+            Error::Json(serde::de::Error::custom("hoge")).to_string(),
+            "Json error: hoge"
+        );        
+        assert_eq!(
+            Error::Xml(serde_xml_rs::Error::Custom("hoge".into())).to_string(),
+            "Xml error: Custom: hoge"
+        );        
+        assert_eq!(
+            Error::IO(std::io::Error::new(std::io::ErrorKind::NotFound, "hoge")).to_string(),
+            "IO error: hoge"
+        );
+        assert_eq!(
+            Error::FileNotFound("hoge".into()).to_string(),
+            "hoge: File not found"
+        );
+        assert_eq!(
+            Error::FileExists("hoge".into()).to_string(),
+            "hoge: File already exists"
+        );
+        assert_eq!(
+            Error::UnknownFormat("hoge".to_string()).to_string(),
+            "hoge: Unknown format"
+        );
+        assert_eq!(
+            Error::UnsupportedFormat("hoge".to_string()).to_string(),
+            "hoge: Unsupported format"
+        );
+        assert_eq!(
+            Error::Warn("message".to_string()).to_string(),
+            "Unknown error: message"
+        );
+        assert_eq!(
+            Error::NoArgumentsGiven.to_string(),
+            "No arguments given. Use --help for usage."
+        );
+        assert_eq!(
+            Error::Array(vec![
+                Error::Warn("hoge1".to_string()),
+                Error::Warn("hoge2".to_string())
+            ])
+            .to_string(),
+            "Unknown error: hoge1\nUnknown error: hoge2"
+        );
     }
 }
