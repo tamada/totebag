@@ -109,7 +109,8 @@ jobs:
           DIST=${{ matrix.target }}
           mkdir -p dist/$DIST/$DIR
           # cp -r docs/public dist/$DIST/$DIR/docs
-          cp -r LICENSE assets target/${{ matrix.target }}/release/${{ matrix.artifact_name }} dist/$DIST/$DIR/${{ needs.setup.outputs.appname }}
+          cp -r LICENSE assets dist/$DIST/$DIR
+          cp target/${{ matrix.target }}/release/${{ matrix.artifact_name }} dist/$DIST/$DIR/${{ needs.setup.outputs.appname }}
           cat README.md lib/README.md cli/README.md > dist/$DIST/$DIR/README.md
           tar cvfz dist/${{ matrix.asset_name }}.tar.gz -C dist/$DIST $DIR
           gh release upload v${{ needs.setup.outputs.tag }} dist/${{ matrix.asset_name }}.tar.gz --repo $GITHUB_REPOSITORY
