@@ -1,5 +1,6 @@
 # totebag
 
+[![crates.io](https://img.shields.io/badge/crates.io-v0.8.14-blue)](https://crates.io/crates/totebag)
 [![Version](https://shields.io/badge/Version-0.8.14-blue)](https://github.com/tamada/totebag/releases/tag/v0.8.14)
 [![MIT License](https://shields.io/badge/License-MIT-blue)](https://github.com/tamada/totebag/blob/main/LICENSE)
 [![Docker](https://shields.io/badge/Docker-0.8.14-blue?logo=docker)](https://github.com/tamada/totebag/pkgs/container/totebag)
