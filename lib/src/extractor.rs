@@ -42,6 +42,7 @@ use typed_builder::TypedBuilder;
 use crate::format::Format;
 use crate::{Result, ToteError};
 
+mod ar;
 mod cab;
 mod cpio;
 mod lha;
@@ -168,6 +169,7 @@ pub(super) fn create_with<P: AsRef<Path>>(file: P, format: Option<&Format>) -> R
     let file = file.as_ref();
     match format {
         Some(format) => match format.name.as_str() {
+            "Ar" => Ok(Box::new(ar::Extractor {})),
             "Cab" => Ok(Box::new(cab::Extractor {})),
             "Cpio" => Ok(Box::new(cpio::Extractor {})),
             "Lha" => Ok(Box::new(lha::Extractor {})),
