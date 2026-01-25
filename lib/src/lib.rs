@@ -100,6 +100,19 @@ impl ToteError {
             Err(ToteError::Array(errs))
         }
     }
+
+    pub fn error_or_else<F, O>(ok: F, errs: Vec<Self>) -> Result<O>
+    where
+        F: FnOnce() -> O,
+    {
+        if errs.is_empty() {
+            Ok(ok())
+        } else if errs.len() == 1 {
+            Err(errs.into_iter().next().unwrap())
+        } else {
+            Err(ToteError::Array(errs))
+        }
+    }
 }
 
 /// Extract an archive file to the specified destination directory.

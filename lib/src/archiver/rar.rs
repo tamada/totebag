@@ -21,6 +21,7 @@ impl ToteArchiver for Archiver {
             "only extraction support for rar".to_string(),
         ))
     }
+
     fn enable(&self) -> bool {
         false
     }

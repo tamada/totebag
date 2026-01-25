@@ -103,6 +103,7 @@ impl ToteArchiver for ZstdArchiver {
         let encoder = zstd::Encoder::new(file, level as i32).unwrap();
         write_tar(encoder.auto_finish(), targets, config)
     }
+
     fn enable(&self) -> bool {
         true
     }
@@ -135,11 +136,7 @@ fn write_tar<W: Write>(
     if let Err(e) = builder.finish() {
         errs.push(ToteError::Archiver(e.to_string()));
     }
-    if errs.is_empty() {
-        Ok(entries)
-    } else {
-        Err(ToteError::Array(errs))
-    }
+    ToteError::error_or(entries, errs)
 }
 
 fn process_file<W: Write>(

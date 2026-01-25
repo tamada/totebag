@@ -39,11 +39,7 @@ impl ToteArchiver for Archiver {
         if let Err(e) = w.finish() {
             errs.push(ToteError::Archiver(e.to_string()));
         }
-        if errs.is_empty() {
-            Ok(entries)
-        } else {
-            Err(ToteError::Array(errs))
-        }
+        ToteError::error_or(entries, errs)
     }
 
     fn enable(&self) -> bool {

@@ -25,6 +25,7 @@ use std::path::{Path, PathBuf};
 use crate::format::default_format_detector;
 use crate::{Result, ToteError};
 
+mod ar;
 mod cab;
 mod cpio;
 mod lha;
@@ -130,6 +131,7 @@ pub fn create<P: AsRef<Path>>(dest: P) -> Result<Box<dyn ToteArchiver>> {
     match format {
         Some(format) => {
             let archiver: Box<dyn ToteArchiver> = match format.name.as_str() {
+                "Ar" => Box::new(ar::Archiver {}),
                 "Cab" => Box::new(cab::Archiver {}),
                 "Cpio" => Box::new(cpio::Archiver {}),
                 "Lha" => Box::new(lha::Archiver {}),
