@@ -59,7 +59,7 @@ fn prepare_write(entry: &cpio::Entry<std::fs::File>, base: &Path) -> Result<Path
     let dest_path = base.join(&entry.path);
     log::info!(
         "extracting {:?} ({} bytes) to {dest_path:?}",
-        &entry.path,
+        entry.path,
         entry.metadata.size()
     );
     if let Some(parent) = dest_path.parent() {

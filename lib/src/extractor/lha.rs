@@ -59,7 +59,7 @@ fn write_data_impl(reader: &mut LhaDecodeReader<File>, base: &Path) -> Result<()
     let name = header.parse_pathname();
     let dest = base.join(&name);
     if reader.is_decoder_supported() {
-        log::info!("extracting {:?} ({} bytes)", &name, header.original_size);
+        log::info!("extracting {:?} ({} bytes)", name, header.original_size);
         if let Some(parent) = dest.parent() {
             create_dir_all(parent).map_err(Error::IO)?;
         }
