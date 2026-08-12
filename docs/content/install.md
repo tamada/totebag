@@ -18,7 +18,7 @@ Then, the unpack the downloaded archive and put the binary to the directory in t
 ## :whale: Docker
 
 ```sh
-docker run -it --rm -v $PWD:/app ghcr.io/tamada/totebag:latest [OPTIONS] [ARGUMENTS]...
+docker run -it --rm -v $PWD:/app quay.io/tama5/totebag:latest [OPTIONS] [ARGUMENTS]...
 ```
 
 - **Working directory**: `/app`

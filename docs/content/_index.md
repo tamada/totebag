@@ -9,7 +9,7 @@ date: 2024-06-11
 [![crates.io](https://shields.io/badge/crates.io-v0.9.0-orange)](https://crates.io/crates/totebag)
 [![Version](https://shields.io/badge/Version-0.9.0-blue)](https://github.com/tamada/totebag/releases/tag/v0.9.0)
 [![MIT License](https://shields.io/badge/License-MIT-blue)](https://github.com/tamada/totebag/blob/main/LICENSE)
-[![docker](https://shields.io/badge/Docker-0.9.0-blue?logo=docker)](https://github.com/tamada/totebag/pkgs/container/totebag)
+[![docker](https://shields.io/badge/Docker-0.9.0-blue?logo=docker)](https://quay.io/repository/tama5/totebag)
 
 [![build](https://github.com/tamada/totebag/actions/workflows/build.yaml/badge.svg)](https://github.com/tamada/totebag/actions/workflows/build.yaml)
 [![Rust Report Card](https://rust-reportcard.xuri.me/badge/github.com/tamada/totebag)](https://rust-reportcard.xuri.me/report/github.com/tamada/totebag)

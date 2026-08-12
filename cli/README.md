@@ -49,7 +49,7 @@ RAR extraction is not compiled in by default; see the note in [the library READM
 #### :whale: Docker
 
 ```sh
-docker run -it --rm -v $PWD:/app ghcr.io/tamada/totebag:latest [OPTIONS] [ARGUMENTS]...
+docker run -it --rm -v $PWD:/app quay.io/tama5/totebag:latest [OPTIONS] [ARGUMENTS]...
 ```
 
 - **Working directory**: `/app`

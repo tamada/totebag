@@ -44,16 +44,16 @@ site:
 
 # Build the docker image for the current arch
 docker:
-    docker build -t ghcr.io/tamada/totebag:latest -t ghcr.io/tamada/totebag:{{VERSION}} .
+    docker build -t quay.io/tama5/totebag:latest -t quay.io/tama5/totebag:{{VERSION}} .
 
 # Build the docker image for arm64
 docker_arm64:
-    docker build --platform linux/arm64/v8 -t ghcr.io/tamada/totebag:latest -t ghcr.io/tamada/totebag:{{VERSION}} .
+    docker build --platform linux/arm64/v8 -t quay.io/tama5/totebag:latest -t quay.io/tama5/totebag:{{VERSION}} .
 
 # Build the docker image for amd64
 docker_amd64:
-    docker build --platform linux/amd64 -t ghcr.io/tamada/totebag:latest -t ghcr.io/tamada/totebag:{{VERSION}} .
+    docker build --platform linux/amd64 -t quay.io/tama5/totebag:latest -t quay.io/tama5/totebag:{{VERSION}} .
 
 # Build the docker image for multi-arch
 docker_buildx:
-    docker buildx build --platform linux/arm64/v8,linux/amd64 --output=type=image,push=true -t ghcr.io/tamada/totebag:latest -t ghcr.io/tamada/totebag:{{VERSION}} .
+    docker buildx build --platform linux/arm64/v8,linux/amd64 --output=type=image,push=true -t quay.io/tama5/totebag:latest -t quay.io/tama5/totebag:{{VERSION}} .
