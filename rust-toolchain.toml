@@ -1,0 +1,17 @@
+# Pins the toolchain so that `cargo clippy` locally and in CI agree.
+#
+# Before this file existed the three places that build totebag all used a
+# different compiler: CI installed the latest stable, the cross-compile action
+# hardcoded 1.88.0, and whatever a developer happened to have was a third. A
+# `-D warnings` run could pass locally and fail in CI on a lint the local
+# compiler did not know about yet, which is exactly what happened with
+# `useless_borrows_in_formatting` during the v0.9.0 work.
+#
+# Bumping this is a deliberate, reviewable change: raise the version, run
+# `just clippy`, and fix whatever the newer lints find in the same commit.
+#
+# The floor is the `rust-version` in Cargo.toml, currently 1.95 -- set by the
+# `delharc` dependency, not by anything in this crate.
+[toolchain]
+channel = "1.97.1"
+components = ["rustfmt", "clippy"]

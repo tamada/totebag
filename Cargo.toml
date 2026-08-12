@@ -5,6 +5,10 @@ resolver = "3"
 [workspace.package]
 version = "0.9.0"
 edition = "2024"
+# Verified with `cargo +1.95.0 check --workspace --all-features`. The floor comes
+# from the `delharc` dependency (1.95), not from this crate; edition 2024 alone
+# would only need 1.85. rust-toolchain.toml pins what actually builds it.
+rust-version = "1.95"
 repository = "https://github.com/tamada/totebag"
 readme = "README.md"
 authors = [

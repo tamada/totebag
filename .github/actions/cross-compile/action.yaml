@@ -37,8 +37,8 @@ runs:
           -v ${{ github.workspace }}:/io
           -w /io
         run: |
-          rustup toolchain install 1.88.0 # the newest version of rust
-          rustup default 1.88.0
+          # The toolchain comes from rust-toolchain.toml; rustup installs it
+          # on the first cargo invocation, and `target add` applies to it.
           rustup target add ${{ inputs.target }}
           cargo zigbuild --release --target ${{ inputs.target }} --features ${{ inputs.features }}
 

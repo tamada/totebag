@@ -5,6 +5,7 @@ description = "A tool for extracting/archiving files and directories in multiple
 categories = ["command-line-utilities", "compression", "filesystem" ]
 keywords = ["archiver", "extractor", "compression", "cli" ]
 version.workspace = true
+rust-version.workspace = true
 repository.workspace = true
 authors.workspace = true
 license.workspace = true

@@ -5,6 +5,7 @@ description = "An API for extracting/archiving files and directories in multiple
 categories = ["development-tools", "compression", "filesystem"]
 keywords = [ "archiver", "extractor", "compression" ]
 version.workspace = true
+rust-version.workspace = true
 repository.workspace = true
 authors.workspace = true
 license.workspace = true
