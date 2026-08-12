@@ -10,7 +10,7 @@ theme: default
 
 ## A tool for extracting/archiving files and directories in several formats
 
-![](../assets/logo.jpeg)
+![](../assets/images/logo.jpeg)
 
 Haruaki Tamada (@tamada)
 https://github.com/tamada/totebag

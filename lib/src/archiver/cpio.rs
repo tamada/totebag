@@ -2,7 +2,7 @@ use std::fs::File;
 use std::path::PathBuf;
 
 use crate::archiver::{ArchiveEntry, ToteArchiver};
-use crate::{Result, Error};
+use crate::{Error, Result};
 
 /// CPIO format archiver implementation.
 ///
@@ -10,7 +10,12 @@ use crate::{Result, Error};
 pub(super) struct Archiver {}
 
 impl ToteArchiver for Archiver {
-    fn perform(&self, file: File, targets: &[PathBuf], config: &crate::ArchiveConfig) -> Result<Vec<ArchiveEntry>> {
+    fn perform(
+        &self,
+        file: File,
+        targets: &[PathBuf],
+        config: &crate::ArchiveConfig,
+    ) -> Result<Vec<ArchiveEntry>> {
         let entries = super::collect_entries(targets, config);
         let format = find_format(config.level);
         let mut builder = cpio::Builder::new(file);
@@ -27,7 +32,7 @@ impl ToteArchiver for Archiver {
             Err(e) => {
                 errs.push(Error::Archiver(e.to_string()));
                 Error::error_or_else(Vec::new, errs)
-            },
+            }
         }
     }
 
@@ -37,7 +42,7 @@ impl ToteArchiver for Archiver {
 }
 
 fn find_format(level: u8) -> cpio::Format {
-    use cpio::ByteOrder::{LittleEndian, BigEndian};
+    use cpio::ByteOrder::{BigEndian, LittleEndian};
     match level {
         0..=3 => cpio::Format::Odc,
         4..=6 => cpio::Format::Newc,
@@ -50,7 +55,7 @@ fn find_format(level: u8) -> cpio::Format {
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
+    use crate::archiver::test_support::targets;
 
     fn run_test<F>(f: F)
     where
@@ -73,10 +78,7 @@ mod tests {
                 .overwrite(false)
                 .no_recursive(true)
                 .build();
-            let v = vec!["lib", "cli", "Cargo.toml"]
-                .into_iter()
-                .map(|s| PathBuf::from(s))
-                .collect::<Vec<_>>();
+            let v = targets();
             if let Err(e) = crate::archive(&v, &config) {
                 panic!("{e:?}")
             }

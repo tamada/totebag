@@ -5,36 +5,70 @@ description = "An API for extracting/archiving files and directories in multiple
 categories = ["development-tools", "compression", "filesystem"]
 keywords = [ "archiver", "extractor", "compression" ]
 version.workspace = true
+rust-version.workspace = true
 repository.workspace = true
 authors.workspace = true
-license-file.workspace = true
+license.workspace = true
 edition.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+default = []
+
+# Derive `clap::ValueEnum` for the public enums (`IgnoreType`, `OutputFormat`) so
+# that they can be used directly as command line arguments. Only the CLI needs it.
+clap = ["dep:clap"]
+
+# RAR extraction. NOT pure Rust: `unrar` links the C UnRAR library, whose license
+# forbids using its source to re-create the RAR compression algorithm. Off by
+# default so that `cargo build` needs no C toolchain and the published crate stays
+# unencumbered.
+rar = ["dep:unrar"]
+
+# Use the C zstd library instead of the pure Rust `ruzstd`. `ruzstd` decodes the
+# full zstd specification but only implements the fastest compression level, so
+# enable this when the `--level` option must actually affect `.tar.zst` output.
+zstd-native = ["dep:zstd"]
+
 [dependencies]
 ar = "0.9.0"
-bzip2 = "0.6.1"
-chrono = { version = "0.4.39", features = [ "serde" ] }
-clap = { version = "4.5.27", features = [ "derive" ] }
-cpio = { package = "kpea", version = "0.2.5" }
+bzip2 = "0.6.1"                                             # pure Rust via libbz2-rs-sys
 cab = "0.6.0"
-crc = "3.4"
-delharc = { version = "0.6.1", features = [ "lh1", "lz" ] }
-env_logger = "0.11.6"
-flate2 = "1.0.35"
+chrono = { version = "0.4.42", features = [ "serde" ] }
+clap = { version = "4.5.51", features = [ "derive" ], optional = true }
+cpio = { package = "kpea", version = "0.2.5" }              # 0.4 renames Path -> CpioPath; see issue #87
+delharc = { version = "0.8.0", features = [ "lh1", "lz" ] }
+flate2 = "1.1.5"                                            # pure Rust via miniz_oxide
 humansize = "2.1.3"
-ignore = "0.4.23"
-infer = "0.19.0"
-log = "0.4.25"
+ignore = "0.4.25"
+infer = "0.22.0"
+log = "0.4.28"
+lzma-rust2 = { version = "0.18.1", features = [ "xz", "encoder" ] }
+ruzstd = "0.9.0"
 serde = { version = "1.0.228", features = [ "derive" ] }
 serde_json = "1.0.145"
-serde-xml-rs = "0.8.1"
-sevenz-rust = "0.6.0"
-tar = "0.4.43"
-time = "0.3.37"
+serde-xml-rs = "0.8.2"
+sevenz-rust2 = "0.21.4"
+tar = "0.4.44"
+tempfile = "3.24.0"
+time = "0.3.44"
 typed-builder = "0.23.2"
-unrar = "0.5.7"
-xz2 = "0.1.7"
-zip = "6.0.0"
-zstd = "0.13.2"
+unrar = { version = "0.5.8", optional = true }
+zstd = { version = "0.13.3", optional = true }
+
+# `zstd` is deliberately excluded: it is the only default feature of `zip` that
+# pulls in a C library.
+[dependencies.zip]
+version = "8.6.0"
+default-features = false
+features = [
+    "aes-crypto",
+    "bzip2",
+    "deflate-flate2-zlib-rs",
+    "deflate64",
+    "lzma",
+    "ppmd",
+    "time",
+    "xz",
+]

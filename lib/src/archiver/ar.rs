@@ -3,29 +3,35 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use crate::archiver::{ArchiveEntry, ToteArchiver};
-use crate::{Result, Error};
+use crate::{Error, Result};
 
-/// TAR format archiver implementation.
+/// AR format archiver implementation.
+///
+/// `ar` is a flat container: it stores files only, and has no representation for
+/// directories. Directories encountered while walking the targets are therefore
+/// skipped rather than written as zero-length members.
 pub(super) struct Archiver {}
 
 impl ToteArchiver for Archiver {
-    fn perform(&self, file: File, targets: &[PathBuf], config: &crate::ArchiveConfig) -> Result<Vec<ArchiveEntry>> {
+    fn perform(
+        &self,
+        file: File,
+        targets: &[PathBuf],
+        config: &crate::ArchiveConfig,
+    ) -> Result<Vec<ArchiveEntry>> {
         let mut builder = ar::Builder::new(file);
         let mut errs = vec![];
         let mut entries = vec![];
         for tp in targets {
             for entry in config.iter(tp) {
                 let path = entry.into_path();
+                if !path.is_file() {
+                    continue;
+                }
                 entries.push(ArchiveEntry::from(&path));
-                let dest_dir = config.path_in_archive(&path);
-                if path.is_file() {
-                    if let Err(e) = process_file(&mut builder, &path, &dest_dir) {
-                        errs.push(e);
-                    }
-                } else if path.is_dir() {
-                    if let Err(e) = append_dir(&mut builder, &dest_dir, &path) {
-                        errs.push(e);
-                    }
+                let dest_path = config.path_in_archive(&path);
+                if let Err(e) = process_file(&mut builder, &path, &dest_path) {
+                    errs.push(e);
                 }
             }
         }
@@ -37,26 +43,21 @@ impl ToteArchiver for Archiver {
     }
 }
 
-fn append_dir<W: Write>(builder: &mut ar::Builder<W>, dest_path: &Path, src_path: &Path) -> Result<()> {
-    let identifier = dest_path.to_str().unwrap().to_string();
-    let metadata = std::fs::metadata(src_path).map_err(Error::IO)?;
-    let header = ar::Header::from_metadata(identifier.into_bytes(), &metadata);
-    builder.append(&header, &mut std::io::empty()).map_err(Error::IO)
-}
-
-fn process_file<W: Write>(builder: &mut ar::Builder<W>, target: &Path, dest_path: &Path) -> Result<()> {
-    match std::fs::File::open(target) {
-        Err(e) => Err(Error::IO(e)),
-        Ok(mut file) => {
-            let name = dest_path.to_str().unwrap();
-            builder.append_file(name.as_bytes(), &mut file)
-                .map_err(Error::IO)
-        }
-    }
+fn process_file<W: Write>(
+    builder: &mut ar::Builder<W>,
+    target: &Path,
+    dest_path: &Path,
+) -> Result<()> {
+    let mut file = File::open(target).map_err(Error::IO)?;
+    let name = dest_path.to_string_lossy().into_owned();
+    builder
+        .append_file(name.as_bytes(), &mut file)
+        .map_err(Error::IO)
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::archiver::test_support::targets;
     use std::path::PathBuf;
 
     fn run_test<F>(f: F)
@@ -78,10 +79,7 @@ mod tests {
                 .dest("results/test.ar")
                 .overwrite(true)
                 .build();
-            let v = vec!["lib", "cli", "Cargo.toml"]
-                .iter()
-                .map(|s| PathBuf::from(s))
-                .collect::<Vec<_>>();
+            let v = targets();
             let result = crate::archive(&v, &config);
             let path = PathBuf::from("results/test.ar");
             if let Err(e) = result {

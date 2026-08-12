@@ -7,7 +7,13 @@ pub mod extractor;
 pub mod format;
 pub(crate) mod outputs;
 
-use clap::ValueEnum;
+/// Compiles the Rust code blocks in `README.md` as doctests, so the examples
+/// there cannot drift away from the API (issue #81). Not part of the rendered
+/// documentation.
+#[cfg(doctest)]
+#[doc = include_str!("../README.md")]
+struct ReadmeDoctests;
+
 use ignore::WalkBuilder;
 use std::collections::HashSet;
 use std::fmt::Display;
@@ -17,13 +23,14 @@ use typed_builder::TypedBuilder;
 
 use crate::archiver::ArchiveEntries;
 use crate::extractor::Entries;
-use crate::format::{default_format_detector, FormatDetector};
+use crate::format::{FormatDetector, default_format_detector};
 
 /// Define the result type for this library.
 pub type Result<T> = std::result::Result<T, Error>;
 
 /// Define the ignore types for directory traversing.
-#[derive(Debug, Clone, ValueEnum, PartialEq, Copy, Hash, Eq)]
+#[derive(Debug, Clone, PartialEq, Copy, Hash, Eq)]
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 pub enum IgnoreType {
     /// use `git-ignore`, `.gitglobal`, `.gitexclude`, and `.ignore`.
     Default,
@@ -56,7 +63,14 @@ pub enum Error {
     /// Error from extraction operation with a descriptive message
     Extractor(String),
     /// A fatal error from an underlying library
-    Fatal(Box<dyn std::error::Error>),
+    Fatal(Box<dyn std::error::Error + Send + Sync>),
+    /// The format is known but its support was not compiled in.
+    ///
+    /// `feature` names the Cargo feature that enables it.
+    FeatureDisabled {
+        format: String,
+        feature: &'static str,
+    },
     /// The specified file was not found
     FileNotFound(PathBuf),
     /// The file already exists when it shouldn't be overwritten
@@ -81,19 +95,22 @@ impl Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Error::Archiver(s) => write!(f, "Archiver error: {s}"),
-            Error::Array(errs) => {
-                errs.iter()
-                    .map(std::string::ToString::to_string)
-                    .collect::<Vec<_>>()
-                    .join("\n")
-                    .fmt(f)
-            },
+            Error::Array(errs) => errs
+                .iter()
+                .map(std::string::ToString::to_string)
+                .collect::<Vec<_>>()
+                .join("\n")
+                .fmt(f),
             Error::DestIsDir(p) => write!(f, "{}: Destination is a directory", p.to_str().unwrap()),
             Error::DirExists(p) => write!(f, "{}: Directory already exists", p.to_str().unwrap()),
             Error::Extractor(s) => write!(f, "Extractor error: {s}"),
             Error::Fatal(e) => write!(f, "Error: {e}"),
-            Error::FileNotFound(p) => write!(f, "{}: File not found", p.to_str().unwrap()),
-            Error::FileExists(p) => write!(f, "{}: File already exists", p.to_str().unwrap()),
+            Error::FeatureDisabled { format, feature } => write!(
+                f,
+                "{format}: support is not compiled in (rebuild with --features {feature})"
+            ),
+            Error::FileNotFound(p) => write!(f, "{}: File not found", p.display()),
+            Error::FileExists(p) => write!(f, "{}: File already exists", p.display()),
             Error::IO(e) => write!(f, "IO error: {e}"),
             Error::Json(e) => write!(f, "Json error: {e}"),
             Error::NoArgumentsGiven => write!(f, "No arguments given. Use --help for usage."),
@@ -105,7 +122,45 @@ impl Display for Error {
     }
 }
 
+impl std::error::Error for Error {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Error::Fatal(e) => Some(e.as_ref()),
+            Error::IO(e) => Some(e),
+            Error::Json(e) => Some(e),
+            Error::Xml(e) => Some(e),
+            _ => None,
+        }
+    }
+}
+
+impl From<std::io::Error> for Error {
+    fn from(e: std::io::Error) -> Self {
+        Error::IO(e)
+    }
+}
+
+impl From<serde_json::Error> for Error {
+    fn from(e: serde_json::Error) -> Self {
+        Error::Json(e)
+    }
+}
+
+impl From<serde_xml_rs::Error> for Error {
+    fn from(e: serde_xml_rs::Error) -> Self {
+        Error::Xml(e)
+    }
+}
+
 impl Error {
+    /// Builds the error reported when a format can be extracted but not created.
+    ///
+    /// Kept in one place so that [`archiver::create`] and the extract-only
+    /// archiver stubs cannot drift apart.
+    pub(crate) fn unsupported_for_archiving(format: &str) -> Self {
+        Error::UnsupportedFormat(format!("{format} (archiving)"))
+    }
+
     /// Returns `Ok(ok)` if there are no errors, otherwise returns an appropriate error.
     ///
     /// This is a helper method to consolidate multiple errors into a single result.
@@ -159,7 +214,7 @@ impl Error {
 /// use totebag::{extract, ExtractConfig};
 ///
 /// let config = ExtractConfig::builder()
-///     .dest("output")
+///     .dest("results/doc_extract")
 ///     .overwrite(true)
 ///     .build();
 /// match extract("../testdata/test.zip", &config) {
@@ -186,7 +241,7 @@ pub fn extract<P: AsRef<Path>>(archive_file: P, config: &ExtractConfig) -> Resul
 /// use std::path::PathBuf;
 ///
 /// let config = ExtractConfig::builder()
-///     .dest(PathBuf::from("output"))
+///     .dest(PathBuf::from("results/doc_extract"))
 ///     .overwrite(true)
 ///     .use_archive_name_dir(false)
 ///     .build();
@@ -222,7 +277,9 @@ impl ExtractConfig {
             self.dest.clone()
         };
         if dest.exists() && !self.overwrite {
-            if dest == PathBuf::from(".") || dest == PathBuf::from("..") {
+            // Extracting into the current or parent directory is the common
+            // case, so their mere existence is not treated as a conflict.
+            if dest == Path::new(".") || dest == Path::new("..") {
                 Ok(dest)
             } else {
                 Err(Error::DirExists(dest))
@@ -241,7 +298,10 @@ impl ExtractConfig {
     /// # Returns
     ///
     /// Returns a boxed [`ToteExtractor`](crate::extractor::ToteExtractor) for the detected format.
-    pub fn extractor(&self, archive_file: &Path) -> Result<Box<dyn crate::extractor::ToteExtractor>> {
+    pub fn extractor(
+        &self,
+        archive_file: &Path,
+    ) -> Result<Box<dyn crate::extractor::ToteExtractor>> {
         let format = self.format_detector.detect(archive_file);
         crate::extractor::create_with(archive_file, format)
     }
@@ -273,7 +333,10 @@ impl ExtractConfig {
 ///     Err(e) => eprintln!("Error: {:?}", e),
 /// }
 /// ```
-pub fn entries<P: AsRef<Path>>(archive_file: P, format_detector: &dyn FormatDetector) -> Result<Entries> {
+pub fn entries<P: AsRef<Path>>(
+    archive_file: P,
+    format_detector: &dyn FormatDetector,
+) -> Result<Entries> {
     let archive_file = archive_file.as_ref();
     let format = format_detector.detect(archive_file);
     let extractor = crate::extractor::create_with(archive_file, format)?;
@@ -340,7 +403,10 @@ pub struct ListConfig {
 
 impl ListConfig {
     pub fn new(format: OutputFormat, format_detector: Box<dyn FormatDetector>) -> Self {
-        Self { format, format_detector }
+        Self {
+            format,
+            format_detector,
+        }
     }
 }
 
@@ -353,7 +419,8 @@ impl ListConfig {
 /// * `Json` - Compact JSON format
 /// * `PrettyJson` - Human-readable JSON format with indentation
 /// * `Xml` - XML format
-#[derive(ValueEnum, Debug, Clone)]
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 pub enum OutputFormat {
     Default,
     Long,
@@ -363,22 +430,22 @@ pub enum OutputFormat {
 }
 
 /// Create an archive file from the specified targets.
-/// 
+///
 /// # Arguments
-/// 
+///
 /// * `archive_targets` - A slice of paths to files or directories to archive
 /// * `config` - The archive configuration
-/// 
+///
 /// # Returns
-/// 
+///
 /// Returns a [`Result`] containing [`ArchiveEntries`] which holds details about the created archive.
-/// 
+///
 /// # Examples
 /// ```
 /// use totebag::{archive, ArchiveConfig};
 /// use std::path::PathBuf;
 /// let config = ArchiveConfig::builder()
-///     .dest("output.tar.gz")  // Destination archive file and its format (by file extension).
+///     .dest("results/doc_archive.tar.gz")  // Destination archive file and its format (by file extension).
 ///     .level(9)               // Maximum compression level
 ///     .overwrite(true)        // set overwrite flag of the destination file.
 ///     // .no_recursive(false) // Default is false.
@@ -387,7 +454,7 @@ pub enum OutputFormat {
 ///    .map(|s| PathBuf::from(s)).collect::<Vec<PathBuf>>();
 /// archive(&targets, &config)
 ///     .expect("Archiving should succeed");
-/// ``` 
+/// ```
 pub fn archive<P: AsRef<Path>>(
     archive_targets: &[P],
     config: &ArchiveConfig,
@@ -395,12 +462,10 @@ pub fn archive<P: AsRef<Path>>(
     let dest_file = config.dest_file()?;
     log::info!("{:?}: {}", dest_file, dest_file.exists());
     let archiver = archiver::create(&dest_file)?;
-    if let Some(parent) = dest_file.parent() {
-        if !parent.exists() {
-            if let Err(e) = std::fs::create_dir_all(parent) {
-                return Err(Error::IO(e));
-            }
-        }
+    if let Some(parent) = dest_file.parent()
+        && !parent.exists()
+    {
+        std::fs::create_dir_all(parent).map_err(Error::IO)?;
     }
     let targets = prepare_targets(archive_targets);
     match std::fs::File::create(&dest_file) {
@@ -416,10 +481,7 @@ pub fn archive<P: AsRef<Path>>(
 }
 
 fn prepare_targets<P: AsRef<Path>>(targets: &[P]) -> Vec<PathBuf> {
-    targets
-        .iter()
-        .map(|p| p.as_ref().to_path_buf())
-        .collect()
+    targets.iter().map(|p| p.as_ref().to_path_buf()).collect()
 }
 
 /// Configuration for creating archive files.
@@ -434,7 +496,7 @@ fn prepare_targets<P: AsRef<Path>>(targets: &[P]) -> Vec<PathBuf> {
 /// use std::path::PathBuf;
 ///
 /// let config = ArchiveConfig::builder()
-///     .dest("output.tar.gz")
+///     .dest("results/doc_archive.tar.gz")
 ///     .level(9)  // Maximum compression
 ///     .rebase_dir(PathBuf::from("root"))
 ///     .overwrite(true)
@@ -452,8 +514,13 @@ pub struct ArchiveConfig {
     #[builder(default = 5)]
     pub level: u8,
 
-    /// the prefix directory for the each file into the archive files when `Some`
-    #[builder(default = None, setter(strip_option, into))]
+    /// The directory prefixed to every entry name inside the archive.
+    ///
+    /// With `rebase_dir` set to `root`, the file `src/main.rs` is stored as
+    /// `root/src/main.rs`. `None` (the default) stores entries under their own
+    /// paths. Use [`ArchiveConfigBuilder::rebase_dir_opt`] to pass an `Option`
+    /// directly.
+    #[builder(default = None, setter(strip_option(fallback = rebase_dir_opt), into))]
     pub rebase_dir: Option<PathBuf>,
 
     /// Overwrite flag for archive file. Default is false.
@@ -495,7 +562,8 @@ impl ArchiveConfig {
 
     /// Transforms the given path to its representation inside the archive.
     ///
-    /// If `rebase_dir` is set, the path will be prefixed with it.
+    /// The path is normalized first (see [`normalize_entry_path`]), then
+    /// prefixed with `rebase_dir` when one is set.
     ///
     /// # Arguments
     ///
@@ -503,13 +571,17 @@ impl ArchiveConfig {
     ///
     /// # Returns
     ///
-    /// The path as it should appear in the archive.
+    /// The path as it should appear in the archive. It never starts at the
+    /// filesystem root and never contains a `.` or `..` component.
+    ///
+    /// The result is empty only when nothing survives normalization, which can
+    /// happen for a directory entry such as `..` itself. Callers skip those.
     pub fn path_in_archive<P: AsRef<Path>>(&self, path: P) -> PathBuf {
         let from_path = path.as_ref();
-        let to_path = if let Some(rebase) = &self.rebase_dir {
-            rebase.join(from_path)
-        } else {
-            from_path.to_path_buf()
+        let normalized = normalize_entry_path(from_path);
+        let to_path = match &self.rebase_dir {
+            Some(rebase) => normalize_entry_path(rebase).join(&normalized),
+            None => normalized,
         };
         log::debug!("dest_path({from_path:?}) -> {to_path:?}");
         to_path
@@ -565,6 +637,50 @@ impl ArchiveConfig {
     }
 }
 
+/// Rewrites a path into a name that is safe to store in an archive.
+///
+/// An entry name that starts at the filesystem root, or that climbs out of the
+/// archive with `..`, is a path-traversal hazard for whoever extracts it later.
+/// The tar backend refuses such names outright, while zip, 7z, cab and cpio used
+/// to write them verbatim (issue #90). Normalizing here keeps every backend
+/// consistent and every archive totebag produces safe to extract.
+///
+/// The rules follow `tar(1)`, which reports "Removing leading `../' from member
+/// names" for the same inputs:
+///
+/// - the root and any drive prefix are dropped, so `/etc/hosts` becomes `etc/hosts`;
+/// - `.` components are dropped, so `./src/main.rs` becomes `src/main.rs`;
+/// - `..` cancels the preceding component when there is one, so `a/../b` becomes `b`;
+/// - a leading `..` that cannot cancel anything is dropped, so `../foo/bar`
+///   becomes `foo/bar`.
+///
+/// This is a purely lexical transformation: the filesystem is never consulted, so
+/// symbolic links are left for the caller to deal with.
+///
+/// ```
+/// use std::path::{Path, PathBuf};
+/// use totebag::normalize_entry_path;
+///
+/// assert_eq!(normalize_entry_path(Path::new("../foo/bar")), PathBuf::from("foo/bar"));
+/// assert_eq!(normalize_entry_path(Path::new("./src/main.rs")), PathBuf::from("src/main.rs"));
+/// assert_eq!(normalize_entry_path(Path::new("a/../b")), PathBuf::from("b"));
+/// ```
+pub fn normalize_entry_path<P: AsRef<Path>>(path: P) -> PathBuf {
+    use std::path::Component;
+
+    let mut components: Vec<std::ffi::OsString> = Vec::new();
+    for component in path.as_ref().components() {
+        match component {
+            Component::Prefix(_) | Component::RootDir | Component::CurDir => {}
+            Component::ParentDir => {
+                components.pop();
+            }
+            Component::Normal(c) => components.push(c.to_os_string()),
+        }
+    }
+    components.iter().collect()
+}
+
 fn build_walker_impl(opts: &ArchiveConfig, w: &mut WalkBuilder) {
     for it in opts.ignore_types() {
         match it {
@@ -582,6 +698,7 @@ fn build_walker_impl(opts: &ArchiveConfig, w: &mut WalkBuilder) {
     }
 }
 
+#[cfg(test)]
 mod tests {
 
     #[test]
@@ -606,17 +723,17 @@ mod tests {
             "hoge: Directory already exists"
         );
         assert_eq!(
-            Error::Fatal(Box::new(std::io::Error::new(std::io::ErrorKind::Other, "hoge"))).to_string(),
+            Error::Fatal(Box::new(std::io::Error::other("hoge"))).to_string(),
             "Error: hoge"
-        );        
+        );
         assert_eq!(
             Error::Json(serde::de::Error::custom("hoge")).to_string(),
             "Json error: hoge"
-        );        
+        );
         assert_eq!(
             Error::Xml(serde_xml_rs::Error::Custom("hoge".into())).to_string(),
             "Xml error: Custom: hoge"
-        );        
+        );
         assert_eq!(
             Error::IO(std::io::Error::new(std::io::ErrorKind::NotFound, "hoge")).to_string(),
             "IO error: hoge"
@@ -636,6 +753,18 @@ mod tests {
         assert_eq!(
             Error::UnsupportedFormat("hoge".to_string()).to_string(),
             "hoge: Unsupported format"
+        );
+        assert_eq!(
+            Error::unsupported_for_archiving("Rar").to_string(),
+            "Rar (archiving): Unsupported format"
+        );
+        assert_eq!(
+            Error::FeatureDisabled {
+                format: "Rar".to_string(),
+                feature: "rar",
+            }
+            .to_string(),
+            "Rar: support is not compiled in (rebuild with --features rar)"
         );
         assert_eq!(
             Error::Warn("message".to_string()).to_string(),

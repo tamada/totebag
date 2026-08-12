@@ -23,36 +23,33 @@ Arguments:
 
 Options:
       --to-archive-name-dir          extract files to DEST/ARCHIVE_NAME directory (extract mode).
-  -C, --dir <DIR>                    Specify the base directory for archiving or extracting.
-                                     [default: .]
-  -i, --ignore-types <IGNORE_TYPES>  Specify the ignore type.
-                                     [possible values: default, hidden, git-ignore, git-global, git-exclude, ignore]
-  -L, --level <LEVEL>                Specify the compression level. [default: 5]
-                                     [possible values: 0-9 (none to finest)]
+  -C, --rebase-dir <DIR>             Prefix every entry in the archive with DIR (archive mode).
+                                     For example, -C root stores src/main.rs as root/src/main.rs.
+                                     By default entries keep their own paths. [aliases: --dir]
+  -i, --ignore-types <IGNORE_TYPES>  Specify the ignore type. [possible values: default, hidden, git-ignore, git-global, git-exclude, ignore]
+  -L, --level <LEVEL>                Specify the compression level. [default: 5] [possible values: 0-9 (none to finest)]
                                      For more details of level of each compression method, see README. [default: 5]
   -n, --no-recursive                 No recursive directory (archive mode).
-  -f, --output-format <FORMAT>       Specify the format for listing entries in the archive file.
-                                     [default: default] [possible values: default, long, json, pretty-json, xml]
-      --log <LOGLEVEL>               Specify the log level [default: warn]
-                                     [possible values: error, warn, info, debug, trace]
-  -m, --mode <MODE>                  Mode of operation. [default: auto]
-                                     [possible values: auto, archive, extract, list]
-  -F, --from <ARCHIVE_FORMAT>        Specify the archive format for listing mode (default auto). 
-                                     available on list and extract modes.
-                                     [possible values: auto, parse, cab, lha, lzh, seven-z, rar, tar, tar-gz, tar-bz2, tar-xz, tar-zstd, zip, tgz, tbz2, txz, tzst, tzstd, jar, war, ear]
+  -f, --output-format <FORMAT>       Specify the format for listing entries in the archive file. [default: default] [possible values: default, long, json, pretty-json, xml]
+      --log <LOGLEVEL>               Specify the log level [default: warn] [possible values: error, warn, info, debug, trace]
+  -m, --mode <MODE>                  Mode of operation. [default: auto] [possible values: auto, archive, extract, list]
+  -F, --from <ARCHIVE_FORMAT>        Specify the archive format for listing mode (default auto). available on list and extract modes. [possible values: auto, parse, ar, cab, cpio, lha, lzh, seven-z, rar, tar, tar-gz, tar-bz2, tar-xz, tar-zstd, zip, tgz, tbz2, txz, tzst, tzstd, jar, war, ear]
   -o, --output <DEST>                Output file in archive mode, or output directory in extraction mode
       --overwrite                    Overwrite existing files.
   -h, --help                         Print help (see more with '--help')
   -V, --version                      Print version
 ```
 
-Supported archive formats include Cab, Tar, Tar with Gzip/Bzip2/Xz/Zstd, Zip, 7z, Lha/Lzh (extraction only), and Rar (extraction only).
-See [README.md](../README.md) for more details.
+Supported archive formats are Ar, Cab, Cpio, Tar, Tar with Gzip/Bzip2/Xz/Zstd, Zip and 7z,
+plus Lha/Lzh and Rar for extraction only.
+See [the library README](../lib/README.md) for the per-format compression levels.
+
+RAR extraction is not compiled in by default; see the note in [the library README](../lib/README.md#rar-support).
 
 #### :whale: Docker
 
 ```sh
-docker run -it --rm -v $PWD:/workdir ghcr.io/tamada/totebag:latest [OPTIONS] [ARGUMENTS]...
+docker run -it --rm -v $PWD:/app quay.io/tama5/totebag:latest [OPTIONS] [ARGUMENTS]...
 ```
 
 - **Working directory**: `/app`

@@ -5,74 +5,80 @@ use std::path::PathBuf;
 use chrono::NaiveDateTime;
 use zip::read::ZipFile;
 
-use crate::Result;
-use crate::extractor::{Entry, Entries, ToteExtractor};
+use crate::extractor::{Entries, Entry, ToteExtractor};
+use crate::{Error, Result};
+
+/// The unix mode recorded for entries whose archive does not carry one
+/// (a zip written on Windows, for example).
+const DEFAULT_UNIX_MODE: u32 = 0o644;
 
 /// ZIP format extractor implementation.
 ///
 /// This extractor handles ZIP archive files.
 pub(super) struct Extractor {}
 
+fn open(archive_file: &PathBuf) -> Result<zip::ZipArchive<File>> {
+    let zip_file = File::open(archive_file).map_err(Error::IO)?;
+    zip::ZipArchive::new(zip_file).map_err(|e| Error::Extractor(e.to_string()))
+}
+
 impl ToteExtractor for Extractor {
     fn list(&self, archive_file: PathBuf) -> Result<Entries> {
-        let zip_file = File::open(&archive_file).unwrap();
-        let mut zip = zip::ZipArchive::new(zip_file).unwrap();
-
+        let mut zip = open(&archive_file)?;
         let mut result = vec![];
         for i in 0..zip.len() {
-            let file = zip.by_index(i).unwrap();
+            let file = zip
+                .by_index(i)
+                .map_err(|e| Error::Extractor(e.to_string()))?;
             result.push(convert(file));
         }
         Ok(Entries::new(archive_file, result))
     }
 
     fn perform(&self, archive_file: PathBuf, base: PathBuf) -> Result<()> {
-        let zip_file = File::open(archive_file).unwrap();
-        let mut zip = zip::ZipArchive::new(zip_file).unwrap();
+        let mut zip = open(&archive_file)?;
         for i in 0..zip.len() {
-            let mut file = zip.by_index(i).unwrap();
-            if file.is_file() {
-                log::info!("extracting {} ({} bytes)", file.name(), file.size());
-                let dest = base.join(file.name());
-                create_dir_all(dest.parent().unwrap()).unwrap();
-                let mut out = File::create(dest).unwrap();
-                copy(&mut file, &mut out).unwrap();
+            let mut file = zip
+                .by_index(i)
+                .map_err(|e| Error::Extractor(e.to_string()))?;
+            if !file.is_file() {
+                continue;
             }
+            log::info!("extracting {} ({} bytes)", file.name(), file.size());
+            let dest = base.join(file.name());
+            if let Some(parent) = dest.parent() {
+                create_dir_all(parent).map_err(Error::IO)?;
+            }
+            let mut out = File::create(dest).map_err(Error::IO)?;
+            copy(&mut file, &mut out).map_err(Error::IO)?;
         }
         Ok(())
     }
 }
 
 fn convert<R: std::io::Read>(zfile: ZipFile<R>) -> Entry {
-    let name = zfile.name().to_string();
-    let compressed_size = zfile.compressed_size();
-    let uncompresseed_size = zfile.size();
-    let mode = zfile.unix_mode();
-    let mtime = match zfile.last_modified() {
-        Some(t) => convert_to_datetime(t),
-        None => None,
-    };
     Entry::builder()
-        .name(name)
-        .compressed_size(compressed_size)
-        .original_size(uncompresseed_size)
-        .unix_mode(mode.unwrap())
-        .date(mtime)
+        .name(zfile.name().to_string())
+        .compressed_size(zfile.compressed_size())
+        .original_size(zfile.size())
+        .unix_mode(zfile.unix_mode().unwrap_or(DEFAULT_UNIX_MODE))
+        .date(zfile.last_modified().and_then(convert_to_datetime))
         .build()
 }
 
 fn convert_to_datetime(t: zip::DateTime) -> Option<NaiveDateTime> {
     use chrono::NaiveDate;
 
-    let year = t.year() as i32;
-    let month = t.month() as u32;
-    let day = t.day() as u32;
-    let hour = t.hour() as u32;
-    let minute = t.minute() as u32;
-    let second = t.second() as u32;
-    NaiveDate::from_ymd_opt(year, month, day)
-        .unwrap()
-        .and_hms_opt(hour, minute, second)
+    NaiveDate::from_ymd_opt(
+        i32::from(t.year()),
+        u32::from(t.month()),
+        u32::from(t.day()),
+    )?
+    .and_hms_opt(
+        u32::from(t.hour()),
+        u32::from(t.minute()),
+        u32::from(t.second()),
+    )
 }
 
 #[cfg(test)]
@@ -105,7 +111,7 @@ mod tests {
                     Some("README.md".to_string()).as_ref()
                 );
             }
-            Err(_) => assert!(false),
+            Err(e) => panic!("unexpected error: {e:?}"),
         }
     }
 
@@ -115,11 +121,10 @@ mod tests {
         let opts = crate::ExtractConfig::builder().dest("results/zip").build();
         match crate::extract(archive_file, &opts) {
             Ok(_) => {
-                assert!(true);
                 assert!(PathBuf::from("results/zip/Cargo.toml").exists());
                 std::fs::remove_dir_all(PathBuf::from("results/zip")).unwrap();
             }
-            Err(_) => assert!(false),
+            Err(e) => panic!("unexpected error: {e:?}"),
         };
     }
 }

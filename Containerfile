@@ -1,16 +1,18 @@
 FROM rust:1-bullseye AS builder
 
-ARG VERSION=0.8.16
+ARG VERSION=0.9.0
 ARG TARGETPLATFORM
 
 WORKDIR /app
 
 COPY . .
-RUN cargo build --release 
+# The published image keeps RAR extraction, which the crate leaves off by
+# default because `unrar` is a C library with a non-OSS license clause.
+RUN cargo build --release --features rar
 
 FROM debian:bullseye-slim
 
-ARG VERSION=0.8.16
+ARG VERSION=0.9.0
 
 LABEL org.opencontainers.image.source=https://github.com/tamada/totebag \
       org.opencontainers.image.version=${VERSION} \
