@@ -36,7 +36,9 @@ jobs:
                   s/Version-[0-9][0-9.]*-blue/Version-$TAG-blue/g;
                   s/Docker-[0-9][0-9.]*-blue/Docker-$TAG-blue/g;
                   s|releases/tag/v[0-9][0-9.]*|releases/tag/v$TAG|g" docs/content/_index.md
-          cargo update --workspace
+          # Cargo.lock is not tracked (see .gitignore), so there is nothing to
+          # regenerate here. If it ever becomes tracked, add `cargo update
+          # --workspace` so the lock keeps up with the bump.
 
       - name: Initialize Git
         shell: bash
