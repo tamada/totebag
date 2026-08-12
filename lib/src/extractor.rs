@@ -1,11 +1,13 @@
 //! This module provides the extractor for the archive file.
-//! The supported formats are `cab`, `lha`, `rar`, `7z`, `tar`, `tar.gz`, `tar.bz2`, `tar.xz`, `tar.zst`, and `zip`.
-//! 
+//! The supported formats are `ar`, `cab`, `cpio`, `lha`, `7z`, `tar`, `tar.gz`,
+//! `tar.bz2`, `tar.xz`, `tar.zst`, and `zip`, plus `rar` when the `rar` feature
+//! is enabled.
+//!
 //! # Example: listing the entries in the archive file
-//! 
+//!
 //! ```rust
 //! use std::path::PathBuf;
-//! 
+//!
 //! let file = PathBuf::from("../testdata/test.zip");
 //! let config = totebag::ListConfig::new(
 //!     totebag::OutputFormat::Default,
@@ -16,9 +18,9 @@
 //!     Err(e) => println!("error: {:?}", e),
 //! }
 //! ```
-//! 
+//!
 //! # Example: extracting the archive file
-//! 
+//!
 //! The destination for extraction is the current directory in the following example.
 //!
 //! ```
@@ -40,12 +42,13 @@ use std::path::{Path, PathBuf};
 use typed_builder::TypedBuilder;
 
 use crate::format::Format;
-use crate::{Result, Error};
+use crate::{Error, Result};
 
 mod ar;
 mod cab;
 mod cpio;
 mod lha;
+#[cfg(feature = "rar")]
 mod rar;
 mod sevenz;
 mod tar;
@@ -164,8 +167,11 @@ pub(super) fn create<P: AsRef<Path>>(file: P) -> Result<Box<dyn ToteExtractor>> 
 }
 
 /// Returns the extractor for the given archive file.
-/// The supported format is `cab`, `lha`, `rar`, `7z`, `tar`, `tar.gz`, `tar.bz2`, `tar.xz`, `tar.zst`, and `zip`.
-pub(super) fn create_with<P: AsRef<Path>>(file: P, format: Option<&Format>) -> Result<Box<dyn ToteExtractor>> {
+/// See the module documentation for the list of supported formats.
+pub(super) fn create_with<P: AsRef<Path>>(
+    file: P,
+    format: Option<&Format>,
+) -> Result<Box<dyn ToteExtractor>> {
     let file = file.as_ref();
     match format {
         Some(format) => match format.name.as_str() {
@@ -173,7 +179,13 @@ pub(super) fn create_with<P: AsRef<Path>>(file: P, format: Option<&Format>) -> R
             "Cab" => Ok(Box::new(cab::Extractor {})),
             "Cpio" => Ok(Box::new(cpio::Extractor {})),
             "Lha" => Ok(Box::new(lha::Extractor {})),
+            #[cfg(feature = "rar")]
             "Rar" => Ok(Box::new(rar::Extractor {})),
+            #[cfg(not(feature = "rar"))]
+            "Rar" => Err(Error::FeatureDisabled {
+                format: "Rar".to_string(),
+                feature: "rar",
+            }),
             "SevenZ" => Ok(Box::new(sevenz::Extractor {})),
             "Tar" => Ok(Box::new(tar::Extractor {})),
             "TarBz2" => Ok(Box::new(tar::Bz2Extractor {})),
@@ -183,9 +195,7 @@ pub(super) fn create_with<P: AsRef<Path>>(file: P, format: Option<&Format>) -> R
             "Zip" => Ok(Box::new(zip::Extractor {})),
             s => Err(Error::UnknownFormat(format!("{s}: unknown format"))),
         },
-        None => Err(Error::Extractor(format!(
-            "{file:?} no suitable extractor"
-        ))),
+        None => Err(Error::Extractor(format!("{file:?} no suitable extractor"))),
     }
 }
 
@@ -194,7 +204,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_create_with(){
+    fn test_create_with() {
         let r = create_with(PathBuf::from("../testdata/test.zip"), None);
         assert!(r.is_err());
     }

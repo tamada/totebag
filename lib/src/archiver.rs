@@ -1,6 +1,7 @@
 //! This module provides an interface and struct for archiving the files.
-//! The supported formats are: `cab`, `7z`, `tar`, `tar.gz`, `tar.bz2`, `tar.xz`, `tar.zst`, and `zip`.
-//! `lha` and `rar` formats are not supported for archiving.
+//! The supported formats are: `ar`, `cab`, `cpio`, `7z`, `tar`, `tar.gz`,
+//! `tar.bz2`, `tar.xz`, `tar.zst`, and `zip`.
+//! `lha` and `rar` can only be extracted, never created.
 //!
 //! # Example: archiving the files
 //!
@@ -23,7 +24,7 @@ use std::fs::File;
 use std::path::{Path, PathBuf};
 
 use crate::format::default_format_detector;
-use crate::{Result, Error};
+use crate::{Error, Result};
 
 mod ar;
 mod cab;
@@ -109,7 +110,10 @@ pub trait ToteArchiver {
     fn enable(&self) -> bool;
 }
 
-pub(crate) fn collect_entries<P: AsRef<Path>>(targets: &[P], config: &crate::ArchiveConfig) -> Vec<PathBuf> {
+pub(crate) fn collect_entries<P: AsRef<Path>>(
+    targets: &[P],
+    config: &crate::ArchiveConfig,
+) -> Vec<PathBuf> {
     let mut r = vec![];
     for path in targets {
         for entry in config.iter(path) {
@@ -135,6 +139,8 @@ pub fn create<P: AsRef<Path>>(dest: P) -> Result<Box<dyn ToteArchiver>> {
                 "Cab" => Box::new(cab::Archiver {}),
                 "Cpio" => Box::new(cpio::Archiver {}),
                 "Lha" => Box::new(lha::Archiver {}),
+                // RAR archiving is never supported, so the stub is compiled in
+                // regardless of the `rar` feature, which only affects extraction.
                 "Rar" => Box::new(rar::Archiver {}),
                 "SevenZ" => Box::new(sevenz::Archiver {}),
                 "Tar" => Box::new(tar::Archiver {}),
@@ -142,27 +148,37 @@ pub fn create<P: AsRef<Path>>(dest: P) -> Result<Box<dyn ToteArchiver>> {
                 "TarGz" => Box::new(tar::GzArchiver {}),
                 "TarXz" => Box::new(tar::XzArchiver {}),
                 "TarZstd" => Box::new(tar::ZstdArchiver {}),
-                "Zip" => Box::new(zip::Archiver::new()),
-                _ => {
-                    return Err(Error::UnknownFormat(format!(
-                        "{}: unknown format",
-                        format.name
-                    )));
-                }
+                "Zip" => Box::new(zip::Archiver {}),
+                _ => return Err(Error::UnknownFormat(format.name.clone())),
             };
-            if !archiver.enable() {
-                Err(Error::UnsupportedFormat(format!(
-                    "{}: unsupported format (archiving)",
-                    format.name
-                )))
-            } else {
+            if archiver.enable() {
                 Ok(archiver)
+            } else {
+                Err(Error::unsupported_for_archiving(&format.name))
             }
         }
         None => Err(Error::Archiver(format!(
-            "{:?}: no suitable archiver",
-            dest.file_name().unwrap()
+            "{}: no suitable archiver",
+            dest.display()
         ))),
+    }
+}
+
+/// Helpers shared by the per-format archiver tests.
+#[cfg(test)]
+pub(crate) mod test_support {
+    use std::path::PathBuf;
+
+    /// The targets every archiver test packs.
+    ///
+    /// Unit tests run with the working directory set to `lib/`, so this reaches
+    /// out of the crate. The previous `["lib", "cli", "Cargo.toml"]` list
+    /// resolved to nothing from `lib/` and archived almost nothing (issue #89).
+    ///
+    /// The leading `..` is deliberate: it also covers the entry-name
+    /// normalization that keeps `..` out of the archive (issue #90).
+    pub(crate) fn targets() -> Vec<PathBuf> {
+        vec![PathBuf::from("../testdata/sample")]
     }
 }
 
@@ -180,8 +196,8 @@ mod tests {
         if let Ok(p) = config.dest_file() {
             assert_eq!(PathBuf::from("results/test.zip"), p);
         }
-        assert_eq!(true, config.overwrite);
-        assert_eq!(false, config.no_recursive);
+        assert!(config.overwrite);
+        assert!(!config.no_recursive);
         assert_eq!(1, config.ignore.len());
         assert!(config.dest_file().is_ok())
     }
@@ -211,6 +227,60 @@ mod tests {
         assert_eq!(
             PathBuf::from("testdata/sample/Cargo.toml").as_path(),
             config.path_in_archive("testdata/sample/Cargo.toml")
+        );
+    }
+
+    /// Entry names must never climb out of the archive or start at the
+    /// filesystem root (issue #90).
+    #[test]
+    fn test_path_in_archive_is_normalized() {
+        let config = crate::ArchiveConfig::builder()
+            .dest("results/test.zip")
+            .build();
+        for (given, expected) in [
+            (
+                "../testdata/sample/Cargo.toml",
+                "testdata/sample/Cargo.toml",
+            ),
+            ("../../testdata/Cargo.toml", "testdata/Cargo.toml"),
+            ("./src/lib.rs", "src/lib.rs"),
+            ("src/../lib.rs", "lib.rs"),
+            ("/etc/hosts", "etc/hosts"),
+            ("src/lib.rs", "src/lib.rs"),
+        ] {
+            assert_eq!(
+                config.path_in_archive(given),
+                PathBuf::from(expected),
+                "for {given}"
+            );
+        }
+    }
+
+    /// The rebase prefix is applied on top of the normalized path, and is itself
+    /// normalized.
+    #[test]
+    fn test_path_in_archive_rebase_is_normalized() {
+        let config = crate::ArchiveConfig::builder()
+            .dest("results/test.zip")
+            .rebase_dir("../root")
+            .build();
+        assert_eq!(
+            config.path_in_archive("../testdata/Cargo.toml"),
+            PathBuf::from("root/testdata/Cargo.toml")
+        );
+    }
+
+    /// Without an explicit rebase directory, entry names keep their own paths --
+    /// no `./` prefix.
+    #[test]
+    fn test_path_in_archive_without_rebase() {
+        let config = crate::ArchiveConfig::builder()
+            .dest("results/test.zip")
+            .build();
+        assert_eq!(config.rebase_dir, None);
+        assert_eq!(
+            config.path_in_archive("testdata/sample/Cargo.toml"),
+            PathBuf::from("testdata/sample/Cargo.toml")
         );
     }
 

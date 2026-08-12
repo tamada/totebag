@@ -3,10 +3,10 @@ use std::io::Read;
 use std::path::Path;
 use std::{fs::File, path::PathBuf};
 
-use crate::{Result, Error};
+use crate::{Error, Result};
 use ar::Archive;
 
-use crate::extractor::{Entry as ToteEntry, Entries, ToteExtractor};
+use crate::extractor::{Entries, Entry as ToteEntry, ToteExtractor};
 
 /// AR ormat extractor implementation.
 pub(super) struct Extractor {}
@@ -31,7 +31,10 @@ fn extract_ar<R: Read>(mut archive: ar::Archive<R>, base: PathBuf) -> Result<()>
     while let Some(entry) = archive.next_entry() {
         let mut entry = match entry {
             Ok(e) => e,
-            Err(e) => { errs.push(Error::IO(e)); continue; }
+            Err(e) => {
+                errs.push(Error::IO(e));
+                continue;
+            }
         };
         let header = entry.header();
         let path = match str::from_utf8(header.identifier()) {
@@ -48,17 +51,19 @@ fn extract_ar<R: Read>(mut archive: ar::Archive<R>, base: PathBuf) -> Result<()>
         log::info!("extracting {path:?} ({size} bytes)");
 
         let dest = base.join(&path);
-        if is_file(header.mode()) {
-            if let Err(e) = write_to(&mut entry, &dest, &mut errs) {
-                errs.push(e);
-            }
+        if is_file(header.mode())
+            && let Err(e) = write_to(&mut entry, &dest, &mut errs)
+        {
+            errs.push(e);
         }
     }
     Ok(())
 }
 
 fn write_to<R: Read>(entry: &mut ar::Entry<R>, dest: &Path, errs: &mut Vec<Error>) -> Result<()> {
-    create_dir_all(dest.parent().unwrap()).unwrap();
+    if let Some(parent) = dest.parent() {
+        create_dir_all(parent).map_err(Error::IO)?;
+    }
     let mut dest_file = File::create(dest).map_err(Error::IO)?;
     if let Err(e) = std::io::copy(entry, &mut dest_file) {
         errs.push(Error::IO(e));
@@ -71,8 +76,10 @@ fn is_file(mode: u32) -> bool {
 }
 
 fn is_filename_mac_finder_file(path: &Path) -> bool {
-    let filename = path.file_name().unwrap().to_str().unwrap();
-    filename == ".DS_Store" || filename.starts_with("._")
+    match path.file_name().and_then(|n| n.to_str()) {
+        Some(name) => name == ".DS_Store" || name.starts_with("._"),
+        None => false,
+    }
 }
 
 fn list_ar<R: Read>(mut archive: ar::Archive<R>, path: PathBuf) -> Result<Entries> {
@@ -81,7 +88,10 @@ fn list_ar<R: Read>(mut archive: ar::Archive<R>, path: PathBuf) -> Result<Entrie
     while let Some(entry) = archive.next_entry() {
         let entry = match entry {
             Ok(e) => e,
-            Err(e) => { errs.push(Error::IO(e)); continue; }
+            Err(e) => {
+                errs.push(Error::IO(e));
+                continue;
+            }
         };
         result.push(convert_to_entry(entry.header()));
     }
@@ -89,11 +99,11 @@ fn list_ar<R: Read>(mut archive: ar::Archive<R>, path: PathBuf) -> Result<Entrie
 }
 
 fn convert_to_entry(e: &ar::Header) -> ToteEntry {
-    let path = str::from_utf8(e.identifier()).unwrap();
+    let path = String::from_utf8_lossy(e.identifier()).into_owned();
     let size = e.size();
     let mode = e.mode();
-    let mtime = e.mtime();
-    let datetime = chrono::DateTime::from_timestamp_millis(mtime as i64);
+    // The ar header records mtime in *seconds* since the epoch (issue #91).
+    let datetime = chrono::DateTime::from_timestamp(e.mtime() as i64, 0);
     ToteEntry::builder()
         .name(path)
         .original_size(size)
@@ -114,12 +124,12 @@ mod tests {
             Ok(r) => {
                 let r = r.iter().map(|e| e.name.clone()).collect::<Vec<_>>();
                 assert_eq!(r.len(), 16);
-                assert_eq!(r.get(0), Some("Cargo.toml".to_string()).as_ref());
+                assert_eq!(r.first(), Some("Cargo.toml".to_string()).as_ref());
                 assert_eq!(r.get(1), Some("build.rs".to_string()).as_ref());
                 assert_eq!(r.get(2), Some("LICENSE".to_string()).as_ref());
                 assert_eq!(r.get(3), Some("README.md".to_string()).as_ref());
             }
-            Err(_) => assert!(false),
+            Err(e) => panic!("unexpected error: {e:?}"),
         }
     }
 
@@ -134,11 +144,10 @@ mod tests {
 
         match crate::extract(archive_file, &opts) {
             Ok(_) => {
-                assert!(true);
                 assert!(PathBuf::from("results/ar/test/Cargo.toml").exists());
                 std::fs::remove_dir_all(PathBuf::from("results/ar")).unwrap();
             }
-            Err(_) => assert!(false),
+            Err(e) => panic!("unexpected error: {e:?}"),
         };
     }
 }

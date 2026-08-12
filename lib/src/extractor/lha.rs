@@ -6,7 +6,7 @@ use chrono::DateTime;
 use delharc::{LhaDecodeReader, LhaHeader};
 
 use crate::extractor::{Entries, Entry, ToteExtractor};
-use crate::{Result, Error};
+use crate::{Error, Result};
 
 /// LHA/LZH format extractor implementation.
 ///
@@ -60,7 +60,9 @@ fn write_data_impl(reader: &mut LhaDecodeReader<File>, base: &Path) -> Result<()
     let dest = base.join(&name);
     if reader.is_decoder_supported() {
         log::info!("extracting {:?} ({} bytes)", &name, header.original_size);
-        create_dir_all(dest.parent().unwrap()).unwrap();
+        if let Some(parent) = dest.parent() {
+            create_dir_all(parent).map_err(Error::IO)?;
+        }
         let mut dest = File::create(dest).map_err(Error::IO)?;
         copy(reader, &mut dest).map_err(Error::IO)?;
         if let Err(e) = reader.crc_check() {
@@ -76,12 +78,11 @@ fn write_data_impl(reader: &mut LhaDecodeReader<File>, base: &Path) -> Result<()
 }
 
 fn convert(h: &LhaHeader) -> Entry {
-    let name = h.parse_pathname().to_str().unwrap().to_string();
+    let name = h.parse_pathname().to_string_lossy().into_owned();
     let compressed_size = h.compressed_size;
     let original_size = h.original_size;
     let mtime = h.last_modified as i64;
-    let dt = DateTime::from_timestamp(mtime, 0)
-        .map(|dt| dt.naive_local());
+    let dt = DateTime::from_timestamp(mtime, 0).map(|dt| dt.naive_local());
     Entry::builder()
         .name(name)
         .compressed_size(compressed_size)
@@ -102,12 +103,12 @@ mod tests {
             Ok(r) => {
                 let r = r.iter().map(|e| e.name.clone()).collect::<Vec<_>>();
                 assert_eq!(r.len(), 23);
-                assert_eq!(r.get(0), Some("Cargo.toml".to_string()).as_ref());
+                assert_eq!(r.first(), Some("Cargo.toml".to_string()).as_ref());
                 assert_eq!(r.get(1), Some("LICENSE".to_string()).as_ref());
                 assert_eq!(r.get(2), Some("README.md".to_string()).as_ref());
                 assert_eq!(r.get(3), Some("build.rs".to_string()).as_ref());
             }
-            Err(_) => assert!(false),
+            Err(e) => panic!("unexpected error: {e:?}"),
         }
     }
 
@@ -121,14 +122,10 @@ mod tests {
             .build();
         match crate::extract(archive_file, &opts) {
             Ok(_) => {
-                assert!(true);
                 assert!(PathBuf::from("results/lha/test/Cargo.toml").exists());
                 std::fs::remove_dir_all(PathBuf::from("results/lha")).unwrap();
             }
-            Err(e) => {
-                eprintln!("{:?}", e);
-                assert!(false);
-            }
+            Err(e) => panic!("unexpected error: {e:?}"),
         };
     }
 }

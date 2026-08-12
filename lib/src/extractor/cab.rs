@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use cab::{Cabinet, FileEntry};
 
 use crate::extractor::{Entries, Entry, ToteExtractor};
-use crate::{Result, Error};
+use crate::{Error, Result};
 
 /// CAB (Cabinet) format extractor implementation.
 ///
@@ -13,8 +13,7 @@ pub(super) struct Extractor {}
 
 impl ToteExtractor for Extractor {
     fn list(&self, target: PathBuf) -> Result<Entries> {
-        list_impl(&target, convert)
-            .map(|r| Entries::new(target, r))
+        list_impl(&target, convert).map(|r| Entries::new(target, r))
     }
 
     fn perform(&self, target: PathBuf, base: PathBuf) -> Result<()> {
@@ -36,13 +35,12 @@ fn write_file_impl(cabinet: &mut Cabinet<File>, file: (String, u32), base: &Path
     let file_name = file.0.clone();
     let dest_file = base.join(&file_name);
     log::info!("extracting {file_name} ({} bytes)", file.1);
-    match create_dir_all(dest_file.parent().unwrap()) {
-        Ok(_) => {}
-        Err(e) => return Err(Error::IO(e)),
+    if let Some(parent) = dest_file.parent() {
+        create_dir_all(parent).map_err(Error::IO)?;
     }
     match File::create(dest_file) {
         Ok(mut dest) => {
-            let mut file_from = cabinet.read_file(&file_name).unwrap();
+            let mut file_from = cabinet.read_file(&file_name).map_err(Error::IO)?;
             match std::io::copy(&mut file_from, &mut dest) {
                 Ok(_) => Ok(()),
                 Err(e) => Err(Error::IO(e)),
@@ -80,7 +78,7 @@ where
 fn convert(f: &FileEntry) -> Entry {
     let name = f.name().to_string();
     let uncompressed_size = f.uncompressed_size();
-    let mtime = f.datetime().map(to_naive_datetime);
+    let mtime = f.datetime().and_then(to_naive_datetime);
     Entry::builder()
         .name(name)
         .original_size(uncompressed_size as u64)
@@ -88,11 +86,9 @@ fn convert(f: &FileEntry) -> Entry {
         .build()
 }
 
-fn to_naive_datetime(t: time::PrimitiveDateTime) -> chrono::NaiveDateTime {
+fn to_naive_datetime(t: time::PrimitiveDateTime) -> Option<chrono::NaiveDateTime> {
     let timestamp = t.assume_utc().unix_timestamp();
-    chrono::DateTime::from_timestamp(timestamp, 0)
-        .unwrap()
-        .naive_local()
+    chrono::DateTime::from_timestamp(timestamp, 0).map(|dt| dt.naive_local())
 }
 
 #[cfg(test)]
@@ -107,12 +103,12 @@ mod tests {
             Ok(r) => {
                 let r = r.iter().map(|e| e.name.clone()).collect::<Vec<_>>();
                 assert_eq!(r.len(), 16);
-                assert_eq!(r.get(0), Some("Cargo.toml".to_string()).as_ref());
+                assert_eq!(r.first(), Some("Cargo.toml".to_string()).as_ref());
                 assert_eq!(r.get(1), Some("LICENSE".to_string()).as_ref());
                 assert_eq!(r.get(2), Some("build.rs".to_string()).as_ref());
                 assert_eq!(r.get(3), Some("README.md".to_string()).as_ref());
             }
-            Err(_) => assert!(false),
+            Err(e) => panic!("unexpected error: {e:?}"),
         }
     }
 
@@ -127,11 +123,10 @@ mod tests {
 
         match crate::extract(archive_file, &opts) {
             Ok(_) => {
-                assert!(true);
                 assert!(PathBuf::from("results/cab/test/Cargo.toml").exists());
                 std::fs::remove_dir_all(PathBuf::from("results/cab")).unwrap();
             }
-            Err(_) => assert!(false),
+            Err(e) => panic!("unexpected error: {e:?}"),
         };
     }
 }

@@ -1,9 +1,9 @@
 use clap::{Parser, ValueEnum};
-use totebag::format::default_format_detector;
 use std::{io::BufRead, path::PathBuf};
+use totebag::format::default_format_detector;
 
 use totebag::{ArchiveConfig, ExtractConfig, ListConfig};
-use totebag::{IgnoreType, OutputFormat, Result, Error};
+use totebag::{Error, IgnoreType, OutputFormat, Result};
 
 pub(crate) enum Mode {
     Archive(ArchiveConfig),
@@ -12,8 +12,7 @@ pub(crate) enum Mode {
 }
 
 impl Mode {
-    #[cfg(debug_assertions)]
-    #[allow(unused)]
+    #[cfg(test)]
     pub(crate) fn mode(&self) -> String {
         match self {
             Self::Archive(_) => "archive",
@@ -56,11 +55,17 @@ pub(crate) struct CliOpts {
     #[clap(short = 'm', long = "mode", default_value_t = RunMode::Auto, value_name = "MODE", required = false, ignore_case = true, value_enum, help = "Mode of operation.")]
     pub mode: RunMode,
 
-    #[clap(short = 'F', long, value_name = "ARCHIVE_FORMAT", value_enum, ignore_case = true,
-        help = "Specify the archive format for listing mode (default auto). available on list and extract modes.")]
+    #[clap(
+        short = 'F',
+        long,
+        value_name = "ARCHIVE_FORMAT",
+        value_enum,
+        ignore_case = true,
+        help = "Specify the archive format for listing mode (default auto). available on list and extract modes."
+    )]
     pub from: Option<ArchiveFormat>,
 
-    #[cfg(debug_assertions)]
+    #[cfg(feature = "completion")]
     #[clap(
         long = "generate-completion",
         hide = true,
@@ -85,7 +90,7 @@ pub(crate) struct CliOpts {
     #[clap(
         value_name = "ARGUMENTS",
         help = r###"List of files or directories to be processed.
-'-' reads form stdin, and '@<filename>' reads from a file.
+'-' reads from stdin, and '@<filename>' reads from a file.
 In archive mode, the resultant archive file name is determined by the following rule.
     - if output option is specified, use it.
     - if the first argument is the archive file name, use it.
@@ -109,13 +114,15 @@ pub struct ListerOpts {
 pub struct ArchiverOpts {
     #[clap(
         short = 'C',
-        long = "dir",
+        long = "rebase-dir",
+        visible_alias = "dir",
         value_name = "DIR",
         required = false,
-        default_value = ".",
-        help = "Specify the base directory for archiving or extracting."
+        help = r#"Prefix every entry in the archive with DIR (archive mode).
+For example, -C root stores src/main.rs as root/src/main.rs.
+By default entries keep their own paths."#
     )]
-    pub base_dir: PathBuf,
+    pub rebase_dir: Option<PathBuf>,
 
     #[clap(
         short = 'i',
@@ -149,14 +156,38 @@ pub struct ExtractorOpts {
     pub to_archive_name_dir: bool,
 }
 
+/// The archive format that `--from` may name.
+///
+/// The variants after `Parse` are resolved through
+/// [`totebag::format::find_format`], which accepts both canonical names
+/// (`TarGz`) and extension aliases (`tgz`, `jar`, `lzh`).
 #[derive(Parser, Debug, ValueEnum, Clone, PartialEq, Copy)]
 pub enum ArchiveFormat {
     /// Detect the format by the file extension.
     Auto,
     /// Detect the format by the file signature (header bytes).
     Parse,
-    Cab, Lha, Lzh, SevenZ, Rar, Tar, TarGz, TarBz2, TarXz, TarZstd, Zip,
-    Tgz, Tbz2, Txz, Tzst, Tzstd, Jar, War, Ear,
+    Ar,
+    Cab,
+    Cpio,
+    Lha,
+    Lzh,
+    SevenZ,
+    Rar,
+    Tar,
+    TarGz,
+    TarBz2,
+    TarXz,
+    TarZstd,
+    Zip,
+    Tgz,
+    Tbz2,
+    Txz,
+    Tzst,
+    Tzstd,
+    Jar,
+    War,
+    Ear,
 }
 
 /// The log level.
@@ -208,37 +239,42 @@ impl CliOpts {
     }
 
     fn format_detector(&self) -> Result<Box<dyn totebag::format::FormatDetector>> {
-        use totebag::format::{default_format_detector, fixed_format_detector, magic_number_format_detector};
+        use totebag::format::{
+            default_format_detector, fixed_format_detector, magic_number_format_detector,
+        };
         match self.from {
-            Some(ArchiveFormat::Auto) | None => {
-                Ok(default_format_detector())
-            }
+            Some(ArchiveFormat::Auto) | None => Ok(default_format_detector()),
             Some(ArchiveFormat::Parse) => Ok(magic_number_format_detector()),
             Some(f) => {
                 let name = format!("{f:?}");
-                let format = totebag::format::find_format_by_name(name).ok_or_else(|| {
-                    Error::UnsupportedFormat(format!(
-                        "The specified archive format '{f:?}' is not supported."
-                    ))
-                })?;
+                let format = totebag::format::find_format(&name)
+                    .ok_or_else(|| Error::UnsupportedFormat(name))?;
                 Ok(fixed_format_detector(format))
             }
         }
     }
 }
 
-
+/// Determines the destination of an archive, following the rule documented in
+/// `--help`:
+///
+/// 1. if the `--output` option is given, use it;
+/// 2. otherwise, if the first argument names an archive file, use it and drop it
+///    from the list of targets;
+/// 3. otherwise, fall back to `totebag.zip`.
 fn to_archive_config(opts: &CliOpts, args: Vec<String>) -> Result<(Mode, Vec<String>)> {
     let fd = default_format_detector();
-    let (dest, args) = if fd.detect(&PathBuf::from(&args[0])).is_some() && opts.output.is_none() {
-        (Some(args[0].clone().into()), args[1..].to_vec())
-    } else {
-        (None, args)
+    let (dest, args) = match &opts.output {
+        Some(output) => (output.clone(), args),
+        None if fd.detect(&PathBuf::from(&args[0])).is_some() => {
+            (PathBuf::from(&args[0]), args[1..].to_vec())
+        }
+        None => (PathBuf::from("totebag.zip"), args),
     };
     let config = totebag::ArchiveConfig::builder()
-        .dest(dest.unwrap_or_else(|| PathBuf::from("totebag.zip")))
+        .dest(dest)
         .level(opts.archivers.level)
-        .rebase_dir(opts.archivers.base_dir.clone())
+        .rebase_dir_opt(opts.archivers.rebase_dir.clone())
         .overwrite(opts.overwrite)
         .no_recursive(opts.archivers.no_recursive)
         .ignore(opts.archivers.ignores.clone())
@@ -258,10 +294,8 @@ fn to_extract_config(opts: &CliOpts, args: Vec<String>) -> Result<(Mode, Vec<Str
 }
 
 fn to_list_config(opts: &CliOpts, args: Vec<String>) -> Result<(Mode, Vec<String>)> {
-    let config = totebag::ListConfig::new(
-        opts.listers.output_format.clone(),
-        opts.format_detector()?,
-    );
+    let config =
+        totebag::ListConfig::new(opts.listers.output_format.clone(), opts.format_detector()?);
     Ok((Mode::List(config), args))
 }
 
@@ -327,7 +361,7 @@ mod tests {
 
     #[test]
     fn test_read_from_file1() {
-        let cli = CliOpts::parse_from(&["totebag_test", "@../testdata/files/archive_mode1.txt"]);
+        let cli = CliOpts::parse_from(["totebag_test", "@../testdata/files/archive_mode1.txt"]);
         let (mode, args) = cli.find_mode().unwrap();
         match mode {
             Mode::List(_) | Mode::Extract(_) => panic!("invalid mode"),
@@ -344,7 +378,7 @@ mod tests {
 
     #[test]
     fn test_read_from_file2() {
-        let cli = CliOpts::parse_from(&["totebag_test", "@../testdata/files/archive_mode2.txt"]);
+        let cli = CliOpts::parse_from(["totebag_test", "@../testdata/files/archive_mode2.txt"]);
         let (mode, args) = cli.find_mode().unwrap();
         match mode {
             Mode::List(_) | Mode::Extract(_) => panic!("invalid mode"),
@@ -358,9 +392,106 @@ mod tests {
         );
     }
 
+    /// `--output` takes precedence over an archive name in the first argument,
+    /// as `--help` documents. Regression test for the bug where `-o` was dropped
+    /// and everything landed in `totebag.zip` (issue #86).
+    #[test]
+    fn test_output_option_wins_over_first_argument() {
+        let cli = CliOpts::parse_from([
+            "totebag_test",
+            "-m",
+            "archive",
+            "-o",
+            "explicit.tar.gz",
+            "src",
+            "LICENSE",
+        ]);
+        let (mode, args) = cli.find_mode().unwrap();
+        match mode {
+            Mode::Archive(config) => {
+                assert_eq!(config.dest, PathBuf::from("explicit.tar.gz"));
+            }
+            _ => panic!("invalid mode"),
+        }
+        // the targets are untouched when -o supplies the destination
+        assert_eq!(args, vec!["src", "LICENSE"]);
+    }
+
+    /// Without `--output`, a leading archive name still becomes the destination
+    /// and is dropped from the targets.
+    #[test]
+    fn test_first_argument_is_used_as_destination() {
+        let cli = CliOpts::parse_from(["totebag_test", "-m", "archive", "out.zip", "src"]);
+        let (mode, args) = cli.find_mode().unwrap();
+        match mode {
+            Mode::Archive(config) => assert_eq!(config.dest, PathBuf::from("out.zip")),
+            _ => panic!("invalid mode"),
+        }
+        assert_eq!(args, vec!["src"]);
+    }
+
+    /// `-C` is the rebase prefix, and is absent unless asked for. It used to
+    /// default to `.`, which put a `./` in front of every entry name.
+    #[test]
+    fn test_rebase_dir_is_absent_by_default() {
+        let cli = CliOpts::parse_from(["totebag_test", "-m", "archive", "out.zip", "src"]);
+        let (mode, _) = cli.find_mode().unwrap();
+        match mode {
+            Mode::Archive(config) => {
+                assert_eq!(config.rebase_dir, None);
+                assert_eq!(
+                    config.path_in_archive("src/main.rs"),
+                    PathBuf::from("src/main.rs")
+                );
+            }
+            _ => panic!("invalid mode"),
+        }
+    }
+
+    #[test]
+    fn test_rebase_dir_prefixes_entries() {
+        for flag in ["-C", "--rebase-dir", "--dir"] {
+            let cli = CliOpts::parse_from([
+                "totebag_test",
+                "-m",
+                "archive",
+                flag,
+                "root",
+                "out.zip",
+                "src",
+            ]);
+            let (mode, _) = cli.find_mode().unwrap();
+            match mode {
+                Mode::Archive(config) => assert_eq!(
+                    config.path_in_archive("src/main.rs"),
+                    PathBuf::from("root/src/main.rs"),
+                    "for {flag}"
+                ),
+                _ => panic!("invalid mode"),
+            }
+        }
+    }
+
+    /// Every `--from` value must build a detector rather than failing with
+    /// "Unsupported format" (issue #73, issue #74).
+    #[test]
+    fn test_every_from_value_builds_a_detector() {
+        for format in ArchiveFormat::value_variants() {
+            let cli = CliOpts::parse_from(["totebag_test", "-m", "list", "dummy.zip"]);
+            let cli = CliOpts {
+                from: Some(*format),
+                ..cli
+            };
+            assert!(
+                cli.format_detector().is_ok(),
+                "--from {format:?} should be resolvable"
+            );
+        }
+    }
+
     #[test]
     fn test_read_from_file3() {
-        let cli = CliOpts::parse_from(&["totebag_test", "@../testdata/files/extract_mode.txt"]);
+        let cli = CliOpts::parse_from(["totebag_test", "@../testdata/files/extract_mode.txt"]);
         let (mode, args) = cli.find_mode().unwrap();
         match mode {
             Mode::List(_) | Mode::Archive(_) => panic!("invalid mode"),
@@ -372,7 +503,7 @@ mod tests {
     #[test]
     fn test_find_mode_1() {
         let cli1 =
-            CliOpts::parse_from(&["totebag_test", "src", "LICENSE", "README.md", "Cargo.toml"]);
+            CliOpts::parse_from(["totebag_test", "src", "LICENSE", "README.md", "Cargo.toml"]);
         let (mode, args) = cli1.find_mode().unwrap();
         assert_eq!(mode.mode(), "archive");
         assert_eq!(args, vec!["src", "LICENSE", "README.md", "Cargo.toml"]);
@@ -380,8 +511,7 @@ mod tests {
 
     #[test]
     fn test_find_mode_2() {
-        let cli2 =
-            CliOpts::parse_from(&["totebag_test", "src", "LICENSE", "README.md", "hoge.zip"]);
+        let cli2 = CliOpts::parse_from(["totebag_test", "src", "LICENSE", "README.md", "hoge.zip"]);
         let (mode, args) = cli2.find_mode().unwrap();
         assert_eq!(mode.mode(), "archive");
         assert_eq!(args, vec!["src", "LICENSE", "README.md", "hoge.zip"]);
@@ -389,7 +519,7 @@ mod tests {
 
     #[test]
     fn test_find_mode_3() {
-        let cli3 = CliOpts::parse_from(&[
+        let cli3 = CliOpts::parse_from([
             "totebag_test",
             "src.zip",
             "LICENSE.tar",
@@ -406,7 +536,7 @@ mod tests {
 
     #[test]
     fn test_find_mode_4() {
-        let cli4 = CliOpts::parse_from(&[
+        let cli4 = CliOpts::parse_from([
             "totebag_test",
             "src.zip",
             "LICENSE.tar",
@@ -425,7 +555,7 @@ mod tests {
 
     #[test]
     fn test_cli_parse_error() {
-        let r = CliOpts::try_parse_from(&["totebag_test"]);
+        let r = CliOpts::try_parse_from(["totebag_test"]);
         assert!(r.is_err());
     }
 }

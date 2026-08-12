@@ -19,12 +19,24 @@ jobs:
           echo "branch=${GITHUB_REF#refs/heads/}" >> $GITHUB_OUTPUT
 
       - name: Update version
+        env:
+          TAG: ${{ steps.vars.outputs.tag }}
         run: |
-          sed "s/^version = \".*\"/version = \"${{ steps.vars.outputs.tag }}\"/" Cargo.toml > a ; mv a Cargo.toml
-          sed "s/\$VERSION/${{ steps.vars.outputs.tag }}/g" templates/README.md > a ; mv a README.md
-          for i in Containerfile $(find dockers -name 'Containerfile*'); do
-              sed "s/ARG VERSION=.*/ARG VERSION=${{ steps.vars.outputs.tag }}/g" $i > a ; mv a $i
-          done
+          set -euo pipefail
+          # The workspace version is the single source of truth; everything else
+          # is regenerated from it. Keep this list in sync with docs/README when
+          # a new file starts embedding the version.
+          sed -i "s/^version = \".*\"/version = \"$TAG\"/" Cargo.toml
+          # the cli depends on the lib by path, which still needs an explicit
+          # version for `cargo publish`
+          sed -i "/path = \"..\/lib\"/s/version = \"[0-9][0-9.]*\"/version = \"$TAG\"/" cli/Cargo.toml
+          sed "s/\$VERSION/$TAG/g" templates/README.md > README.md
+          sed -i "s/ARG VERSION=.*/ARG VERSION=$TAG/g" Containerfile
+          sed -i "s/-v[0-9][0-9.]*-orange/-v$TAG-orange/g;
+                  s/Version-[0-9][0-9.]*-blue/Version-$TAG-blue/g;
+                  s/Docker-[0-9][0-9.]*-blue/Docker-$TAG-blue/g;
+                  s|releases/tag/v[0-9][0-9.]*|releases/tag/v$TAG|g" docs/content/_index.md
+          cargo update --workspace
 
       - name: Initialize Git
         shell: bash

@@ -1,5 +1,0 @@
-baseURL = "https://tamada.github.io/totebag/"
-defaultContentLanguage = "en"
-languageCode = "en"
-enableEmoji = true
-math = true

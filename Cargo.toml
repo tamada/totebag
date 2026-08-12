@@ -10,5 +10,4 @@ readme = "README.md"
 authors = [
     "Haruaki Tamada <tamada_f@ke_cafebabe.jp>"
 ]
-license-file = "LICENSE"
-keywords = [ "cli", "archiver" ]
+license = "MIT"

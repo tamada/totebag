@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use cli::LogLevel;
 use totebag::archiver::ArchiveEntries;
-use totebag::{Result, Error};
+use totebag::{Error, Result};
 
 use crate::cli::Mode;
 
@@ -27,11 +27,9 @@ fn update_loglevel(level: LogLevel) {
 
 fn perform(opts: cli::CliOpts) -> Result<()> {
     update_loglevel(opts.loglevel);
-    if cfg!(debug_assertions) {
-        #[cfg(debug_assertions)]
-        if opts.generate_completion {
-            return gencomp::generate(PathBuf::from("target/completions"));
-        }
+    #[cfg(feature = "completion")]
+    if opts.generate_completion {
+        return gencomp::generate(PathBuf::from("target/completions"));
     }
     let (mode, args) = opts.find_mode()?;
     match mode {
@@ -78,15 +76,13 @@ fn perform_list(config: totebag::ListConfig, args: Vec<String>) -> Result<Vec<St
 }
 
 fn perform_archive(config: totebag::ArchiveConfig, args: Vec<String>) -> Result<ArchiveEntries> {
-    let targets = args.into_iter()
-        .map(PathBuf::from)
-        .collect::<Vec<_>>();
+    let targets = args.into_iter().map(PathBuf::from).collect::<Vec<_>>();
     totebag::archive(&targets, &config)
 }
 
 fn main() -> Result<()> {
     if let Err(e) = perform(cli::CliOpts::parse()) {
-        println!("{e}");
+        eprintln!("{e}");
         std::process::exit(1);
     }
     Ok(())
@@ -122,10 +118,10 @@ fn print_archive_result_impl(result: ArchiveEntries) {
     );
 }
 
-#[cfg(debug_assertions)]
+#[cfg(feature = "completion")]
 mod gencomp {
     use crate::cli::CliOpts;
-    use totebag::{Result, Error};
+    use totebag::{Error, Result};
 
     use clap::{Command, CommandFactory};
     use clap_complete::Shell;
@@ -177,7 +173,7 @@ mod tests {
 
     #[test]
     fn test_run() {
-        let opts = cli::CliOpts::parse_from(&[
+        let opts = cli::CliOpts::parse_from([
             "totebag_test",
             "-o",
             "test.zip",
@@ -195,7 +191,7 @@ mod tests {
     #[test]
     fn test_list() {
         let opts =
-            cli::CliOpts::parse_from(&["totebag_test", "--mode", "list", "../testdata/test.zip"]);
+            cli::CliOpts::parse_from(["totebag_test", "--mode", "list", "../testdata/test.zip"]);
         match perform(opts) {
             Ok(_) => (),
             Err(e) => panic!("unexpected error: {:?}", e),

@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use cab::{CabinetBuilder, CabinetWriter};
 
 use crate::archiver::{ArchiveEntry, ToteArchiver};
-use crate::{Result, Error};
+use crate::{Error, Result};
 
 /// CAB (Cabinet) format archiver implementation.
 ///
@@ -26,7 +26,7 @@ impl ToteArchiver for Archiver {
         let list = super::collect_entries(targets, config);
         for path in list.iter() {
             entries.push(ArchiveEntry::from(path));
-            folder.add_file(config.path_in_archive(path).to_str().unwrap());
+            folder.add_file(config.path_in_archive(path).to_string_lossy().into_owned());
         }
         let mut writer = match builder.build(file) {
             Ok(w) => w,
@@ -73,7 +73,7 @@ fn write_entry(writer: &mut CabinetWriter<File>, path: &Path) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
+    use crate::archiver::test_support::targets;
 
     fn run_test<F>(f: F)
     where
@@ -96,10 +96,7 @@ mod tests {
                 .overwrite(false)
                 .no_recursive(true)
                 .build();
-            let v = vec!["lib", "cli", "Cargo.toml"]
-                .into_iter()
-                .map(|s| PathBuf::from(s))
-                .collect::<Vec<_>>();
+            let v = targets();
             if let Err(e) = crate::archive(&v, &config) {
                 panic!("{e:?}")
             }

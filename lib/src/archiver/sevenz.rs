@@ -1,10 +1,10 @@
 use std::fs::File;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-use sevenz_rust::{SevenZArchiveEntry, SevenZMethod, SevenZMethodConfiguration, SevenZWriter};
+use sevenz_rust2::{ArchiveEntry, ArchiveWriter, EncoderConfiguration, EncoderMethod};
 
-use crate::archiver::{ArchiveEntry, ToteArchiver};
-use crate::{Result, Error};
+use crate::archiver::{ArchiveEntry as ToteArchiveEntry, ToteArchiver};
+use crate::{Error, Result};
 
 /// 7-Zip format archiver implementation.
 ///
@@ -17,8 +17,8 @@ impl ToteArchiver for Archiver {
         file: File,
         targets: &[PathBuf],
         config: &crate::ArchiveConfig,
-    ) -> Result<Vec<ArchiveEntry>> {
-        let mut w = match SevenZWriter::new(file) {
+    ) -> Result<Vec<ToteArchiveEntry>> {
+        let mut w = match ArchiveWriter::new(file) {
             Ok(writer) => writer,
             Err(e) => return Err(Error::Archiver(e.to_string())),
         };
@@ -28,11 +28,11 @@ impl ToteArchiver for Archiver {
         for tp in targets {
             for t in config.iter(tp) {
                 let path = t.into_path();
-                entries.push(ArchiveEntry::from(&path));
-                if path.is_file() {
-                    if let Err(e) = process_file(&mut w, &path, &config.path_in_archive(&path)) {
-                        errs.push(e);
-                    }
+                entries.push(ToteArchiveEntry::from(&path));
+                if path.is_file()
+                    && let Err(e) = process_file(&mut w, &path, &config.path_in_archive(&path))
+                {
+                    errs.push(e);
                 }
             }
         }
@@ -47,36 +47,32 @@ impl ToteArchiver for Archiver {
     }
 }
 
-fn set_compression_level(szw: &mut SevenZWriter<File>, level: u8) {
-    let level = match level {
-        0..=4 => SevenZMethod::LZMA,
-        _ => SevenZMethod::LZMA2,
+fn set_compression_level(szw: &mut ArchiveWriter<File>, level: u8) {
+    let method = match level {
+        0..=4 => EncoderMethod::LZMA,
+        _ => EncoderMethod::LZMA2,
     };
-    szw.set_content_methods(vec![SevenZMethodConfiguration::new(level)]);
+    szw.set_content_methods(vec![EncoderConfiguration::new(method)]);
 }
 
-fn process_file(szw: &mut SevenZWriter<File>, target: &PathBuf, dest_path: &PathBuf) -> Result<()> {
-    let name = &dest_path.to_str().unwrap();
-    if let Err(e) = szw.push_archive_entry(
-        SevenZArchiveEntry::from_path(dest_path, name.to_string()),
-        Some(File::open(target).unwrap()),
-    ) {
-        return Err(Error::Archiver(e.to_string()));
-    }
-    Ok(())
+fn process_file(szw: &mut ArchiveWriter<File>, target: &Path, dest_path: &Path) -> Result<()> {
+    let name = dest_path.to_string_lossy().into_owned();
+    let source = File::open(target).map_err(Error::IO)?;
+    szw.push_archive_entry(ArchiveEntry::from_path(dest_path, name), Some(source))
+        .map(|_| ())
+        .map_err(|e| Error::Archiver(e.to_string()))
 }
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
+    use crate::archiver::test_support::targets;
 
     fn run_test<F>(f: F)
     where
         F: FnOnce(),
     {
-        // setup(); // 予めやりたい処理
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(f));
-        teardown(); // 後片付け処理
+        teardown();
 
         if let Err(err) = result {
             std::panic::resume_unwind(err);
@@ -90,12 +86,9 @@ mod tests {
                 .dest("results/test.7z")
                 .overwrite(true)
                 .build();
-            let v = vec!["lib", "cli", "Cargo.toml"]
-                .iter()
-                .map(|s| PathBuf::from(s))
-                .collect::<Vec<PathBuf>>();
+            let v = targets();
             if let Err(e) = crate::archive(&v, &config) {
-                panic!("{:?}", e);
+                panic!("{e:?}");
             }
         });
     }

@@ -6,7 +6,9 @@ ARG TARGETPLATFORM
 WORKDIR /app
 
 COPY . .
-RUN cargo build --release 
+# The published image keeps RAR extraction, which the crate leaves off by
+# default because `unrar` is a C library with a non-OSS license clause.
+RUN cargo build --release --features rar
 
 FROM debian:bullseye-slim
 

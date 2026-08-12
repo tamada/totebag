@@ -4,9 +4,9 @@ use std::path::PathBuf;
 use chrono::DateTime;
 use unrar::FileHeader;
 
-use crate::{Result, Error};
+use crate::{Error, Result};
 
-use crate::extractor::{Entry, Entries, ToteExtractor};
+use crate::extractor::{Entries, Entry, ToteExtractor};
 
 /// RAR format extractor implementation.
 ///
@@ -74,12 +74,12 @@ mod tests {
             Ok(r) => {
                 let r = r.iter().map(|e| e.name.clone()).collect::<Vec<_>>();
                 assert_eq!(r.len(), 18);
-                assert_eq!(r.get(0), Some("Cargo.toml".to_string()).as_ref());
+                assert_eq!(r.first(), Some("Cargo.toml".to_string()).as_ref());
                 assert_eq!(r.get(1), Some("build.rs".to_string()).as_ref());
                 assert_eq!(r.get(2), Some("LICENSE".to_string()).as_ref());
                 assert_eq!(r.get(3), Some("README.md".to_string()).as_ref());
             }
-            Err(_) => assert!(false),
+            Err(e) => panic!("unexpected error: {e:?}"),
         }
     }
 
@@ -93,7 +93,6 @@ mod tests {
             .build();
         match crate::extract(archive_file, &opts) {
             Ok(_) => {
-                assert!(true);
                 assert!(PathBuf::from("results/rar/test/Cargo.toml").exists());
                 std::fs::remove_dir_all(PathBuf::from("results/rar")).unwrap();
             }

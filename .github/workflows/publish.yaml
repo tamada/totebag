@@ -8,8 +8,7 @@ on:
 jobs:
   setup:
     runs-on: ubuntu-latest
-    # ブランチ名が release/v から始まる場合のみに実行する．
-    # プルリクエストがマージされた場合のみに実行する．
+    # Only for branches named release/v*, and only once the PR is merged.
     if: startsWith(github.head_ref, 'release/v') && github.event.pull_request.merged == true
     outputs:
       appname: totebag
@@ -145,8 +144,9 @@ jobs:
       - name: Publish the crates
         env:
           CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
-        run:
-          cargo publish -p totebag
+        # A single invocation lets cargo order the two crates and wait for the
+        # library to appear in the index before uploading the CLI.
+        run: cargo publish -p totebag -p totebag-cli
 
   docker:
     needs: publish
