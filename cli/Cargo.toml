@@ -23,7 +23,7 @@ rar = ["totebag/rar"]
 zstd-native = ["totebag/zstd-native"]
 
 [dependencies]
-totebag = { path = "../lib", version = "0.8.16", features = [ "clap" ] }
+totebag = { path = "../lib", version = "0.9.0", features = [ "clap" ] }
 clap = { version = "4.5.51", features = [ "derive" ] }
 clap-num = "1.2.0"
 clap_complete = { version = "4.5.62", optional = true }
