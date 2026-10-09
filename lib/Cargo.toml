@@ -26,11 +26,6 @@ clap = ["dep:clap"]
 # unencumbered.
 rar = ["dep:unrar"]
 
-# Use the C zstd library instead of the pure Rust `ruzstd`. `ruzstd` decodes the
-# full zstd specification but only implements the fastest compression level, so
-# enable this when the `--level` option must actually affect `.tar.zst` output.
-zstd-native = ["dep:zstd"]
-
 [dependencies]
 ar = "0.9.0"
 bzip2 = "0.6.1"                                             # pure Rust via libbz2-rs-sys
@@ -45,17 +40,15 @@ ignore = "0.4.25"
 infer = "0.22.0"
 log = "0.4.28"
 lzma-rust2 = { version = "0.18.1", features = [ "xz", "encoder" ] }
-ruzstd = "0.9.0"
 serde = { version = "1.0.228", features = [ "derive" ] }
 serde_json = "1.0.145"
 serde-xml-rs = "0.8.2"
 sevenz-rust2 = "0.21.4"
+structured-zstd = "0.0.59"
 tar = "0.4.44"
-tempfile = "3.24.0"
 time = "0.3.44"
 typed-builder = "0.23.2"
 unrar = { version = "0.5.8", optional = true }
-zstd = { version = "0.13.3", optional = true }
 
 # `zstd` is deliberately excluded: it is the only default feature of `zip` that
 # pulls in a C library.

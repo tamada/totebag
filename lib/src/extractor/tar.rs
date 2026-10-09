@@ -1,5 +1,5 @@
 use std::fs::create_dir_all;
-use std::io::Read;
+use std::io::{BufReader, Read};
 use std::{
     fs::File,
     path::{Path, PathBuf},
@@ -7,6 +7,7 @@ use std::{
 
 use crate::{Error, Result};
 use lzma_rust2::XzReader;
+use structured_zstd::decoding::{FrameDecoder, StreamingDecoder};
 use tar::Archive;
 
 use crate::extractor::{Entries, Entry as ToteEntry, ToteExtractor};
@@ -77,44 +78,17 @@ fn new_xz_decoder(f: File) -> Result<XzReader<File>> {
 
 impl ToteExtractor for ZstdExtractor {
     fn list(&self, archive_file: PathBuf) -> Result<Entries> {
-        open_tar_file(&archive_file, zstd::new_decoder)
+        open_tar_file(&archive_file, new_zstd_decoder)
             .and_then(|archive| list_tar(archive, archive_file))
     }
     fn perform(&self, archive_file: PathBuf, base: PathBuf) -> Result<()> {
-        open_tar_file(&archive_file, zstd::new_decoder)
+        open_tar_file(&archive_file, new_zstd_decoder)
             .and_then(|archive| extract_tar(archive, base))
     }
 }
 
-/// The zstd decoder backend. `ruzstd` implements the whole decompression side of
-/// the specification, so the pure Rust path is used unless `zstd-native` asks for
-/// the C library.
-#[cfg(not(feature = "zstd-native"))]
-mod zstd {
-    use crate::{Error, Result};
-    use std::fs::File;
-    use std::io::BufReader;
-
-    type Decoder =
-        ruzstd::decoding::StreamingDecoder<BufReader<File>, ruzstd::decoding::FrameDecoder>;
-
-    pub(super) fn new_decoder(f: File) -> Result<Decoder> {
-        ruzstd::decoding::StreamingDecoder::new(BufReader::new(f))
-            .map_err(|e| Error::Extractor(e.to_string()))
-    }
-}
-
-#[cfg(feature = "zstd-native")]
-mod zstd {
-    use crate::{Error, Result};
-    use std::fs::File;
-    use std::io::BufReader;
-
-    type Decoder = ::zstd::Decoder<'static, BufReader<File>>;
-
-    pub(super) fn new_decoder(f: File) -> Result<Decoder> {
-        ::zstd::Decoder::new(f).map_err(Error::IO)
-    }
+fn new_zstd_decoder(f: File) -> Result<StreamingDecoder<BufReader<File>, FrameDecoder>> {
+    StreamingDecoder::new(BufReader::new(f)).map_err(|e| Error::Extractor(e.to_string()))
 }
 
 fn open_tar_file<F, R: Read>(file: &PathBuf, opener: F) -> Result<Archive<R>>
