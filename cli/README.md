@@ -27,8 +27,8 @@ Options:
                                      For example, -C root stores src/main.rs as root/src/main.rs.
                                      By default entries keep their own paths. [aliases: --dir]
   -i, --ignore-types <IGNORE_TYPES>  Specify the ignore type. [possible values: default, hidden, git-ignore, git-global, git-exclude, ignore]
-  -L, --level <LEVEL>                Specify the compression level. [default: 5] [possible values: 0-9 (none to finest)]
-                                     For more details of level of each compression method, see README. [default: 5]
+  -L, --level <LEVEL>                Specify the compression level. [possible values: 0-9 (none to finest)]
+                                    For more details of level of each compression method, see README.
   -n, --no-recursive                 No recursive directory (archive mode).
   -f, --output-format <FORMAT>       Specify the format for listing entries in the archive file. [default: default] [possible values: default, long, json, pretty-json, xml]
       --log <LOGLEVEL>               Specify the log level [default: warn] [possible values: error, warn, info, debug, trace]

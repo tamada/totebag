@@ -133,7 +133,7 @@ By default entries keep their own paths."#
     )]
     pub ignores: Vec<IgnoreType>,
 
-    #[clap(short = 'L', long = "level", default_value_t = 5, help = r#"Specify the compression level. [default: 5] [possible values: 0-9 (none to finest)]
+    #[clap(short = 'L', long = "level", default_value_t = 5, help = r#"Specify the compression level. [possible values: 0-9 (none to finest)]
 For more details of level of each compression method, see README."#, value_parser=compression_level)]
     pub level: u8,
 
