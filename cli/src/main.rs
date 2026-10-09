@@ -125,13 +125,21 @@ mod gencomp {
 
     use clap::{Command, CommandFactory};
     use clap_complete::Shell;
-    use std::path::PathBuf;
+    use std::path::{Path, PathBuf};
+
+    fn create_parent_dir(dest: &Path) -> Result<()> {
+        if let Some(parent) = dest
+            .parent()
+            .filter(|parent| !parent.as_os_str().is_empty())
+        {
+            std::fs::create_dir_all(parent).map_err(Error::IO)?;
+        }
+        Ok(())
+    }
 
     fn generate_impl(app: &mut Command, shell: Shell, dest: PathBuf) -> Result<()> {
         log::info!("generate completion for {shell:?} to {dest:?}");
-        if let Err(e) = std::fs::create_dir_all(dest.parent().unwrap()) {
-            return Err(Error::IO(e));
-        }
+        create_parent_dir(&dest)?;
         match std::fs::File::create(dest) {
             Err(e) => Err(Error::IO(e)),
             Ok(mut out) => {
@@ -161,6 +169,17 @@ mod gencomp {
             Ok(())
         } else {
             Err(Error::Array(errs))
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        #[test]
+        fn accepts_destinations_without_parent_directory() {
+            assert!(create_parent_dir(Path::new("totebag.bash")).is_ok());
+            assert!(create_parent_dir(Path::new("/")).is_ok());
         }
     }
 }
