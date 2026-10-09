@@ -176,13 +176,7 @@ impl Error {
     /// * `Err(error)` if `errs` contains a single error
     /// * `Err(Error::Array(errs))` if `errs` contains multiple errors
     pub fn error_or<T>(ok: T, errs: Vec<Self>) -> Result<T> {
-        if errs.is_empty() {
-            Ok(ok)
-        } else if errs.len() == 1 {
-            Err(errs.into_iter().next().unwrap())
-        } else {
-            Err(Error::Array(errs))
-        }
+        Self::error_or_else(|| ok, errs)
     }
 
     /// Returns `Ok(ok())` if there are no errors, otherwise returns an appropriate error.

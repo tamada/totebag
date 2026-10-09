@@ -15,18 +15,22 @@ impl ToteExtractor for Extractor {
             .map(cpio::Archive::new)
             .map_err(crate::Error::IO)?;
         let mut entries: Vec<Entry> = vec![];
+        let mut errs = vec![];
         loop {
             let entry = file.read_entry().map_err(crate::Error::IO)?;
             match entry {
                 Some(entry) => {
                     if entry.metadata.is_file() {
-                        entries.push(create_new_entry(&entry.path, &entry.metadata));
+                        match entry.path.to_path() {
+                            Ok(p) => entries.push(create_new_entry(&p, &entry.metadata)),
+                            Err(e) => errs.push(crate::Error::IO(e)),
+                        };
                     }
                 }
                 None => break,
             }
         }
-        Ok(Entries::new(target, entries))
+        crate::Error::error_or_else(|| Entries::new(target, entries), errs)
     }
 
     fn perform(&self, target: PathBuf, base: PathBuf) -> Result<()> {
@@ -56,9 +60,10 @@ impl ToteExtractor for Extractor {
 }
 
 fn prepare_write(entry: &cpio::Entry<std::fs::File>, base: &Path) -> Result<PathBuf> {
-    let dest_path = base.join(&entry.path);
+    let path = entry.path.to_path()?;
+    let dest_path = base.join(&path);
     log::info!(
-        "extracting {:?} ({} bytes) to {dest_path:?}",
+        "extracting {} ({} bytes) to {dest_path:?}",
         entry.path,
         entry.metadata.size()
     );
