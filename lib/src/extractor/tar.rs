@@ -128,7 +128,7 @@ where
 fn extract_tar<R: Read>(mut archive: tar::Archive<R>, base: PathBuf) -> Result<()> {
     for entry in archive.entries().map_err(Error::IO)? {
         let mut entry = entry.map_err(Error::IO)?;
-        let path = entry.header().path().map_err(Error::IO)?.into_owned();
+        let path = entry.path().map_err(Error::IO)?.into_owned();
         if is_filename_mac_finder_file(&path) {
             continue;
         }
@@ -163,12 +163,12 @@ fn list_tar<R: Read>(mut archive: tar::Archive<R>, path: PathBuf) -> Result<Entr
 }
 
 fn tar_entry_to_entry<R: Read>(e: tar::Entry<R>) -> ToteEntry {
-    let header = e.header();
-    let name = header
+    let name = e
         .path()
         .map(|p| p.to_string_lossy().into_owned())
         .unwrap_or_default();
     // The tar header records mtime in *seconds* since the epoch.
+    let header = e.header();
     let datetime = header
         .mtime()
         .ok()
