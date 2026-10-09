@@ -107,7 +107,7 @@ match totebag::extract("extracting_archive_file.zip", &config) {
 | ----- | ------------------------------------------------------------ |
 | Ar    | N/A                                                          |
 | Cab   | 0: None, otherwise: MsZIP; see [CompressionType](https://docs.rs/cab/latest/cab/enum.CompressionType.html). |
-| Cpio  | 0-3: Odc, 4-6: Newc, 7: Crc, 8: Bin(LittleEndian), 9: Bin(BigEndian); see [`kpea::Format`](https://docs.rs/kpea/0.2.5/kpea/enum.Format.html). |
+| Cpio  | 0-3: Odc, 4-6: Newc, 7: Crc, 8: Bin(LittleEndian), 9: Bin(BigEndian); see [`kpea::Format`](https://docs.rs/kpea/latest/kpea/enum.Format.html). |
 | Gzip  | Passed through as-is; see [Compression](https://docs.rs/flate2/latest/flate2/struct.Compression.html#method.new). |
 | Bzip2 | Passed through as-is; see [Compression](https://docs.rs/bzip2/latest/bzip2/struct.Compression.html#method.new). |
 | Xz    | Used as the preset; see [`XzOptions::with_preset`](https://docs.rs/lzma-rust2/latest/lzma_rust2/struct.XzOptions.html). |
