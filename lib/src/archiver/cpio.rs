@@ -23,7 +23,7 @@ impl ToteArchiver for Archiver {
         let mut errs = vec![];
         for path in entries.iter() {
             let path_in_archive = config.path_in_archive(path);
-            if let Err(e) = builder.append_path(path, &path_in_archive) {
+            if let Err(e) = builder.append_path(path, path_in_archive) {
                 errs.push(Error::Archiver(e.to_string()));
             };
         }
