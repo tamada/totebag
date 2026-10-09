@@ -1,0 +1,49 @@
+# Tells tamada/api that a release happened, so it can regenerate the site and,
+# when asked, the Homebrew formula.
+#
+# Requirements:
+#
+# - The GitHub App (tamada-pipline-bot) must be installed on this repository and
+#   on tamada/api, with `contents: write` here and `actions: write` there.
+#   It is already installed for repositories owned by tamada.
+# - Two Actions secrets, both taken from the GitHub App settings page:
+#     APP_CLIENT_ID    the App's client ID
+#     APP_PRIVATE_KEY  a private key generated for the App
+#
+# This workflow reacts to the `release: published` event and never calls, or is
+# called by, publish.yaml -- the two know nothing about each other. What makes
+# the event reach here is that publish.yaml un-drafts the release with this same
+# App token: releases published with the automatic GITHUB_TOKEN do not start new
+# workflow runs. See "Triggering a workflow from a workflow" in the Actions docs.
+#
+# Because it keys off the release alone, it also fires when a release is
+# published by hand, and it fires even if the crates.io or container steps of
+# publish.yaml failed.
+name: notify-publish
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      # Generate a one-time token using the private key
+      - name: Generate Token
+        id: generate_token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.APP_CLIENT_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      # Fire the workflow for the other repository using the generated token
+      - name: Trigger API Repository
+        run: |
+          gh workflow run "deploy.yml"     \
+          --repo "tamada/api"              \
+          -f repo=${{ github.repository }} \
+          -f update_brew=true
+        env:
+          GH_TOKEN: ${{ steps.generate_token.outputs.token }}
