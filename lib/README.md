@@ -19,7 +19,7 @@ C toolchain and cross-compiling needs nothing but a Rust target.
 - Tar+[Gzip](https://crates.io/crates/flate2)
 - Tar+[Bzip2](https://crates.io/crates/bzip2)
 - Tar+[Xz](https://crates.io/crates/lzma-rust2)
-- Tar+[Zstd](https://crates.io/crates/ruzstd)
+- Tar+[Zstd](https://crates.io/crates/structured-zstd)
 - [Zip](https://crates.io/crates/zip)
 - [7z](https://crates.io/crates/sevenz-rust2)
 - [Lha, Lzh](https://crates.io/crates/delharc) (extraction only)
@@ -31,7 +31,6 @@ C toolchain and cross-compiling needs nothing but a Rust target.
 | ------- | :-----: | ------ |
 | `clap` | off | Derives `clap::ValueEnum` for `IgnoreType` and `OutputFormat` so they can be used directly as command line arguments. |
 | `rar` | off | Enables RAR extraction. See [RAR support](#rar-support). |
-| `zstd-native` | off | Uses the C zstd library instead of `ruzstd`. See [zstd compression levels](#zstd-compression-levels). |
 
 ##### RAR support
 
@@ -50,16 +49,6 @@ your own build, enable the feature:
 ```sh
 cargo add totebag --features rar
 ```
-
-##### zstd compression levels
-
-The default zstd backend is [`ruzstd`](https://crates.io/crates/ruzstd), which implements
-the whole decompression side of the specification but only the fastest compression level.
-`.tar.zst` archives therefore compress less tightly than `zstd(1)` would, and the
-`--level` option only distinguishes "store" (0) from "compress" (1-9).
-
-Enable `zstd-native` to link the C library instead and get the full 0-9 range mapped onto
-zstd's 1-22.
 
 ### :walking: How to use
 
@@ -118,11 +107,11 @@ match totebag::extract("extracting_archive_file.zip", &config) {
 | ----- | ------------------------------------------------------------ |
 | Ar    | N/A                                                          |
 | Cab   | 0: None, otherwise: MsZIP; see [CompressionType](https://docs.rs/cab/latest/cab/enum.CompressionType.html). |
-| Cpio  | 0-3: Odc, 4-6: Newc, 7: Crc, 8: Bin(LittleEndian), 9: Bin(BigEndian); see [`kpea::Format`](https://docs.rs/kpea/0.2.5/kpea/enum.Format.html). |
+| Cpio  | 0-3: Odc, 4-6: Newc, 7: Crc, 8: Bin(LittleEndian), 9: Bin(BigEndian); see [`kpea::Format`](https://docs.rs/kpea/latest/kpea/enum.Format.html). |
 | Gzip  | Passed through as-is; see [Compression](https://docs.rs/flate2/latest/flate2/struct.Compression.html#method.new). |
 | Bzip2 | Passed through as-is; see [Compression](https://docs.rs/bzip2/latest/bzip2/struct.Compression.html#method.new). |
 | Xz    | Used as the preset; see [`XzOptions::with_preset`](https://docs.rs/lzma-rust2/latest/lzma_rust2/struct.XzOptions.html). |
-| Zstd  | 0: stored, 1-9: fastest. With `zstd-native`, mapped onto zstd's 1-22; see [Encoder](https://docs.rs/zstd/latest/zstd/stream/write/struct.Encoder.html#method.new). |
+| Zstd  | 0: stored, 1-9: mapped linearly onto zstd's 3-22; see [`CompressionLevel`](https://docs.rs/structured-zstd/latest/structured_zstd/encoding/enum.CompressionLevel.html). |
 | Zip   | 0: No compression, 1-3: Deflate (10, 24, 264), 4-6: Bzip2 (1, 6, 9), 7-9: Xz (3, 6, 9); see [FileOptions](https://docs.rs/zip/latest/zip/write/struct.FileOptions.html#method.compression_level). |
 | 7z    | 0-4: LZMA, 5-9: LZMA2; see [`EncoderMethod`](https://docs.rs/sevenz-rust2/latest/sevenz_rust2/struct.EncoderMethod.html). |
 

@@ -4,6 +4,7 @@ use lzma_rust2::{XzOptions, XzWriter};
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
+use structured_zstd::encoding::{CompressionLevel, StreamingEncoder};
 use tar::Builder;
 
 use crate::archiver::{ArchiveEntry, ToteArchiver};
@@ -93,6 +94,21 @@ impl ToteArchiver for XzArchiver {
     }
 }
 
+impl ZstdArchiver {
+    /// Maps the totebag level (0-9) onto zstd: 0 stores without compression,
+    /// 1-9 map linearly onto zstd's 3-22. Values above 9 are treated as 9.
+    fn level_to_zstd(level: u8) -> CompressionLevel {
+        match level.min(9) {
+            0 => CompressionLevel::Uncompressed,
+            9 => CompressionLevel::Level(22),
+            l => {
+                let l = (f64::from(l) / 9.0 * 21.0).round() as i32 + 1;
+                CompressionLevel::Level(l)
+            }
+        }
+    }
+}
+
 impl ToteArchiver for ZstdArchiver {
     fn perform(
         &self,
@@ -100,75 +116,15 @@ impl ToteArchiver for ZstdArchiver {
         targets: &[PathBuf],
         config: &crate::ArchiveConfig,
     ) -> Result<Vec<ArchiveEntry>> {
-        zstd::write_tar_zstd(file, targets, config)
+        let level = Self::level_to_zstd(config.level);
+        let mut encoder = StreamingEncoder::new(file, level);
+        let r = write_tar(&mut encoder, targets, config);
+        let f = encoder.finish().map_err(|e| Error::Archiver(e.to_string()));
+        r.and_then(|entries| f.map(|_| entries))
     }
 
     fn enable(&self) -> bool {
         true
-    }
-}
-
-/// The zstd encoder backend.
-///
-/// The pure Rust `ruzstd` compressor pulls from a reader instead of exposing a
-/// [`Write`] sink, so the tar stream is staged in a temporary file and compressed
-/// afterwards. Enabling the `zstd-native` feature swaps in the C library, which
-/// streams directly and honours the whole 0-9 level range.
-#[cfg(not(feature = "zstd-native"))]
-mod zstd {
-    use super::{ArchiveEntry, PathBuf, write_tar};
-    use crate::{Error, Result};
-    use std::fs::File;
-    use std::io::{Seek, SeekFrom};
-
-    pub(super) fn write_tar_zstd(
-        mut file: File,
-        targets: &[PathBuf],
-        config: &crate::ArchiveConfig,
-    ) -> Result<Vec<ArchiveEntry>> {
-        let mut staging = tempfile::tempfile().map_err(Error::IO)?;
-        let entries = write_tar(&mut staging, targets, config)?;
-        staging.seek(SeekFrom::Start(0)).map_err(Error::IO)?;
-
-        // `ruzstd` implements only `Fastest`; the other levels are placeholders
-        // in the crate. `level == 0` still produces a valid zstd frame.
-        let level = if config.level == 0 {
-            ruzstd::encoding::CompressionLevel::Uncompressed
-        } else {
-            ruzstd::encoding::CompressionLevel::Fastest
-        };
-        let mut compressor = ruzstd::encoding::FrameCompressor::new(level);
-        compressor.set_source(&mut staging);
-        compressor.set_drain(&mut file);
-        compressor.compress();
-        Ok(entries)
-    }
-}
-
-#[cfg(feature = "zstd-native")]
-mod zstd {
-    use super::{ArchiveEntry, PathBuf, write_tar};
-    use crate::{Error, Result};
-    use std::fs::File;
-
-    pub(super) fn write_tar_zstd(
-        file: File,
-        targets: &[PathBuf],
-        config: &crate::ArchiveConfig,
-    ) -> Result<Vec<ArchiveEntry>> {
-        let level = level_to_zstd(config.level);
-        let encoder =
-            ::zstd::Encoder::new(file, level).map_err(|e| Error::Archiver(e.to_string()))?;
-        write_tar(encoder.auto_finish(), targets, config)
-    }
-
-    /// Maps the totebag level (0-9) onto the zstd level range (1-22).
-    fn level_to_zstd(level: u8) -> i32 {
-        match level {
-            0 => 1,
-            9 => 22,
-            l => (f64::from(l) / 9.0 * 21.0).round() as i32 + 1,
-        }
     }
 }
 
@@ -221,7 +177,9 @@ fn process_file<W: Write>(
 
 #[cfg(test)]
 mod tests {
-    use crate::archiver::test_support::targets;
+    use structured_zstd::encoding::CompressionLevel;
+
+    use crate::archiver::{tar::ZstdArchiver, test_support::targets};
     use std::path::PathBuf;
 
     fn run_test<F>(f: F)
@@ -253,6 +211,22 @@ mod tests {
             assert!(path.exists());
             path
         });
+    }
+
+    #[test]
+    fn test_level_to_zstd() {
+        assert!(matches!(
+            ZstdArchiver::level_to_zstd(0),
+            CompressionLevel::Uncompressed
+        ));
+        assert!(matches!(
+            ZstdArchiver::level_to_zstd(9),
+            CompressionLevel::Level(22)
+        ));
+        assert!(matches!(
+            ZstdArchiver::level_to_zstd(200),
+            CompressionLevel::Level(22)
+        ));
     }
 
     #[test]
