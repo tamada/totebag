@@ -245,7 +245,7 @@ impl Format {
     /// Returns `true` if the given file name has the extension of this format.
     pub fn match_exts<P: AsRef<Path>>(&self, p: P) -> bool {
         let p = p.as_ref();
-        let name = p.to_str().unwrap().to_lowercase();
+        let name = p.to_string_lossy().to_lowercase();
         for ext in &self.exts {
             if name.ends_with(ext) {
                 return true;
@@ -258,6 +258,16 @@ impl Format {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(unix)]
+    #[test]
+    fn test_format_with_non_utf8_path() {
+        use std::ffi::OsStr;
+        use std::os::unix::ffi::OsStrExt;
+
+        let path = Path::new(OsStr::from_bytes(b"\xff.zip"));
+        assert!(Format::new("Zip", vec![".zip"]).match_exts(path));
+    }
 
     #[test]
     fn test_format() {
