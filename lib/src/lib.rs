@@ -101,8 +101,8 @@ impl Display for Error {
                 .collect::<Vec<_>>()
                 .join("\n")
                 .fmt(f),
-            Error::DestIsDir(p) => write!(f, "{}: Destination is a directory", p.to_str().unwrap()),
-            Error::DirExists(p) => write!(f, "{}: Directory already exists", p.to_str().unwrap()),
+            Error::DestIsDir(p) => write!(f, "{}: Destination is a directory", p.display()),
+            Error::DirExists(p) => write!(f, "{}: Directory already exists", p.display()),
             Error::Extractor(s) => write!(f, "Extractor error: {s}"),
             Error::Fatal(e) => write!(f, "Error: {e}"),
             Error::FeatureDisabled { format, feature } => write!(
@@ -781,6 +781,25 @@ mod tests {
             ])
             .to_string(),
             "Unknown error: hoge1\nUnknown error: hoge2"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn test_error_message_with_non_utf8_path() {
+        use crate::Error;
+        use std::ffi::OsStr;
+        use std::os::unix::ffi::OsStrExt;
+        use std::path::PathBuf;
+
+        let path = PathBuf::from(OsStr::from_bytes(b"\xff"));
+        assert_eq!(
+            Error::DestIsDir(path.clone()).to_string(),
+            format!("{}: Destination is a directory", path.display())
+        );
+        assert_eq!(
+            Error::DirExists(path.clone()).to_string(),
+            format!("{}: Directory already exists", path.display())
         );
     }
 }
