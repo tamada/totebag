@@ -23,7 +23,7 @@ C toolchain and cross-compiling needs nothing but a Rust target.
 - [Zip](https://crates.io/crates/zip)
 - [7z](https://crates.io/crates/sevenz-rust2)
 - [Lha, Lzh](https://crates.io/crates/delharc) (extraction only)
-- [Rar](https://crates.io/crates/rars) (extraction only)
+- [Rar](https://crates.io/crates/rars)
 
 #### Cargo features
 
@@ -86,15 +86,16 @@ match totebag::extract("extracting_archive_file.zip", &config) {
 
 |       | Level                                                        |
 | ----- | ------------------------------------------------------------ |
+| 7z    | 0-4: LZMA, 5-9: LZMA2; see [`EncoderMethod`](https://docs.rs/sevenz-rust2/latest/sevenz_rust2/struct.EncoderMethod.html). |
 | Ar    | N/A                                                          |
+| Bzip2 | Passed through as-is; see [Compression](https://docs.rs/bzip2/latest/bzip2/struct.Compression.html#method.new). |
 | Cab   | 0: None, otherwise: MsZIP; see [CompressionType](https://docs.rs/cab/latest/cab/enum.CompressionType.html). |
 | Cpio  | 0-3: Odc, 4-6: Newc, 7: Crc, 8: Bin(LittleEndian), 9: Bin(BigEndian); see [`kpea::Format`](https://docs.rs/kpea/latest/kpea/enum.Format.html). |
 | Gzip  | Passed through as-is; see [Compression](https://docs.rs/flate2/latest/flate2/struct.Compression.html#method.new). |
-| Bzip2 | Passed through as-is; see [Compression](https://docs.rs/bzip2/latest/bzip2/struct.Compression.html#method.new). |
+| Rar   | 0: stored, 1-9: mapped onto RAR's 1-5 (5 → 3, RAR's default); see [`Builder::compression_level`](https://docs.rs/rars/latest/rars/struct.Builder.html#method.compression_level). |
 | Xz    | Used as the preset; see [`XzOptions::with_preset`](https://docs.rs/lzma-rust2/latest/lzma_rust2/struct.XzOptions.html). |
-| Zstd  | 0: stored, 1-9: mapped linearly onto zstd's 3-22; see [`CompressionLevel`](https://docs.rs/structured-zstd/latest/structured_zstd/encoding/enum.CompressionLevel.html). |
 | Zip   | 0: No compression, 1-3: Deflate (10, 24, 264), 4-6: Bzip2 (1, 6, 9), 7-9: Xz (3, 6, 9); see [FileOptions](https://docs.rs/zip/latest/zip/write/struct.FileOptions.html#method.compression_level). |
-| 7z    | 0-4: LZMA, 5-9: LZMA2; see [`EncoderMethod`](https://docs.rs/sevenz-rust2/latest/sevenz_rust2/struct.EncoderMethod.html). |
+| Zstd  | 0: stored, 1-9: mapped linearly onto zstd's 3-22; see [`CompressionLevel`](https://docs.rs/structured-zstd/latest/structured_zstd/encoding/enum.CompressionLevel.html). |
 
 #### :blue_heart: List entries in an archive file
 

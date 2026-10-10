@@ -40,8 +40,8 @@ Options:
   -V, --version                      Print version
 ```
 
-Supported archive formats are Ar, Cab, Cpio, Tar, Tar with Gzip/Bzip2/Xz/Zstd, Zip and 7z,
-plus Lha/Lzh and Rar for extraction only.
+Supported archive formats are Ar, Cab, Cpio, Rar, Tar, Tar with Gzip/Bzip2/Xz/Zstd, Zip and 7z,
+plus Lha/Lzh for extraction only.
 See [the library README](../lib/README.md) for the per-format compression levels.
 
 #### :whale: Docker
