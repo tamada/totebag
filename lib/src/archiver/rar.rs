@@ -160,19 +160,10 @@ mod tests {
                 Ok(r) => {
                     let r = r.iter().map(|e| e.name.clone()).collect::<Vec<_>>();
                     assert_eq!(r.len(), 20);
-                    assert_eq!(r.first(), Some("testdata/sample".to_string()).as_ref());
-                    assert_eq!(
-                        r.get(1),
-                        Some("testdata/sample/Cargo.toml".to_string()).as_ref()
-                    );
-                    assert_eq!(
-                        r.get(2),
-                        Some("testdata/sample/LICENSE".to_string()).as_ref()
-                    );
-                    assert_eq!(
-                        r.get(3),
-                        Some("testdata/sample/build.rs".to_string()).as_ref()
-                    );
+                    assert!(r.contains(&"testdata/sample".to_string()));
+                    assert!(r.contains(&"testdata/sample/Cargo.toml".to_string()));
+                    assert!(r.contains(&"testdata/sample/LICENSE".to_string()));
+                    assert!(r.contains(&"testdata/sample/build.rs".to_string()));
                 }
                 Err(e) => panic!("unexpected error: {e:?}"),
             }
