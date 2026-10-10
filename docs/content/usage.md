@@ -48,25 +48,20 @@ Options:
 
 ## Supported archive formats
 
-| Format | Extensions | Archive | Extract |
-| ------ | ---------- | :-----: | :-----: |
-| Ar | `.ar`, `.a`, `.lib` | ✅ | ✅ |
-| Cab | `.cab` | ✅ | ✅ |
-| Cpio | `.cpio` | ✅ | ✅ |
-| Lha, Lzh | `.lha`, `.lzh` | — | ✅ |
-| 7z | `.7z` | ✅ | ✅ |
-| Rar | `.rar` | — | ✅ (needs the `rar` feature) |
-| Tar | `.tar` | ✅ | ✅ |
-| Tar+Gzip | `.tar.gz`, `.tgz` | ✅ | ✅ |
+| Format    | Extensions | Archive | Extract |
+| --------- | ---------- | :-----: | :-----: |
+| Ar        | `.ar`, `.a`, `.lib` | ✅ | ✅ |
+| Cab       | `.cab` | ✅ | ✅ |
+| Cpio      | `.cpio` | ✅ | ✅ |
+| Lha, Lzh  | `.lha`, `.lzh` | — | ✅ |
+| 7z        | `.7z`  | ✅ | ✅ |
+| Rar       | `.rar` | ✅ | ✅ |
+| Tar       | `.tar` | ✅ | ✅ |
+| Tar+Gzip  | `.tar.gz`, `.tgz` | ✅ | ✅ |
 | Tar+Bzip2 | `.tar.bz2`, `.tbz2` | ✅ | ✅ |
-| Tar+Xz | `.tar.xz`, `.txz` | ✅ | ✅ |
-| Tar+Zstd | `.tar.zst`, `.tzst`, `.tar.zstd`, `.tzstd` | ✅ | ✅ |
-| Zip | `.zip`, `.jar`, `.war`, `.ear` | ✅ | ✅ |
-
-RAR support is not built by default: no pure Rust RAR implementation exists, and the
-UnRAR license forbids using its source to re-create the RAR compression algorithm.
-The released binaries and container images are built with it enabled; if you install
-from crates.io and need it, use `cargo install totebag-cli --features rar`.
+| Tar+Xz    | `.tar.xz`, `.txz` | ✅ | ✅ |
+| Tar+Zstd  | `.tar.zst`, `.tzst`, `.tar.zstd`, `.tzstd` | ✅ | ✅ |
+| Zip       | `.zip`, `.jar`, `.war`, `.ear` | ✅ | ✅ |
 
 ## Entry names in the created archive
 

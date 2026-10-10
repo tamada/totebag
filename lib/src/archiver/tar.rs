@@ -139,19 +139,19 @@ fn write_tar<W: Write>(
     for tp in targets {
         for entry in config.iter(tp) {
             let path = entry.into_path();
-            let dest_dir = config.path_in_archive(&path);
+            let dest_path = config.path_in_archive(&path);
             // A directory such as `..` normalizes away to nothing; there is no
             // name to store it under, and its contents are archived anyway.
-            if dest_dir.as_os_str().is_empty() {
+            if dest_path.as_os_str().is_empty() {
                 continue;
             }
             entries.push(ArchiveEntry::from(&path));
             if path.is_file() {
-                if let Err(e) = process_file(&mut builder, &path, &dest_dir) {
+                if let Err(e) = process_file(&mut builder, &path, &dest_path) {
                     errs.push(e);
                 }
             } else if path.is_dir()
-                && let Err(e) = builder.append_dir(&dest_dir, &path)
+                && let Err(e) = builder.append_dir(&dest_path, &path)
             {
                 errs.push(Error::Archiver(e.to_string()));
             }

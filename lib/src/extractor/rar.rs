@@ -1,12 +1,8 @@
-use std::fs::create_dir_all;
 use std::path::PathBuf;
 
-use chrono::DateTime;
-use unrar::FileHeader;
-
-use crate::{Error, Result};
-
 use crate::extractor::{Entries, Entry, ToteExtractor};
+use crate::{Error, Result};
+use chrono::{DateTime, Utc};
 
 /// RAR format extractor implementation.
 ///
@@ -16,49 +12,69 @@ pub(super) struct Extractor {}
 impl ToteExtractor for Extractor {
     fn list(&self, archive_file: PathBuf) -> Result<Entries> {
         let mut r = vec![];
-        for entry in unrar::Archive::new(&archive_file)
-            .open_for_listing()
-            .unwrap()
-        {
-            let header = entry.unwrap();
-            r.push(convert(header));
+        let archive = rars::ArchiveReader::read_path(&archive_file)
+            .map_err(|e| Error::Extractor(e.to_string()))?;
+        for entry in archive.members() {
+            r.push(convert(entry));
         }
         Ok(Entries::new(archive_file, r))
     }
 
     fn perform(&self, archive_file: PathBuf, base: PathBuf) -> Result<()> {
-        let archive = unrar::Archive::new(&archive_file);
-        let mut file = archive.open_for_processing().unwrap();
-        while let Some(header) = file.read_header().unwrap() {
-            let name = header.entry().filename.to_str().unwrap();
-            let dest = base.join(name);
-            file = if header.entry().is_file() {
-                log::info!(
-                    "extracting {} ({} bytes)",
-                    name,
-                    header.entry().unpacked_size
-                );
-                if let Err(e) = create_dir_all(dest.parent().unwrap()) {
-                    return Err(Error::IO(e));
+        let archive = rars::ArchiveReader::read_path(&archive_file)
+            .map_err(|e| Error::Extractor(e.to_string()))?;
+        let mut errs = vec![];
+        let r = archive.extract_to(None, |meta| {
+            let name = match rars::entry_relative_path(&meta.name) {
+                Ok(rel) => rel,
+                Err(e) => {
+                    errs.push(Error::Extractor(e.to_string()));
+                    return Ok(Box::new(std::io::sink()));
                 }
-                header.extract_to(&dest).unwrap()
+            };
+            let dest = base.join(&name);
+            let r = if !meta.is_directory {
+                log::info!("extracting {}", name.display());
+                if let Err(e) = super::create_parent_dir_all(&dest) {
+                    Err(e)
+                } else {
+                    match std::fs::File::create(dest) {
+                        Ok(file) => Ok(Some(file)),
+                        Err(e) => Err(Error::IO(e)),
+                    }
+                }
             } else {
-                header.skip().unwrap()
+                Ok(None)
+            };
+            match r {
+                Ok(None) => Ok(Box::new(std::io::sink()) as Box<dyn std::io::Write>),
+                Ok(Some(file)) => Ok(Box::new(file)),
+                Err(e) => {
+                    errs.push(e);
+                    Ok(Box::new(std::io::sink()) as Box<dyn std::io::Write>)
+                }
+            }
+        });
+        match r {
+            Ok(()) => Error::error_or((), errs),
+            Err(e) => {
+                errs.push(Error::Extractor(e.to_string()));
+                Error::error_or((), errs)
             }
         }
-        Ok(())
     }
 }
 
-fn convert(fh: FileHeader) -> Entry {
-    let name = fh.filename.to_str().unwrap();
-    let uncompressed_size = fh.unpacked_size;
-    let mtime = fh.file_time as i64;
-    let dt = DateTime::from_timestamp(mtime, 0);
+fn convert(member: rars::ArchiveMember) -> Entry {
+    let mtime = member
+        .meta
+        .modification_time()
+        .map(|s| DateTime::<Utc>::from(s).naive_local());
     Entry::builder()
-        .name(name)
-        .original_size(uncompressed_size)
-        .date(dt.map(|dt| dt.naive_local()))
+        .name(member.meta.name_lossy())
+        .compressed_size(member.meta.packed_size)
+        .original_size(member.meta.unpacked_size)
+        .date(mtime)
         .build()
 }
 

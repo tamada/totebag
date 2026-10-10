@@ -48,7 +48,6 @@ mod ar;
 mod cab;
 mod cpio;
 mod lha;
-#[cfg(feature = "rar")]
 mod rar;
 mod sevenz;
 mod tar;
@@ -179,13 +178,7 @@ pub(super) fn create_with<P: AsRef<Path>>(
             "Cab" => Ok(Box::new(cab::Extractor {})),
             "Cpio" => Ok(Box::new(cpio::Extractor {})),
             "Lha" => Ok(Box::new(lha::Extractor {})),
-            #[cfg(feature = "rar")]
             "Rar" => Ok(Box::new(rar::Extractor {})),
-            #[cfg(not(feature = "rar"))]
-            "Rar" => Err(Error::FeatureDisabled {
-                format: "Rar".to_string(),
-                feature: "rar",
-            }),
             "SevenZ" => Ok(Box::new(sevenz::Extractor {})),
             "Tar" => Ok(Box::new(tar::Extractor {})),
             "TarBz2" => Ok(Box::new(tar::Bz2Extractor {})),
@@ -196,6 +189,14 @@ pub(super) fn create_with<P: AsRef<Path>>(
             s => Err(Error::UnknownFormat(format!("{s}: unknown format"))),
         },
         None => Err(Error::Extractor(format!("{file:?} no suitable extractor"))),
+    }
+}
+
+pub(crate) fn create_parent_dir_all<P: AsRef<Path>>(path: P) -> Result<()> {
+    if let Some(parent) = path.as_ref().parent() {
+        std::fs::create_dir_all(parent).map_err(Error::IO)
+    } else {
+        Ok(())
     }
 }
 

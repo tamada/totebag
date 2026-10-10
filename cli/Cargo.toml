@@ -19,9 +19,6 @@ default = []
 # Enables the hidden `--generate-completion` flag used by `just generate-completion`.
 completion = ["dep:clap_complete"]
 
-# Forwarded to the `totebag` library; see lib/Cargo.toml for what they mean.
-rar = ["totebag/rar"]
-
 [dependencies]
 totebag = { path = "../lib", version = "0.9.0", features = [ "clap" ] }
 clap = { version = "4.5.51", features = [ "derive" ] }

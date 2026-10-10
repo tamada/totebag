@@ -20,12 +20,6 @@ default = []
 # that they can be used directly as command line arguments. Only the CLI needs it.
 clap = ["dep:clap"]
 
-# RAR extraction. NOT pure Rust: `unrar` links the C UnRAR library, whose license
-# forbids using its source to re-create the RAR compression algorithm. Off by
-# default so that `cargo build` needs no C toolchain and the published crate stays
-# unencumbered.
-rar = ["dep:unrar"]
-
 [dependencies]
 ar = "0.9.0"
 bzip2 = "0.6.1"                                             # pure Rust via libbz2-rs-sys
@@ -40,6 +34,7 @@ ignore = "0.4.25"
 infer = "0.22.0"
 log = "0.4.28"
 lzma-rust2 = { version = "0.18.1", features = [ "xz", "encoder" ] }
+rars = { version = "0.10", default-features = false, features = [ "write", "encryption"] }
 serde = { version = "1.0.228", features = [ "derive" ] }
 serde_json = "1.0.145"
 serde-xml-rs = "0.8.2"
@@ -48,7 +43,6 @@ structured-zstd = "0.0.59"
 tar = "0.4.44"
 time = "0.3.44"
 typed-builder = "0.23.2"
-unrar = { version = "0.5.8", optional = true }
 
 # `zstd` is deliberately excluded: it is the only default feature of `zip` that
 # pulls in a C library.
