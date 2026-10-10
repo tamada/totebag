@@ -1,4 +1,5 @@
 use std::fs::File;
+use std::io::{BufReader, BufWriter, Seek, Write};
 use std::path::{Path, PathBuf};
 
 use sevenz_rust2::{ArchiveEntry, ArchiveWriter, EncoderConfiguration, EncoderMethod};
@@ -14,7 +15,7 @@ pub(super) struct Archiver {}
 impl ToteArchiver for Archiver {
     fn perform(
         &self,
-        file: File,
+        file: &mut BufWriter<File>,
         targets: &[PathBuf],
         config: &crate::ArchiveConfig,
     ) -> Result<Vec<ToteArchiveEntry>> {
@@ -22,7 +23,8 @@ impl ToteArchiver for Archiver {
             Ok(writer) => writer,
             Err(e) => return Err(Error::Archiver(e.to_string())),
         };
-        set_compression_level(&mut w, config.level);
+        let methods = compression_level(config.level);
+        w.set_content_methods(methods);
         let mut errs = vec![];
         let mut entries = vec![];
         for tp in targets {
@@ -47,18 +49,23 @@ impl ToteArchiver for Archiver {
     }
 }
 
-fn set_compression_level(szw: &mut ArchiveWriter<File>, level: u8) {
+fn compression_level(level: u8) -> Vec<EncoderConfiguration> {
     let method = match level {
         0..=4 => EncoderMethod::LZMA,
         _ => EncoderMethod::LZMA2,
     };
-    szw.set_content_methods(vec![EncoderConfiguration::new(method)]);
+    vec![EncoderConfiguration::new(method)]
 }
 
-fn process_file(szw: &mut ArchiveWriter<File>, target: &Path, dest_path: &Path) -> Result<()> {
+fn process_file<W: Write + Seek>(
+    szw: &mut ArchiveWriter<W>,
+    target: &Path,
+    dest_path: &Path,
+) -> Result<()> {
     let name = dest_path.to_string_lossy().into_owned();
     let source = File::open(target).map_err(Error::IO)?;
-    szw.push_archive_entry(ArchiveEntry::from_path(dest_path, name), Some(source))
+    let buf = BufReader::new(source);
+    szw.push_archive_entry(ArchiveEntry::from_path(dest_path, name), Some(buf))
         .map(|_| ())
         .map_err(|e| Error::Archiver(e.to_string()))
 }

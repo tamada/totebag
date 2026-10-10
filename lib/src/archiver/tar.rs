@@ -2,7 +2,7 @@ use bzip2::write::BzEncoder;
 use flate2::write::GzEncoder;
 use lzma_rust2::{XzOptions, XzWriter};
 use std::fs::File;
-use std::io::Write;
+use std::io::{BufWriter, Write};
 use std::path::PathBuf;
 use structured_zstd::encoding::{CompressionLevel, StreamingEncoder};
 use tar::Builder;
@@ -28,7 +28,7 @@ pub(super) struct ZstdArchiver {}
 impl ToteArchiver for Archiver {
     fn perform(
         &self,
-        file: File,
+        file: &mut BufWriter<File>,
         targets: &[PathBuf],
         config: &crate::ArchiveConfig,
     ) -> Result<Vec<ArchiveEntry>> {
@@ -42,16 +42,15 @@ impl ToteArchiver for Archiver {
 impl ToteArchiver for GzArchiver {
     fn perform(
         &self,
-        file: File,
+        file: &mut BufWriter<File>,
         targets: &[PathBuf],
         config: &crate::ArchiveConfig,
     ) -> Result<Vec<ArchiveEntry>> {
         let level = config.level as u32;
-        write_tar(
-            GzEncoder::new(file, flate2::Compression::new(level)),
-            targets,
-            config,
-        )
+        let mut encoder = GzEncoder::new(file, flate2::Compression::new(level));
+        let r = write_tar(&mut encoder, targets, config);
+        let f = encoder.finish().map_err(Error::IO);
+        r.and_then(|entries| f.map(|_| entries))
     }
     fn enable(&self) -> bool {
         true
@@ -61,16 +60,15 @@ impl ToteArchiver for GzArchiver {
 impl ToteArchiver for Bz2Archiver {
     fn perform(
         &self,
-        file: File,
+        file: &mut BufWriter<File>,
         targets: &[PathBuf],
         config: &crate::ArchiveConfig,
     ) -> Result<Vec<ArchiveEntry>> {
         let level = config.level as u32;
-        write_tar(
-            BzEncoder::new(file, bzip2::Compression::new(level)),
-            targets,
-            config,
-        )
+        let mut encoder = BzEncoder::new(file, bzip2::Compression::new(level));
+        let r = write_tar(&mut encoder, targets, config);
+        let f = encoder.finish().map_err(Error::IO);
+        r.and_then(|entries| f.map(|_| entries))
     }
     fn enable(&self) -> bool {
         true
@@ -80,14 +78,16 @@ impl ToteArchiver for Bz2Archiver {
 impl ToteArchiver for XzArchiver {
     fn perform(
         &self,
-        file: File,
+        file: &mut BufWriter<File>,
         targets: &[PathBuf],
         config: &crate::ArchiveConfig,
     ) -> Result<Vec<ArchiveEntry>> {
         let level = config.level as u32;
-        let encoder = XzWriter::new(file, XzOptions::with_preset(level))
+        let mut encoder = XzWriter::new(file, XzOptions::with_preset(level))
             .map_err(|e| Error::Archiver(e.to_string()))?;
-        write_tar(encoder.auto_finish(), targets, config)
+        let r = write_tar(&mut encoder, targets, config);
+        let f = encoder.finish().map_err(Error::IO);
+        r.and_then(|entries| f.map(|_| entries))
     }
     fn enable(&self) -> bool {
         true
@@ -112,7 +112,7 @@ impl ZstdArchiver {
 impl ToteArchiver for ZstdArchiver {
     fn perform(
         &self,
-        file: File,
+        file: &mut BufWriter<File>,
         targets: &[PathBuf],
         config: &crate::ArchiveConfig,
     ) -> Result<Vec<ArchiveEntry>> {

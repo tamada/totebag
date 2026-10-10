@@ -1,4 +1,5 @@
 use std::fs::File;
+use std::io::BufWriter;
 use std::path::PathBuf;
 
 use crate::archiver::{ArchiveEntry, ToteArchiver};
@@ -12,7 +13,7 @@ pub(super) struct Archiver {}
 impl ToteArchiver for Archiver {
     fn perform(
         &self,
-        file: File,
+        file: &mut BufWriter<File>,
         targets: &[PathBuf],
         config: &crate::ArchiveConfig,
     ) -> Result<Vec<ArchiveEntry>> {

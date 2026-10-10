@@ -38,6 +38,8 @@
 use chrono::NaiveDateTime;
 use serde::Serialize;
 use std::fmt::Display;
+use std::fs::File;
+use std::io::BufReader;
 use std::path::{Path, PathBuf};
 use typed_builder::TypedBuilder;
 
@@ -190,6 +192,13 @@ pub(super) fn create_with<P: AsRef<Path>>(
         },
         None => Err(Error::Extractor(format!("{file:?} no suitable extractor"))),
     }
+}
+
+/// Opens `archive_file` for reading through a `BufReader`, so that formats
+/// that read small headers do not issue a system call for each one.
+pub(crate) fn buf_open(archive_file: &Path) -> Result<BufReader<File>> {
+    let r = File::open(archive_file).map_err(Error::IO)?;
+    Ok(BufReader::new(r))
 }
 
 /// The destination of the entry `name` under `base`, or an error when the name

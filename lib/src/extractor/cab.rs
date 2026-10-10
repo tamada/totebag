@@ -1,4 +1,5 @@
 use std::fs::File;
+use std::io::BufReader;
 use std::path::{Path, PathBuf};
 
 use cab::{Cabinet, FileEntry};
@@ -31,7 +32,11 @@ impl ToteExtractor for Extractor {
     }
 }
 
-fn write_file_impl(cabinet: &mut Cabinet<File>, file: (String, u32), base: &Path) -> Result<()> {
+fn write_file_impl(
+    cabinet: &mut Cabinet<BufReader<File>>,
+    file: (String, u32),
+    base: &Path,
+) -> Result<()> {
     let file_name = file.0.clone();
     let dest_file = super::safe_join_dos(base, &file_name)?;
     log::info!("extracting {file_name} ({} bytes)", file.1);
@@ -48,18 +53,15 @@ fn write_file_impl(cabinet: &mut Cabinet<File>, file: (String, u32), base: &Path
     }
 }
 
-fn open_cabinet(archive_file: &PathBuf) -> Result<Cabinet<File>> {
-    let cab_file = match File::open(archive_file) {
-        Ok(f) => f,
-        Err(e) => return Err(Error::IO(e)),
-    };
+fn open_cabinet(archive_file: &Path) -> Result<Cabinet<BufReader<File>>> {
+    let cab_file = super::buf_open(archive_file)?;
     match Cabinet::new(cab_file) {
         Ok(c) => Ok(c),
         Err(e) => Err(Error::IO(e)),
     }
 }
 
-fn list_impl<F, T>(archive_file: &PathBuf, mapper: F) -> Result<Vec<T>>
+fn list_impl<F, T>(archive_file: &Path, mapper: F) -> Result<Vec<T>>
 where
     F: Fn(&cab::FileEntry) -> T,
 {

@@ -17,6 +17,7 @@ struct ReadmeDoctests;
 use ignore::WalkBuilder;
 use std::collections::HashSet;
 use std::fmt::Display;
+use std::io::BufWriter;
 use std::path::{Path, PathBuf};
 
 use typed_builder::TypedBuilder;
@@ -453,16 +454,13 @@ pub fn archive<P: AsRef<Path>>(
     let archiver = archiver::create(&dest_file)?;
     extractor::create_parent_dir_all(&dest_file)?;
     let targets = prepare_targets(archive_targets);
-    match std::fs::File::create(&dest_file) {
-        Ok(file) => match archiver.perform(file, &targets, config) {
-            Ok(entries) => {
-                let compressed = dest_file.metadata().map(|m| m.len()).unwrap_or(0);
-                Ok(ArchiveEntries::new(dest_file, entries, compressed))
-            }
-            Err(e) => Err(e),
-        },
-        Err(e) => Err(Error::IO(e)),
-    }
+    let file = std::fs::File::create(&dest_file)?;
+    let mut writer = BufWriter::new(file);
+    let entries = archiver.perform(&mut writer, &targets, config)?;
+    // Flush explicitly: BufWriter ignores write errors when it is dropped.
+    writer.into_inner().map_err(|e| Error::IO(e.into_error()))?;
+    let compressed = dest_file.metadata().map(|m| m.len()).unwrap_or(0);
+    Ok(ArchiveEntries::new(dest_file, entries, compressed))
 }
 
 fn prepare_targets<P: AsRef<Path>>(targets: &[P]) -> Vec<PathBuf> {

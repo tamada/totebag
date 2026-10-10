@@ -14,13 +14,14 @@
 //!     .overwrite(true)                           // set overwrite flag of the destination file.
 //!     .build();
 //! let targets = vec!["src", "Cargo.toml"].iter() // files to be archived.
-//!     .map(|s| PathBuf::from(s)).collect::<Vec<PathBuf>>();   
+//!     .map(|s| PathBuf::from(s)).collect::<Vec<PathBuf>>();
 //! match totebag::archive(&targets, &config) {
 //!     Ok(_) => println!("archiving is done"),
 //!     Err(e) => eprintln!("error: {:?}", e),
 //! }
 //! ```
 use std::fs::File;
+use std::io::BufWriter;
 use std::path::{Path, PathBuf};
 
 use crate::format::default_format_detector;
@@ -97,11 +98,13 @@ impl ArchiveEntry {
 /// Then, the call [`perform`](ToteArchiver::perform) method of [`ToteArchiver`].
 pub trait ToteArchiver {
     /// Perform the archiving operation.
-    /// - `file` is the destination file for the archive.
-    /// - `tps` is the list of files to be archived.
+    /// - `writer` is a buffered writer for the destination file. The caller
+    ///   flushes it after this returns, so implementations must not rely on
+    ///   dropping it to report write errors; finish any encoder they wrap it in.
+    /// - `targets` is the list of files to be archived.
     fn perform(
         &self,
-        file: File,
+        writer: &mut BufWriter<File>,
         targets: &[PathBuf],
         config: &crate::ArchiveConfig,
     ) -> Result<Vec<ArchiveEntry>>;
@@ -139,8 +142,6 @@ pub fn create<P: AsRef<Path>>(dest: P) -> Result<Box<dyn ToteArchiver>> {
                 "Cab" => Box::new(cab::Archiver {}),
                 "Cpio" => Box::new(cpio::Archiver {}),
                 "Lha" => Box::new(lha::Archiver {}),
-                // RAR archiving is never supported, so the stub is compiled in
-                // regardless of the `rar` feature, which only affects extraction.
                 "Rar" => Box::new(rar::Archiver {}),
                 "SevenZ" => Box::new(sevenz::Archiver {}),
                 "Tar" => Box::new(tar::Archiver {}),

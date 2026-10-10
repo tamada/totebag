@@ -12,14 +12,12 @@ pub(super) struct Extractor {}
 
 impl ToteExtractor for Extractor {
     fn list(&self, archive_file: PathBuf) -> Result<Entries> {
-        File::open(&archive_file)
-            .map_err(Error::IO)
+        super::buf_open(&archive_file)
             .map(Archive::new)
             .and_then(|archive| list_ar(archive, archive_file))
     }
     fn perform(&self, archive_file: PathBuf, base: PathBuf) -> Result<()> {
-        File::open(&archive_file)
-            .map_err(Error::IO)
+        super::buf_open(&archive_file)
             .map(Archive::new)
             .and_then(|archive| extract_ar(archive, base))
     }

@@ -71,7 +71,7 @@ impl ToteExtractor for XzExtractor {
 
 /// `.tar.xz` files produced by `xz(1)` may hold several concatenated streams,
 /// so multi-stream input is allowed.
-fn new_xz_decoder(f: File) -> Result<XzReader<File>> {
+fn new_xz_decoder(f: BufReader<File>) -> Result<XzReader<BufReader<File>>> {
     Ok(XzReader::new(f, true))
 }
 
@@ -86,16 +86,16 @@ impl ToteExtractor for ZstdExtractor {
     }
 }
 
-fn new_zstd_decoder(f: File) -> Result<StreamingDecoder<BufReader<File>, FrameDecoder>> {
-    StreamingDecoder::new(BufReader::new(f)).map_err(|e| Error::Extractor(e.to_string()))
+fn new_zstd_decoder(f: BufReader<File>) -> Result<StreamingDecoder<BufReader<File>, FrameDecoder>> {
+    StreamingDecoder::new(f).map_err(|e| Error::Extractor(e.to_string()))
 }
 
-fn open_tar_file<F, R: Read>(file: &PathBuf, opener: F) -> Result<Archive<R>>
+fn open_tar_file<F, R: Read>(file: &Path, opener: F) -> Result<Archive<R>>
 where
-    F: FnOnce(File) -> Result<R>,
+    F: FnOnce(BufReader<File>) -> Result<R>,
 {
-    let file = File::open(file).map_err(Error::IO)?;
-    opener(file).map(Archive::new)
+    let reader = super::buf_open(file)?;
+    opener(reader).map(Archive::new)
 }
 
 fn extract_tar<R: Read>(mut archive: tar::Archive<R>, base: PathBuf) -> Result<()> {
