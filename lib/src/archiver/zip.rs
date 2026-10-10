@@ -1,6 +1,6 @@
 use crate::archiver::os;
 use std::fs::File;
-use std::io::BufReader;
+use std::io::{BufReader, BufWriter};
 use std::path::{Path, PathBuf};
 use zip::ZipWriter;
 
@@ -15,7 +15,7 @@ pub(super) struct Archiver {}
 impl Archiver {
     fn process_file(
         &self,
-        zw: &mut ZipWriter<File>,
+        zw: &mut ZipWriter<&mut BufWriter<File>>,
         target: &Path,
         dest_path: PathBuf,
         level: u8,
@@ -37,7 +37,7 @@ impl Archiver {
 impl ToteArchiver for Archiver {
     fn perform(
         &self,
-        file: File,
+        file: &mut BufWriter<File>,
         targets: &[PathBuf],
         config: &crate::ArchiveConfig,
     ) -> Result<Vec<ArchiveEntry>> {

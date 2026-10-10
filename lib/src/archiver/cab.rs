@@ -1,4 +1,5 @@
 use std::fs::File;
+use std::io::{BufWriter, Seek, Write};
 use std::path::{Path, PathBuf};
 
 use cab::{CabinetBuilder, CabinetWriter};
@@ -14,7 +15,7 @@ pub(super) struct Archiver {}
 impl ToteArchiver for Archiver {
     fn perform(
         &self,
-        file: File,
+        file: &mut BufWriter<File>,
         targets: &[PathBuf],
         config: &crate::ArchiveConfig,
     ) -> Result<Vec<ArchiveEntry>> {
@@ -55,7 +56,7 @@ fn compression_type(level: u8) -> cab::CompressionType {
     }
 }
 
-fn write_entry(writer: &mut CabinetWriter<File>, path: &Path) -> Result<()> {
+fn write_entry<W: Write + Seek>(writer: &mut CabinetWriter<W>, path: &Path) -> Result<()> {
     match (File::open(path), writer.next_file()) {
         (Ok(mut reader), Ok(Some(mut w))) => match std::io::copy(&mut reader, &mut w) {
             Ok(_) => Ok(()),

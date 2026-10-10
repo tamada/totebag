@@ -1,4 +1,5 @@
 use std::fs::File;
+use std::io::BufWriter;
 use std::path::{Path, PathBuf};
 
 use rars::{ArchiveVersion, Builder, EntrySource, WriterResources};
@@ -12,7 +13,7 @@ pub(super) struct Archiver {}
 impl ToteArchiver for Archiver {
     fn perform(
         &self,
-        mut file: File,
+        file: &mut BufWriter<File>,
         targets: &[PathBuf],
         config: &crate::ArchiveConfig,
     ) -> Result<Vec<ArchiveEntry>> {
@@ -39,7 +40,7 @@ impl ToteArchiver for Archiver {
                 }
             }
         }
-        if let Err(e) = builder.write_to(&mut file, &WriterResources::default(), None) {
+        if let Err(e) = builder.write_to(file, &WriterResources::default(), None) {
             errs.push(Error::Archiver(e.to_string()))
         }
         Error::error_or(entries, errs)
