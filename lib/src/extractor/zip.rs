@@ -1,6 +1,6 @@
-use std::fs::{File, create_dir_all};
+use std::fs::File;
 use std::io::copy;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use chrono::NaiveDateTime;
 use zip::read::ZipFile;
@@ -36,24 +36,32 @@ impl ToteExtractor for Extractor {
     }
 
     fn perform(&self, archive_file: PathBuf, base: PathBuf) -> Result<()> {
+        let mut errs = vec![];
         let mut zip = open(&archive_file)?;
         for i in 0..zip.len() {
-            let mut file = zip
-                .by_index(i)
-                .map_err(|e| Error::Extractor(e.to_string()))?;
-            if !file.is_file() {
-                continue;
+            let file = zip.by_index(i).map_err(|e| Error::Extractor(e.to_string()));
+            match file {
+                Ok(mut file) => {
+                    if let Err(e) = perform_impl(&mut file, &base) {
+                        errs.push(e);
+                    }
+                }
+                Err(e) => errs.push(e),
             }
-            log::info!("extracting {} ({} bytes)", file.name(), file.size());
-            let dest = base.join(file.name());
-            if let Some(parent) = dest.parent() {
-                create_dir_all(parent).map_err(Error::IO)?;
-            }
-            let mut out = File::create(dest).map_err(Error::IO)?;
-            copy(&mut file, &mut out).map_err(Error::IO)?;
         }
-        Ok(())
+        Error::error_or((), errs)
     }
+}
+
+fn perform_impl<R: std::io::Read>(file: &mut ZipFile<R>, base: &Path) -> Result<u64> {
+    if !file.is_file() {
+        return Ok(0);
+    }
+    log::info!("extracting {} ({} bytes)", file.name(), file.size());
+    let dest = super::safe_join(base, Path::new(file.name()))?;
+    super::create_parent_dir_all(&dest)?;
+    let mut out = File::create(dest).map_err(Error::IO)?;
+    copy(file, &mut out).map_err(Error::IO)
 }
 
 fn convert<R: std::io::Read>(zfile: ZipFile<R>) -> Entry {
@@ -126,5 +134,30 @@ mod tests {
             }
             Err(e) => panic!("unexpected error: {e:?}"),
         };
+    }
+
+    #[test]
+    fn test_extract_rejects_unsafe_paths() {
+        let dir = PathBuf::from("results/zip_unsafe");
+        let _ = std::fs::remove_dir_all(&dir);
+        let opts = crate::ExtractConfig::builder()
+            .dest(dir.join("out"))
+            .build();
+        let r = crate::extract("../testdata/unsafe/unsafe.zip", &opts);
+
+        // The safe entries on both sides of the unsafe ones are extracted...
+        assert!(dir.join("out/ok_before.txt").exists());
+        assert!(dir.join("out/ok_after.txt").exists());
+        // ...nothing is written next to `out`...
+        assert!(!dir.join("evil.txt").exists());
+        // ...and both unsafe entries are reported.
+        match r {
+            Err(Error::Array(errs)) => {
+                assert_eq!(errs.len(), 2);
+                assert!(errs.iter().all(|e| matches!(e, Error::UnsafePath(..))));
+            }
+            other => panic!("unexpected result: {other:?}"),
+        }
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 }

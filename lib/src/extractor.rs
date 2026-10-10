@@ -192,9 +192,37 @@ pub(super) fn create_with<P: AsRef<Path>>(
     }
 }
 
+/// The destination of the entry `name` under `base`, or an error when the name
+/// would leave `base`: a `..` component, an absolute path, or a drive prefix.
+/// `.` components are dropped.
+pub(crate) fn safe_join(base: &Path, name: &Path) -> Result<PathBuf> {
+    use std::path::Component;
+    let mut rel = PathBuf::new();
+    for component in name.components() {
+        match component {
+            Component::Normal(part) => rel.push(part),
+            Component::CurDir => {}
+            Component::ParentDir | Component::RootDir | Component::Prefix(_) => {
+                return Err(Error::UnsafePath(name.to_path_buf()));
+            }
+        }
+    }
+    Ok(base.join(rel))
+}
+
+/// [`safe_join`] for formats whose names use DOS `\` separators (cab), so that
+/// `dir\file` becomes `dir/file` rather than one file named `dir\file`.
+pub(crate) fn safe_join_dos(base: &Path, name: &str) -> Result<PathBuf> {
+    safe_join(base, Path::new(&name.replace('\\', "/")))
+}
+
 pub(crate) fn create_parent_dir_all<P: AsRef<Path>>(path: P) -> Result<()> {
     if let Some(parent) = path.as_ref().parent() {
-        std::fs::create_dir_all(parent).map_err(Error::IO)
+        if !parent.exists() {
+            std::fs::create_dir_all(parent).map_err(Error::IO)
+        } else {
+            Ok(())
+        }
     } else {
         Ok(())
     }
@@ -250,5 +278,45 @@ mod tests {
         let extractor = create_with(&archive_file, format).unwrap();
         let entries = extractor.list(archive_file).unwrap();
         assert_eq!(entries.len(), 19);
+    }
+
+    #[test]
+    fn test_safe_join() {
+        let base = PathBuf::from("base");
+        assert_eq!(
+            safe_join(&base, Path::new("a")).unwrap(),
+            PathBuf::from("base/a")
+        );
+        assert_eq!(
+            safe_join(&base, Path::new("./a/./b.txt")).unwrap(),
+            PathBuf::from("base/a/b.txt")
+        );
+        for name in [
+            "../evil.txt",
+            "a/../../evil.txt",
+            "a/../b.txt",
+            "/etc/passwd",
+        ] {
+            assert!(
+                matches!(
+                    safe_join(&base, Path::new(name)),
+                    Err(Error::UnsafePath(..))
+                ),
+                "{name} must be rejected"
+            );
+        }
+    }
+
+    #[test]
+    fn test_safe_join_dos() {
+        let base = Path::new("out");
+        assert_eq!(
+            safe_join_dos(base, "dir\\file.txt").unwrap(),
+            PathBuf::from("out/dir/file.txt")
+        );
+        assert!(matches!(
+            safe_join_dos(base, "..\\evil.txt"),
+            Err(Error::UnsafePath(..))
+        ));
     }
 }

@@ -1,4 +1,3 @@
-use std::fs::create_dir_all;
 use std::io::{BufReader, Read};
 use std::{
     fs::File,
@@ -100,23 +99,31 @@ where
 }
 
 fn extract_tar<R: Read>(mut archive: tar::Archive<R>, base: PathBuf) -> Result<()> {
+    let mut errs = vec![];
     for entry in archive.entries().map_err(Error::IO)? {
-        let mut entry = entry.map_err(Error::IO)?;
-        let path = entry.path().map_err(Error::IO)?.into_owned();
-        if is_filename_mac_finder_file(&path) {
-            continue;
-        }
-        let size = entry.header().size().map_err(Error::IO)?;
-        log::info!("extracting {path:?} ({size} bytes)");
-
-        let dest = base.join(&path);
-        if entry.header().entry_type().is_file() {
-            if let Some(parent) = dest.parent() {
-                create_dir_all(parent).map_err(Error::IO)?;
-            }
-            entry.unpack(dest).map_err(Error::IO)?;
+        let result = entry
+            .map_err(Error::IO)
+            .and_then(|entry| extract_tar_entry(entry, &base));
+        if let Err(e) = result {
+            errs.push(e);
         }
     }
+    Error::error_or((), errs)
+}
+
+/// Extracts one entry under `base`. Only regular files are written; other
+/// entries and macOS Finder files are skipped.
+fn extract_tar_entry<R: Read>(mut entry: tar::Entry<'_, R>, base: &Path) -> Result<()> {
+    let path = entry.path().map_err(Error::IO)?.into_owned();
+    if is_filename_mac_finder_file(&path) || !entry.header().entry_type().is_file() {
+        return Ok(());
+    }
+    let size = entry.header().size().map_err(Error::IO)?;
+    log::info!("extracting {path:?} ({size} bytes)");
+
+    let dest = super::safe_join(base, &path)?;
+    super::create_parent_dir_all(&dest)?;
+    entry.unpack(dest).map_err(Error::IO)?;
     Ok(())
 }
 
@@ -315,5 +322,30 @@ mod tests {
             }
             Err(e) => panic!("unexpected error: {e:?}"),
         };
+    }
+
+    #[test]
+    fn test_extract_rejects_unsafe_paths() {
+        let dir = PathBuf::from("results/tar_unsafe");
+        let _ = std::fs::remove_dir_all(&dir);
+        let opts = crate::ExtractConfig::builder()
+            .dest(dir.join("out"))
+            .build();
+        let r = crate::extract("../testdata/unsafe/unsafe.tar", &opts);
+
+        // The safe entries on both sides of the unsafe ones are extracted...
+        assert!(dir.join("out/ok_before.txt").exists());
+        assert!(dir.join("out/ok_after.txt").exists());
+        // ...nothing is written next to `out`...
+        assert!(!dir.join("evil.txt").exists());
+        // ...and both unsafe entries are reported.
+        match r {
+            Err(Error::Array(errs)) => {
+                assert_eq!(errs.len(), 2);
+                assert!(errs.iter().all(|e| matches!(e, Error::UnsafePath(..))));
+            }
+            other => panic!("unexpected result: {other:?}"),
+        }
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 }

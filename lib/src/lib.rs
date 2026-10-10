@@ -78,6 +78,9 @@ pub enum Error {
     Warn(String),
     /// The archive format could not be determined
     UnknownFormat(String),
+    /// An archive entry whose name would be written outside the destination
+    /// directory (`..`, an absolute path or a drive prefix); it is not extracted.
+    UnsafePath(PathBuf),
     /// The format is recognized but not supported for the operation
     UnsupportedFormat(String),
     /// XML serialization/deserialization error
@@ -105,6 +108,9 @@ impl Display for Error {
             Error::NoArgumentsGiven => write!(f, "No arguments given. Use --help for usage."),
             Error::Warn(s) => write!(f, "Unknown error: {s}"),
             Error::UnknownFormat(s) => write!(f, "{s}: Unknown format"),
+            Error::UnsafePath(path) => {
+                write!(f, "{}: unsafe entry path, not extracted", path.display())
+            }
             Error::UnsupportedFormat(s) => write!(f, "{s}: Unsupported format"),
             Error::Xml(e) => write!(f, "Xml error: {e}"),
         }
@@ -445,11 +451,7 @@ pub fn archive<P: AsRef<Path>>(
     let dest_file = config.dest_file()?;
     log::info!("{:?}: {}", dest_file, dest_file.exists());
     let archiver = archiver::create(&dest_file)?;
-    if let Some(parent) = dest_file.parent()
-        && !parent.exists()
-    {
-        std::fs::create_dir_all(parent).map_err(Error::IO)?;
-    }
+    extractor::create_parent_dir_all(&dest_file)?;
     let targets = prepare_targets(archive_targets);
     match std::fs::File::create(&dest_file) {
         Ok(file) => match archiver.perform(file, &targets, config) {
@@ -732,6 +734,10 @@ mod tests {
         assert_eq!(
             Error::UnknownFormat("hoge".to_string()).to_string(),
             "hoge: Unknown format"
+        );
+        assert_eq!(
+            Error::UnsafePath(PathBuf::from("../evil.txt")).to_string(),
+            "../evil.txt: unsafe entry path, not extracted"
         );
         assert_eq!(
             Error::UnsupportedFormat("hoge".to_string()).to_string(),

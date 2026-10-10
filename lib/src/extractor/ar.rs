@@ -1,4 +1,3 @@
-use std::fs::create_dir_all;
 use std::io::Read;
 use std::path::Path;
 use std::{fs::File, path::PathBuf};
@@ -50,20 +49,22 @@ fn extract_ar<R: Read>(mut archive: ar::Archive<R>, base: PathBuf) -> Result<()>
         let size = header.size();
         log::info!("extracting {path:?} ({size} bytes)");
 
-        let dest = base.join(&path);
-        if is_file(header.mode())
-            && let Err(e) = write_to(&mut entry, &dest, &mut errs)
-        {
-            errs.push(e);
+        match super::safe_join(&base, &path) {
+            Ok(dest) => {
+                if is_file(header.mode())
+                    && let Err(e) = write_to(&mut entry, &dest, &mut errs)
+                {
+                    errs.push(e);
+                }
+            }
+            Err(e) => errs.push(e),
         }
     }
-    Ok(())
+    Error::error_or((), errs)
 }
 
 fn write_to<R: Read>(entry: &mut ar::Entry<R>, dest: &Path, errs: &mut Vec<Error>) -> Result<()> {
-    if let Some(parent) = dest.parent() {
-        create_dir_all(parent).map_err(Error::IO)?;
-    }
+    super::create_parent_dir_all(dest)?;
     let mut dest_file = File::create(dest).map_err(Error::IO)?;
     if let Err(e) = std::io::copy(entry, &mut dest_file) {
         errs.push(Error::IO(e));
