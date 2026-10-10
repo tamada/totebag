@@ -44,8 +44,6 @@ Supported archive formats are Ar, Cab, Cpio, Tar, Tar with Gzip/Bzip2/Xz/Zstd, Z
 plus Lha/Lzh and Rar for extraction only.
 See [the library README](../lib/README.md) for the per-format compression levels.
 
-RAR extraction is not compiled in by default; see the note in [the library README](../lib/README.md#rar-support).
-
 #### :whale: Docker
 
 ```sh

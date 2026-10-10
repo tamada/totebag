@@ -64,13 +64,6 @@ pub enum Error {
     Extractor(String),
     /// A fatal error from an underlying library
     Fatal(Box<dyn std::error::Error + Send + Sync>),
-    /// The format is known but its support was not compiled in.
-    ///
-    /// `feature` names the Cargo feature that enables it.
-    FeatureDisabled {
-        format: String,
-        feature: &'static str,
-    },
     /// The specified file was not found
     FileNotFound(PathBuf),
     /// The file already exists when it shouldn't be overwritten
@@ -105,10 +98,6 @@ impl Display for Error {
             Error::DirExists(p) => write!(f, "{}: Directory already exists", p.display()),
             Error::Extractor(s) => write!(f, "Extractor error: {s}"),
             Error::Fatal(e) => write!(f, "Error: {e}"),
-            Error::FeatureDisabled { format, feature } => write!(
-                f,
-                "{format}: support is not compiled in (rebuild with --features {feature})"
-            ),
             Error::FileNotFound(p) => write!(f, "{}: File not found", p.display()),
             Error::FileExists(p) => write!(f, "{}: File already exists", p.display()),
             Error::IO(e) => write!(f, "IO error: {e}"),
@@ -751,14 +740,6 @@ mod tests {
         assert_eq!(
             Error::unsupported_for_archiving("Rar").to_string(),
             "Rar (archiving): Unsupported format"
-        );
-        assert_eq!(
-            Error::FeatureDisabled {
-                format: "Rar".to_string(),
-                feature: "rar",
-            }
-            .to_string(),
-            "Rar: support is not compiled in (rebuild with --features rar)"
         );
         assert_eq!(
             Error::Warn("message".to_string()).to_string(),

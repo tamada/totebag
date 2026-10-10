@@ -23,32 +23,13 @@ C toolchain and cross-compiling needs nothing but a Rust target.
 - [Zip](https://crates.io/crates/zip)
 - [7z](https://crates.io/crates/sevenz-rust2)
 - [Lha, Lzh](https://crates.io/crates/delharc) (extraction only)
-- [Rar](https://crates.io/crates/unrar) (extraction only, behind the `rar` feature)
+- [Rar](https://crates.io/crates/rars) (extraction only)
 
 #### Cargo features
 
 | Feature | Default | Effect |
 | ------- | :-----: | ------ |
 | `clap` | off | Derives `clap::ValueEnum` for `IgnoreType` and `OutputFormat` so they can be used directly as command line arguments. |
-| `rar` | off | Enables RAR extraction. See [RAR support](#rar-support). |
-
-##### RAR support
-
-There is no pure Rust RAR implementation. The `unrar` crate links the C UnRAR library,
-whose license forbids using its source to re-create the RAR compression algorithm, so
-RAR is not compiled in by default:
-
-```console
-$ totebag -m list some.rar
-Rar: support is not compiled in (rebuild with --features rar)
-```
-
-The released binaries and container images are built with `--features rar`. To get it in
-your own build, enable the feature:
-
-```sh
-cargo add totebag --features rar
-```
 
 ### :walking: How to use
 

@@ -55,18 +55,13 @@ Options:
 | Cpio | `.cpio` | ✅ | ✅ |
 | Lha, Lzh | `.lha`, `.lzh` | — | ✅ |
 | 7z | `.7z` | ✅ | ✅ |
-| Rar | `.rar` | — | ✅ (needs the `rar` feature) |
+| Rar | `.rar` | — | ✅ |
 | Tar | `.tar` | ✅ | ✅ |
 | Tar+Gzip | `.tar.gz`, `.tgz` | ✅ | ✅ |
 | Tar+Bzip2 | `.tar.bz2`, `.tbz2` | ✅ | ✅ |
 | Tar+Xz | `.tar.xz`, `.txz` | ✅ | ✅ |
 | Tar+Zstd | `.tar.zst`, `.tzst`, `.tar.zstd`, `.tzstd` | ✅ | ✅ |
 | Zip | `.zip`, `.jar`, `.war`, `.ear` | ✅ | ✅ |
-
-RAR support is not built by default: no pure Rust RAR implementation exists, and the
-UnRAR license forbids using its source to re-create the RAR compression algorithm.
-The released binaries and container images are built with it enabled; if you install
-from crates.io and need it, use `cargo install totebag-cli --features rar`.
 
 ## Entry names in the created archive
 
