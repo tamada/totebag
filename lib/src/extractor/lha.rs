@@ -1,4 +1,4 @@
-use std::fs::{File, create_dir_all};
+use std::fs::File;
 use std::io::copy;
 use std::path::{Path, PathBuf};
 
@@ -57,12 +57,10 @@ impl ToteExtractor for Extractor {
 fn write_data_impl(reader: &mut LhaDecodeReader<File>, base: &Path) -> Result<()> {
     let header = reader.header();
     let name = header.parse_pathname();
-    let dest = base.join(&name);
+    let dest = super::safe_join(base, &name)?;
     if reader.is_decoder_supported() {
         log::info!("extracting {:?} ({} bytes)", name, header.original_size);
-        if let Some(parent) = dest.parent() {
-            create_dir_all(parent).map_err(Error::IO)?;
-        }
+        super::create_parent_dir_all(&dest)?;
         let mut dest = File::create(dest).map_err(Error::IO)?;
         copy(reader, &mut dest).map_err(Error::IO)?;
         if let Err(e) = reader.crc_check() {

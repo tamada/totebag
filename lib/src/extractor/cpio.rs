@@ -61,15 +61,13 @@ impl ToteExtractor for Extractor {
 
 fn prepare_write(entry: &cpio::Entry<std::fs::File>, base: &Path) -> Result<PathBuf> {
     let path = entry.path.to_path()?;
-    let dest_path = base.join(&path);
+    let dest_path = super::safe_join(base, &path)?;
     log::info!(
         "extracting {} ({} bytes) to {dest_path:?}",
         entry.path,
         entry.metadata.size()
     );
-    if let Some(parent) = dest_path.parent() {
-        std::fs::create_dir_all(parent).map_err(crate::Error::IO)?;
-    };
+    super::create_parent_dir_all(&dest_path)?;
     Ok(dest_path)
 }
 

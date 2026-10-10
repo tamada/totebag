@@ -1,5 +1,5 @@
-use std::fs::File;
 use std::path::PathBuf;
+use std::{fs::File, path::Path};
 
 use crate::{Error, Result};
 use chrono::DateTime;
@@ -53,17 +53,26 @@ fn extract(mut file: &File, base: PathBuf) -> Result<()> {
         Ok(reader) => reader,
         Err(e) => return Err(Error::Fatal(Box::new(e))),
     };
+    let mut errs = vec![];
     for block_index in 0..archive.blocks.len() {
         let block_decoder =
             BlockDecoder::new(THREAD_COUNT, block_index, &archive, &password, &mut file);
-        if let Err(e) = block_decoder.for_each_entries(&mut |entry, reader| {
-            let d = base.join(&entry.name);
-            sevenz_rust2::default_entry_extract_fn(entry, reader, &d)
-        }) {
-            return Err(Error::Fatal(Box::new(e)));
+        let r = block_decoder.for_each_entries(&mut |entry, reader| match super::safe_join(
+            &base,
+            Path::new(&entry.name),
+        ) {
+            Ok(path) => sevenz_rust2::default_entry_extract_fn(entry, reader, &path),
+            Err(e) => {
+                errs.push(e);
+                std::io::copy(reader, &mut std::io::sink())?;
+                Ok(true)
+            }
+        });
+        if let Err(e) = r {
+            errs.push(Error::Extractor(e.to_string()));
         }
     }
-    Ok(())
+    Error::error_or((), errs)
 }
 
 #[cfg(test)]

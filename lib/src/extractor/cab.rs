@@ -1,4 +1,4 @@
-use std::fs::{File, create_dir_all};
+use std::fs::File;
 use std::path::{Path, PathBuf};
 
 use cab::{Cabinet, FileEntry};
@@ -33,11 +33,9 @@ impl ToteExtractor for Extractor {
 
 fn write_file_impl(cabinet: &mut Cabinet<File>, file: (String, u32), base: &Path) -> Result<()> {
     let file_name = file.0.clone();
-    let dest_file = base.join(&file_name);
+    let dest_file = super::safe_join_dos(base, &file_name)?;
     log::info!("extracting {file_name} ({} bytes)", file.1);
-    if let Some(parent) = dest_file.parent() {
-        create_dir_all(parent).map_err(Error::IO)?;
-    }
+    super::create_parent_dir_all(&dest_file)?;
     match File::create(dest_file) {
         Ok(mut dest) => {
             let mut file_from = cabinet.read_file(&file_name).map_err(Error::IO)?;
