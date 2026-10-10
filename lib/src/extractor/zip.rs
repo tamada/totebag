@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::io::copy;
+use std::io::{BufReader, copy};
 use std::path::{Path, PathBuf};
 
 use chrono::NaiveDateTime;
@@ -17,8 +17,8 @@ const DEFAULT_UNIX_MODE: u32 = 0o644;
 /// This extractor handles ZIP archive files.
 pub(super) struct Extractor {}
 
-fn open(archive_file: &PathBuf) -> Result<zip::ZipArchive<File>> {
-    let zip_file = File::open(archive_file).map_err(Error::IO)?;
+fn open(archive_file: &Path) -> Result<zip::ZipArchive<BufReader<File>>> {
+    let zip_file = super::buf_open(archive_file)?;
     zip::ZipArchive::new(zip_file).map_err(|e| Error::Extractor(e.to_string()))
 }
 

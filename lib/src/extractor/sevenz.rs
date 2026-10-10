@@ -1,3 +1,4 @@
+use std::io::BufReader;
 use std::path::PathBuf;
 use std::{fs::File, path::Path};
 
@@ -18,7 +19,7 @@ pub(super) struct Extractor {}
 
 impl ToteExtractor for Extractor {
     fn list(&self, archive_file: PathBuf) -> Result<Entries> {
-        let mut reader = File::open(&archive_file).map_err(Error::IO)?;
+        let mut reader = super::buf_open(&archive_file)?;
         match Archive::read(&mut reader, &Password::empty()) {
             Ok(archive) => {
                 let r = archive.files.iter().map(convert).collect();
@@ -29,8 +30,8 @@ impl ToteExtractor for Extractor {
     }
 
     fn perform(&self, archive_file: PathBuf, base: PathBuf) -> Result<()> {
-        let file = File::open(archive_file).map_err(Error::IO)?;
-        extract(&file, base)
+        let mut file = super::buf_open(&archive_file)?;
+        extract(&mut file, base)
     }
 }
 
@@ -47,16 +48,15 @@ fn convert(e: &ArchiveEntry) -> Entry {
         .build()
 }
 
-fn extract(mut file: &File, base: PathBuf) -> Result<()> {
+fn extract(file: &mut BufReader<File>, base: PathBuf) -> Result<()> {
     let password = Password::empty();
-    let archive = match Archive::read(&mut file, &password) {
+    let archive = match Archive::read(file, &password) {
         Ok(reader) => reader,
         Err(e) => return Err(Error::Fatal(Box::new(e))),
     };
     let mut errs = vec![];
     for block_index in 0..archive.blocks.len() {
-        let block_decoder =
-            BlockDecoder::new(THREAD_COUNT, block_index, &archive, &password, &mut file);
+        let block_decoder = BlockDecoder::new(THREAD_COUNT, block_index, &archive, &password, file);
         let r = block_decoder.for_each_entries(&mut |entry, reader| match super::safe_join(
             &base,
             Path::new(&entry.name),

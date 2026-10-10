@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::io::copy;
+use std::io::{BufReader, copy};
 use std::path::{Path, PathBuf};
 
 use chrono::DateTime;
@@ -16,7 +16,8 @@ pub(super) struct Extractor {}
 impl ToteExtractor for Extractor {
     fn list(&self, archive_file: PathBuf) -> Result<Entries> {
         let mut result = vec![];
-        let mut reader = delharc::parse_file(&archive_file).map_err(Error::IO)?;
+        let r = super::buf_open(&archive_file)?;
+        let mut reader = LhaDecodeReader::new(r).map_err(|e| Error::Extractor(e.to_string()))?;
         loop {
             let header = reader.header();
             if !header.is_directory() {
@@ -35,7 +36,8 @@ impl ToteExtractor for Extractor {
     }
 
     fn perform(&self, archive_file: PathBuf, base: PathBuf) -> Result<()> {
-        let mut reader = delharc::parse_file(archive_file).map_err(Error::IO)?;
+        let r = super::buf_open(&archive_file)?;
+        let mut reader = LhaDecodeReader::new(r).map_err(|e| Error::Extractor(e.to_string()))?;
         let mut errs = vec![];
         loop {
             if let Err(e) = write_data_impl(&mut reader, &base) {
@@ -54,7 +56,7 @@ impl ToteExtractor for Extractor {
     }
 }
 
-fn write_data_impl(reader: &mut LhaDecodeReader<File>, base: &Path) -> Result<()> {
+fn write_data_impl(reader: &mut LhaDecodeReader<BufReader<File>>, base: &Path) -> Result<()> {
     let header = reader.header();
     let name = header.parse_pathname();
     let dest = super::safe_join(base, &name)?;
