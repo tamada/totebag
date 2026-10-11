@@ -152,10 +152,10 @@ mod gencomp {
     pub fn generate(outdir: PathBuf) -> Result<()> {
         let shells = vec![
             (Shell::Bash, "bash/totebag"),
-            (Shell::Fish, "fish/totebag"),
+            (Shell::Fish, "fish/totebag.fish"),
             (Shell::Zsh, "zsh/_totebag"),
-            (Shell::Elvish, "elvish/totebag"),
-            (Shell::PowerShell, "powershell/totebag"),
+            (Shell::Elvish, "elvish/totebag.elv"),
+            (Shell::PowerShell, "powershell/totebag.ps1"),
         ];
         let mut app = CliOpts::command();
         app.set_bin_name("totebag");

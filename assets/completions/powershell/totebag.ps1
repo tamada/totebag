@@ -21,12 +21,15 @@ Register-ArgumentCompleter -Native -CommandName 'totebag' -ScriptBlock {
 
     $completions = @(switch ($command) {
         'totebag' {
-            [CompletionResult]::new('-C', '-C ', [CompletionResultType]::ParameterName, 'Specify the base directory for archiving or extracting.')
-            [CompletionResult]::new('--dir', '--dir', [CompletionResultType]::ParameterName, 'Specify the base directory for archiving or extracting.')
+            [CompletionResult]::new('-C', '-C ', [CompletionResultType]::ParameterName, 'Prefix every entry in the archive with DIR (archive mode). For example, -C root stores src/main.rs as root/src/main.rs. By default entries keep their own paths.')
+            [CompletionResult]::new('--rebase-dir', '--rebase-dir', [CompletionResultType]::ParameterName, 'Prefix every entry in the archive with DIR (archive mode). For example, -C root stores src/main.rs as root/src/main.rs. By default entries keep their own paths.')
+            [CompletionResult]::new('--dir', '--dir', [CompletionResultType]::ParameterName, 'Prefix every entry in the archive with DIR (archive mode). For example, -C root stores src/main.rs as root/src/main.rs. By default entries keep their own paths.')
+            [CompletionResult]::new('-B', '-B ', [CompletionResultType]::ParameterName, 'Store entries relative to DIR (archive mode). For example, -B testdata/sample stores testdata/sample/src/main.rs as src/main.rs. DIR is stripped before -C is applied. Every target must be under DIR.')
+            [CompletionResult]::new('--base-dir', '--base-dir', [CompletionResultType]::ParameterName, 'Store entries relative to DIR (archive mode). For example, -B testdata/sample stores testdata/sample/src/main.rs as src/main.rs. DIR is stripped before -C is applied. Every target must be under DIR.')
             [CompletionResult]::new('-i', '-i', [CompletionResultType]::ParameterName, 'Specify the ignore type.')
             [CompletionResult]::new('--ignore-types', '--ignore-types', [CompletionResultType]::ParameterName, 'Specify the ignore type.')
-            [CompletionResult]::new('-L', '-L ', [CompletionResultType]::ParameterName, 'Specify the compression level. [default: 5] [possible values: 0-9 (none to finest)] For more details of level of each compression method, see README.')
-            [CompletionResult]::new('--level', '--level', [CompletionResultType]::ParameterName, 'Specify the compression level. [default: 5] [possible values: 0-9 (none to finest)] For more details of level of each compression method, see README.')
+            [CompletionResult]::new('-L', '-L ', [CompletionResultType]::ParameterName, 'Specify the compression level. [possible values: 0-9 (none to finest)] For more details of level of each compression method, see README.')
+            [CompletionResult]::new('--level', '--level', [CompletionResultType]::ParameterName, 'Specify the compression level. [possible values: 0-9 (none to finest)] For more details of level of each compression method, see README.')
             [CompletionResult]::new('-f', '-f', [CompletionResultType]::ParameterName, 'Specify the format for listing entries in the archive file.')
             [CompletionResult]::new('--output-format', '--output-format', [CompletionResultType]::ParameterName, 'Specify the format for listing entries in the archive file.')
             [CompletionResult]::new('--log', '--log', [CompletionResultType]::ParameterName, 'Specify the log level')
@@ -39,7 +42,6 @@ Register-ArgumentCompleter -Native -CommandName 'totebag' -ScriptBlock {
             [CompletionResult]::new('--to-archive-name-dir', '--to-archive-name-dir', [CompletionResultType]::ParameterName, 'extract files to DEST/ARCHIVE_NAME directory (extract mode).')
             [CompletionResult]::new('-n', '-n', [CompletionResultType]::ParameterName, 'No recursive directory (archive mode).')
             [CompletionResult]::new('--no-recursive', '--no-recursive', [CompletionResultType]::ParameterName, 'No recursive directory (archive mode).')
-            [CompletionResult]::new('--generate-completion', '--generate-completion', [CompletionResultType]::ParameterName, 'Generate the completion files')
             [CompletionResult]::new('--overwrite', '--overwrite', [CompletionResultType]::ParameterName, 'Overwrite existing files.')
             [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')

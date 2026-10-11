@@ -32,10 +32,14 @@ check-pure:
     if [ -n "$found" ]; then echo "C dependency found:"; echo "$found"; exit 1; fi
     echo "default build is pure Rust"
 
-# Generate shell completions
+# Generate shell completions into assets/completions, replacing what is there.
+# clap_complete includes the hidden --generate-completion option; remove it
+# from the generated files by hand before committing them.
 generate-completion:
+    rm -rf target/completions
     cargo run -p totebag-cli --features completion -- --generate-completion
-    cp -r target/completions ./assets
+    rm -rf assets/completions
+    cp -r target/completions assets/completions
 
 # Start the document server
 start:

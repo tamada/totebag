@@ -1,11 +1,12 @@
-complete -c totebag -s C -l dir -d 'Specify the base directory for archiving or extracting.' -r -F
+complete -c totebag -s C -l rebase-dir -l dir -d 'Prefix every entry in the archive with DIR (archive mode). For example, -C root stores src/main.rs as root/src/main.rs. By default entries keep their own paths.' -r -F
+complete -c totebag -s B -l base-dir -d 'Store entries relative to DIR (archive mode). For example, -B testdata/sample stores testdata/sample/src/main.rs as src/main.rs. DIR is stripped before -C is applied. Every target must be under DIR.' -r -F
 complete -c totebag -s i -l ignore-types -d 'Specify the ignore type.' -r -f -a "default\t'use `git-ignore`, `.gitglobal`, `.gitexclude`, and `.ignore`'
 hidden\t'ignore hidden files and directories'
 git-ignore\t'ignore files and directories that are listed in `.gitignore`'
 git-global\t'ignore files and directories that are listed in `.gitglobal`'
 git-exclude\t'ignore files and directories that are listed in `.gitexclude`'
 ignore\t'ignore files and directories that are listed in `.ignore`'"
-complete -c totebag -s L -l level -d 'Specify the compression level. [default: 5] [possible values: 0-9 (none to finest)] For more details of level of each compression method, see README.' -r
+complete -c totebag -s L -l level -d 'Specify the compression level. [possible values: 0-9 (none to finest)] For more details of level of each compression method, see README.' -r
 complete -c totebag -s f -l output-format -d 'Specify the format for listing entries in the archive file.' -r -f -a "default\t''
 long\t''
 json\t''
@@ -22,7 +23,9 @@ extract\t''
 list\t''"
 complete -c totebag -s F -l from -d 'Specify the archive format for listing mode (default auto). available on list and extract modes.' -r -f -a "auto\t'Detect the format by the file extension'
 parse\t'Detect the format by the file signature (header bytes)'
+ar\t''
 cab\t''
+cpio\t''
 lha\t''
 lzh\t''
 seven-z\t''
@@ -44,7 +47,6 @@ ear\t''"
 complete -c totebag -s o -l output -d 'Output file in archive mode, or output directory in extraction mode' -r -F
 complete -c totebag -l to-archive-name-dir -d 'extract files to DEST/ARCHIVE_NAME directory (extract mode).'
 complete -c totebag -s n -l no-recursive -d 'No recursive directory (archive mode).'
-complete -c totebag -l generate-completion -d 'Generate the completion files'
 complete -c totebag -l overwrite -d 'Overwrite existing files.'
 complete -c totebag -s h -l help -d 'Print help (see more with \'--help\')'
 complete -c totebag -s V -l version -d 'Print version'
