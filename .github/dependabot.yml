@@ -1,0 +1,22 @@
+# Dependency update pull requests.
+#
+# Cargo: `increase-if-necessary` leaves a requirement alone when it already
+# allows the new release. Cargo.lock is not committed, so builds pick up
+# compatible releases by themselves; a pull request only appears for a release
+# the requirement does not allow (a major release, or a minor one of a 0.x
+# crate), which needs a deliberate decision. This keeps every requirement at
+# the lowest version that works, as lib/Cargo.toml explains and the
+# `minimal-versions` job in build.yaml checks (issue #116).
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: weekly
+    versioning-strategy: increase-if-necessary
+    commit-message:
+      prefix: build
+    groups:
+      cargo:
+        patterns:
+          - "*"
