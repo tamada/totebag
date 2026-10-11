@@ -1,10 +1,10 @@
 use std::fs::File;
 use std::io::{BufWriter, Seek, Write};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use cab::{CabinetBuilder, CabinetWriter};
 
-use crate::archiver::{ArchiveEntry, ToteArchiver};
+use crate::archiver::{ArchiveEntry, Target, ToteArchiver};
 use crate::{Error, Result};
 
 /// CAB (Cabinet) format archiver implementation.
@@ -16,7 +16,7 @@ impl ToteArchiver for Archiver {
     fn perform(
         &self,
         file: &mut BufWriter<File>,
-        targets: &[PathBuf],
+        targets: &[Target],
         config: &crate::ArchiveConfig,
     ) -> Result<Vec<ArchiveEntry>> {
         let mut errs = vec![];
@@ -24,18 +24,14 @@ impl ToteArchiver for Archiver {
         let mut builder = CabinetBuilder::new();
         let ctype = compression_type(config.level);
         let folder = builder.add_folder(ctype);
-        // Files are registered first and written afterwards, in the same order,
-        // so the list keeps only those that got a name in the archive.
+        // Files are registered in the folder first and their contents written
+        // afterwards, in the same order, so remember which targets are files.
         let mut list = vec![];
-        for path in super::collect_entries(targets, config) {
-            match config.path_in_archive(&path) {
-                Ok(name) if !name.as_os_str().is_empty() => {
-                    folder.add_file(name.to_string_lossy().into_owned());
-                    entries.push(ArchiveEntry::from(&path));
-                    list.push(path);
-                }
-                Ok(_) => {}
-                Err(e) => errs.push(e),
+        for t in targets {
+            if t.path.is_file() {
+                folder.add_file(t.dest_path.to_string_lossy().into_owned());
+                entries.push(ArchiveEntry::from(&t.path));
+                list.push(&t.path);
             }
         }
         let mut writer = match builder.build(file) {

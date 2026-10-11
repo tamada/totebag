@@ -1,8 +1,8 @@
 use std::fs::File;
 use std::io::BufWriter;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
-use crate::archiver::{ArchiveEntry, ToteArchiver};
+use crate::archiver::{ArchiveEntry, Target, ToteArchiver};
 use crate::{Error, Result};
 
 /// AR format archiver implementation.
@@ -16,30 +16,20 @@ impl ToteArchiver for Archiver {
     fn perform(
         &self,
         file: &mut BufWriter<File>,
-        targets: &[PathBuf],
-        config: &crate::ArchiveConfig,
+        targets: &[Target],
+        _config: &crate::ArchiveConfig,
     ) -> Result<Vec<ArchiveEntry>> {
         let mut builder = ar::Builder::new(file);
         let mut errs = vec![];
         let mut entries = vec![];
-        for tp in targets {
-            for entry in config.iter(tp) {
-                let path = entry.into_path();
-                if !path.is_file() {
-                    continue;
-                }
-                let dest_path = match config.path_in_archive(&path) {
-                    Ok(p) if !p.as_os_str().is_empty() => p,
-                    Ok(_) => continue,
-                    Err(e) => {
-                        errs.push(e);
-                        continue;
-                    }
-                };
-                entries.push(ArchiveEntry::from(&path));
-                if let Err(e) = process_file(&mut builder, &path, &dest_path) {
-                    errs.push(e);
-                }
+        for t in targets {
+            // ar has no directories; their files are archived on their own.
+            if !t.path.is_file() {
+                continue;
+            }
+            entries.push(ArchiveEntry::from(&t.path));
+            if let Err(e) = process_file(&mut builder, &t.path, &t.dest_path) {
+                errs.push(e);
             }
         }
         Error::error_or(entries, errs)

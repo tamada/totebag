@@ -99,8 +99,9 @@ paths you give, much like running `totebag` from inside that directory:
 
 `-B` is stripped first and `-C` is prefixed afterwards, so they combine. Paths are
 compared as absolute paths, so `-B` and the targets may each be relative or absolute.
-Every target must be inside the base directory; one that is not is reported as an
-error and left out of the archive.
+Every target must be inside the base directory. If one is not, `totebag` reports
+every such path and stops before writing anything: no archive is created, and an
+existing archive given with `--overwrite` keeps its contents.
 
 ## Detecting the archive format
 
