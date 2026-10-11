@@ -1,4 +1,7 @@
-VERSION := `grep '^version = ' Cargo.toml | sed 's/version = "\(.*\)"/\1/g'`
+git_revision := `git rev-parse --short HEAD`
+app_version := `awk -F'"' '/^\[workspace.package\]/{p=1} p && /^version *=/{print $2; exit}' Cargo.toml`
+build_date := `date -u +%Y-%m-%dT%H:%M:%SZ`
+container_image := 'quay.io/tama5'
 
 # Format code with rustfmt
 format:
@@ -44,16 +47,23 @@ site:
 
 # Build the docker image for the current arch
 docker:
-    docker build -t quay.io/tama5/totebag:latest -t quay.io/tama5/totebag:{{VERSION}} .
-
-# Build the docker image for arm64
-docker_arm64:
-    docker build --platform linux/arm64/v8 -t quay.io/tama5/totebag:latest -t quay.io/tama5/totebag:{{VERSION}} .
-
-# Build the docker image for amd64
-docker_amd64:
-    docker build --platform linux/amd64 -t quay.io/tama5/totebag:latest -t quay.io/tama5/totebag:{{VERSION}} .
+    docker build \
+         --build-arg GIT_REVISION={{git_revision}} \
+         --build-arg BUILD_DATE={{build_date}} \
+         --build-arg VERSION={{app_version}} \
+         -t {{container_image}}/totebag:latest \
+         -t {{container_image}}/totebag:{{ app_version }} \
+         -f Containerfile \
+         .
 
 # Build the docker image for multi-arch
 docker_buildx:
-    docker buildx build --platform linux/arm64/v8,linux/amd64 --output=type=image,push=true -t quay.io/tama5/totebag:latest -t quay.io/tama5/totebag:{{VERSION}} .
+    docker buildx build --push \
+         --platform linux/amd64,linux/arm64 \
+         --build-arg GIT_REVISION={{git_revision}} \
+         --build-arg BUILD_DATE={{build_date}} \
+         --build-arg VERSION={{app_version}} \
+         -t {{container_image}}/totebag:latest \
+         -t {{container_image}}/totebag:{{ app_version }} \
+         -f Containerfile \
+         .
