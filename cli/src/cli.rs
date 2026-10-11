@@ -359,7 +359,7 @@ fn reads_from_file<S: AsRef<str>>(s: S) -> Result<Vec<String>> {
 fn reads_from_reader<R: std::io::Read>(r: R) -> Result<Vec<String>> {
     let results = std::io::BufReader::new(r)
         .lines()
-        .map_while(|r| r.ok())
+        .map_while(std::io::Result::ok)
         .map(|line| line.trim().to_string())
         .filter(|line| !line.is_empty() && !line.starts_with('#'))
         .collect::<Vec<String>>();

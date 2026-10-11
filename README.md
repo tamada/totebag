@@ -9,6 +9,7 @@
 [![Rust Report Card](https://rust-reportcard.xuri.me/badge/github.com/tamada/totebag)](https://rust-reportcard.xuri.me/report/github.com/tamada/totebag)
 [![Coverage Status](https://coveralls.io/repos/github/tamada/totebag/badge.svg)](https://coveralls.io/github/tamada/totebag)
 [![dependency status](https://deps.rs/repo/github/tamada/totebag/status.svg)](https://deps.rs/repo/github/tamada/totebag)
+[![Quality gate status](https://sonarcloud.io/api/project_badges/measure?project=tamada_totebag&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=tamada_totebag)
 
 A tool for extracting/archiving files and directories in multiple formats.
 

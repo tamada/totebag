@@ -41,7 +41,7 @@ fn extract_ar<R: Read>(mut archive: ar::Archive<R>, base: PathBuf) -> Result<()>
                 continue;
             }
         };
-        if is_filename_mac_finder_file(&path) {
+        if super::is_filename_mac_finder_file(&path) {
             continue;
         }
         let size = header.size();
@@ -72,13 +72,6 @@ fn write_to<R: Read>(entry: &mut ar::Entry<R>, dest: &Path, errs: &mut Vec<Error
 
 fn is_file(mode: u32) -> bool {
     mode & 0o170000 == 0o100000
-}
-
-fn is_filename_mac_finder_file(path: &Path) -> bool {
-    match path.file_name().and_then(|n| n.to_str()) {
-        Some(name) => name == ".DS_Store" || name.starts_with("._"),
-        None => false,
-    }
 }
 
 fn list_ar<R: Read>(mut archive: ar::Archive<R>, path: PathBuf) -> Result<Entries> {

@@ -115,7 +115,7 @@ fn extract_tar<R: Read>(mut archive: tar::Archive<R>, base: PathBuf) -> Result<(
 /// entries and macOS Finder files are skipped.
 fn extract_tar_entry<R: Read>(mut entry: tar::Entry<'_, R>, base: &Path) -> Result<()> {
     let path = entry.path().map_err(Error::IO)?.into_owned();
-    if is_filename_mac_finder_file(&path) || !entry.header().entry_type().is_file() {
+    if super::is_filename_mac_finder_file(&path) || !entry.header().entry_type().is_file() {
         return Ok(());
     }
     let size = entry.header().size().map_err(Error::IO)?;
@@ -125,13 +125,6 @@ fn extract_tar_entry<R: Read>(mut entry: tar::Entry<'_, R>, base: &Path) -> Resu
     super::create_parent_dir_all(&dest)?;
     entry.unpack(dest).map_err(Error::IO)?;
     Ok(())
-}
-
-fn is_filename_mac_finder_file(path: &Path) -> bool {
-    match path.file_name().and_then(|n| n.to_str()) {
-        Some(name) => name == ".DS_Store" || name.starts_with("._"),
-        None => false,
-    }
 }
 
 fn list_tar<R: Read>(mut archive: tar::Archive<R>, path: PathBuf) -> Result<Entries> {
