@@ -130,8 +130,6 @@ pub(crate) fn collect_entries<P: AsRef<Path>>(
 }
 
 pub fn create<P: AsRef<Path>>(dest: P) -> Result<Box<dyn ToteArchiver>> {
-    use crate::archiver::*;
-
     let dest = dest.as_ref();
     let fd = default_format_detector();
     let format = fd.detect(dest);

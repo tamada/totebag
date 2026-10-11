@@ -37,6 +37,7 @@
 
 use chrono::NaiveDateTime;
 use serde::Serialize;
+use std::ffi::OsStr;
 use std::fmt::Display;
 use std::fs::File;
 use std::io::BufReader;
@@ -191,6 +192,13 @@ pub(super) fn create_with<P: AsRef<Path>>(
             s => Err(Error::UnknownFormat(format!("{s}: unknown format"))),
         },
         None => Err(Error::Extractor(format!("{file:?} no suitable extractor"))),
+    }
+}
+
+pub(crate) fn is_filename_mac_finder_file(path: &Path) -> bool {
+    match path.file_name().and_then(OsStr::to_str) {
+        Some(name) => name == ".DS_Store" || name.starts_with("._"),
+        None => false,
     }
 }
 
