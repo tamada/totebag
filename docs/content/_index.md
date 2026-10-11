@@ -14,6 +14,7 @@ date: 2024-06-11
 [![build](https://github.com/tamada/totebag/actions/workflows/build.yaml/badge.svg)](https://github.com/tamada/totebag/actions/workflows/build.yaml)
 [![Rust Report Card](https://rust-reportcard.xuri.me/badge/github.com/tamada/totebag)](https://rust-reportcard.xuri.me/report/github.com/tamada/totebag)
 [![Coverage Status](https://coveralls.io/repos/github/tamada/totebag/badge.svg)](https://coveralls.io/github/tamada/totebag)
+[![Quality gate status](https://sonarcloud.io/api/project_badges/measure?project=tamada_totebag&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=tamada_totebag)
 {{< /keywordList >}}
 
 ## :speaking_head: Description
