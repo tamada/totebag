@@ -1,6 +1,6 @@
 FROM rust:1-trixie AS builder
 
-ARG VERSION=0.9.0
+ARG VERSION=0.10.0
 ARG TARGETPLATFORM
 
 WORKDIR /app
@@ -18,7 +18,7 @@ FROM debian:trixie-slim
 
 ARG GIT_REVISION
 ARG BUILD_DATE
-ARG VERSION=0.9.0
+ARG VERSION=0.10.0
 ARG AUTHOR="Haruaki Tamada"
 ARG TITLE=totebag
 ARG URL=https://tamada.github.io/totebag
