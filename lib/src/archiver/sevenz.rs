@@ -1,10 +1,10 @@
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Seek, Write};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use sevenz_rust2::{ArchiveEntry, ArchiveWriter, EncoderConfiguration, EncoderMethod};
 
-use crate::archiver::{ArchiveEntry as ToteArchiveEntry, ToteArchiver};
+use crate::archiver::{ArchiveEntry as ToteArchiveEntry, Target, ToteArchiver};
 use crate::{Error, Result};
 
 /// 7-Zip format archiver implementation.
@@ -16,7 +16,7 @@ impl ToteArchiver for Archiver {
     fn perform(
         &self,
         file: &mut BufWriter<File>,
-        targets: &[PathBuf],
+        targets: &[Target],
         config: &crate::ArchiveConfig,
     ) -> Result<Vec<ToteArchiveEntry>> {
         let mut w = match ArchiveWriter::new(file) {
@@ -27,7 +27,7 @@ impl ToteArchiver for Archiver {
         w.set_content_methods(methods);
         let mut errs = vec![];
         let mut entries = vec![];
-        for t in super::walk_targets(targets, config, &mut errs) {
+        for t in targets {
             entries.push(ToteArchiveEntry::from(&t.path));
             if t.path.is_file()
                 && let Err(e) = process_file(&mut w, &t.path, &t.dest_path)

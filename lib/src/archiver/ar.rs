@@ -1,8 +1,8 @@
 use std::fs::File;
 use std::io::BufWriter;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
-use crate::archiver::{ArchiveEntry, ToteArchiver};
+use crate::archiver::{ArchiveEntry, Target, ToteArchiver};
 use crate::{Error, Result};
 
 /// AR format archiver implementation.
@@ -16,13 +16,13 @@ impl ToteArchiver for Archiver {
     fn perform(
         &self,
         file: &mut BufWriter<File>,
-        targets: &[PathBuf],
-        config: &crate::ArchiveConfig,
+        targets: &[Target],
+        _config: &crate::ArchiveConfig,
     ) -> Result<Vec<ArchiveEntry>> {
         let mut builder = ar::Builder::new(file);
         let mut errs = vec![];
         let mut entries = vec![];
-        for t in super::walk_targets(targets, config, &mut errs) {
+        for t in targets {
             // ar has no directories; their files are archived on their own.
             if !t.path.is_file() {
                 continue;

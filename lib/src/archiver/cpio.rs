@@ -1,8 +1,7 @@
 use std::fs::File;
 use std::io::BufWriter;
-use std::path::PathBuf;
 
-use crate::archiver::{ArchiveEntry, ToteArchiver};
+use crate::archiver::{ArchiveEntry, Target, ToteArchiver};
 use crate::{Error, Result};
 
 /// CPIO format archiver implementation.
@@ -14,7 +13,7 @@ impl ToteArchiver for Archiver {
     fn perform(
         &self,
         file: &mut BufWriter<File>,
-        targets: &[PathBuf],
+        targets: &[Target],
         config: &crate::ArchiveConfig,
     ) -> Result<Vec<ArchiveEntry>> {
         let format = find_format(config.level);
@@ -22,11 +21,11 @@ impl ToteArchiver for Archiver {
         builder.set_format(format);
         let mut errs = vec![];
         let mut archived = vec![];
-        for t in super::walk_targets(targets, config, &mut errs) {
+        for t in targets {
             if !t.path.is_file() {
                 continue;
             }
-            match builder.append_path(&t.path, t.dest_path) {
+            match builder.append_path(&t.path, t.dest_path.as_path()) {
                 Ok(_) => archived.push(ArchiveEntry::from(&t.path)),
                 Err(e) => errs.push(Error::Archiver(e.to_string())),
             }

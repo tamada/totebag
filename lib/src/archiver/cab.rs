@@ -1,10 +1,10 @@
 use std::fs::File;
 use std::io::{BufWriter, Seek, Write};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use cab::{CabinetBuilder, CabinetWriter};
 
-use crate::archiver::{ArchiveEntry, ToteArchiver};
+use crate::archiver::{ArchiveEntry, Target, ToteArchiver};
 use crate::{Error, Result};
 
 /// CAB (Cabinet) format archiver implementation.
@@ -16,7 +16,7 @@ impl ToteArchiver for Archiver {
     fn perform(
         &self,
         file: &mut BufWriter<File>,
-        targets: &[PathBuf],
+        targets: &[Target],
         config: &crate::ArchiveConfig,
     ) -> Result<Vec<ArchiveEntry>> {
         let mut errs = vec![];
@@ -27,11 +27,11 @@ impl ToteArchiver for Archiver {
         // Files are registered first and written afterwards, in the same order,
         // so the list keeps only those that got a name in the archive.
         let mut list = vec![];
-        for t in super::walk_targets(targets, config, &mut errs) {
+        for t in targets {
             if t.path.is_file() {
                 folder.add_file(t.dest_path.to_string_lossy().into_owned());
                 entries.push(ArchiveEntry::from(&t.path));
-                list.push(t.path);
+                list.push(&t.path);
             }
         }
         let mut writer = match builder.build(file) {

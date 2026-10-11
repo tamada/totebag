@@ -105,7 +105,7 @@ pub trait ToteArchiver {
     fn perform(
         &self,
         writer: &mut BufWriter<File>,
-        targets: &[PathBuf],
+        targets: &[Target],
         config: &crate::ArchiveConfig,
     ) -> Result<Vec<ArchiveEntry>>;
 
@@ -115,9 +115,9 @@ pub trait ToteArchiver {
 
 /// A file or directory to archive: where it is on disk, and its name in the
 /// archive.
-pub(crate) struct Target {
-    pub(crate) path: PathBuf,
-    pub(crate) dest_path: PathBuf,
+pub struct Target {
+    pub path: PathBuf,
+    pub dest_path: PathBuf,
 }
 
 /// Walks `targets` with the ignore settings of `config`, and pairs every file
@@ -131,9 +131,9 @@ pub(crate) struct Target {
 pub(crate) fn walk_targets(
     targets: &[PathBuf],
     config: &crate::ArchiveConfig,
-    errs: &mut Vec<Error>,
-) -> Vec<Target> {
+) -> Result<Vec<Target>> {
     let mut r = vec![];
+    let mut errs = vec![];
     for tp in targets {
         for entry in config.iter(tp) {
             let path = entry.into_path();
@@ -146,7 +146,7 @@ pub(crate) fn walk_targets(
             }
         }
     }
-    r
+    Error::error_or(r, errs)
 }
 
 pub fn create<P: AsRef<Path>>(dest: P) -> Result<Box<dyn ToteArchiver>> {

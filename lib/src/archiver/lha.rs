@@ -1,8 +1,7 @@
 use std::fs::File;
 use std::io::BufWriter;
-use std::path::PathBuf;
 
-use crate::archiver::{ArchiveEntry, ToteArchiver};
+use crate::archiver::{ArchiveEntry, Target, ToteArchiver};
 use crate::{Error, Result};
 
 /// LHA/LZH format archiver implementation.
@@ -15,7 +14,7 @@ impl ToteArchiver for Archiver {
     fn perform(
         &self,
         _: &mut BufWriter<File>,
-        _: &[PathBuf],
+        _: &[Target],
         _config: &crate::ArchiveConfig,
     ) -> Result<Vec<ArchiveEntry>> {
         Err(Error::unsupported_for_archiving("Lha"))

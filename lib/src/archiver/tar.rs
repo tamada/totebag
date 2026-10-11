@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use structured_zstd::encoding::{CompressionLevel, StreamingEncoder};
 use tar::Builder;
 
-use crate::archiver::{ArchiveEntry, ToteArchiver};
+use crate::archiver::{ArchiveEntry, Target, ToteArchiver};
 use crate::{Error, Result};
 
 /// TAR format archiver implementation.
@@ -29,7 +29,7 @@ impl ToteArchiver for Archiver {
     fn perform(
         &self,
         file: &mut BufWriter<File>,
-        targets: &[PathBuf],
+        targets: &[Target],
         config: &crate::ArchiveConfig,
     ) -> Result<Vec<ArchiveEntry>> {
         write_tar(file, targets, config)
@@ -43,7 +43,7 @@ impl ToteArchiver for GzArchiver {
     fn perform(
         &self,
         file: &mut BufWriter<File>,
-        targets: &[PathBuf],
+        targets: &[Target],
         config: &crate::ArchiveConfig,
     ) -> Result<Vec<ArchiveEntry>> {
         let level = config.level as u32;
@@ -61,7 +61,7 @@ impl ToteArchiver for Bz2Archiver {
     fn perform(
         &self,
         file: &mut BufWriter<File>,
-        targets: &[PathBuf],
+        targets: &[Target],
         config: &crate::ArchiveConfig,
     ) -> Result<Vec<ArchiveEntry>> {
         let level = config.level as u32;
@@ -79,7 +79,7 @@ impl ToteArchiver for XzArchiver {
     fn perform(
         &self,
         file: &mut BufWriter<File>,
-        targets: &[PathBuf],
+        targets: &[Target],
         config: &crate::ArchiveConfig,
     ) -> Result<Vec<ArchiveEntry>> {
         let level = config.level as u32;
@@ -113,7 +113,7 @@ impl ToteArchiver for ZstdArchiver {
     fn perform(
         &self,
         file: &mut BufWriter<File>,
-        targets: &[PathBuf],
+        targets: &[Target],
         config: &crate::ArchiveConfig,
     ) -> Result<Vec<ArchiveEntry>> {
         let level = Self::level_to_zstd(config.level);
@@ -130,13 +130,13 @@ impl ToteArchiver for ZstdArchiver {
 
 fn write_tar<W: Write>(
     f: W,
-    targets: &[PathBuf],
-    config: &crate::ArchiveConfig,
+    targets: &[Target],
+    _config: &crate::ArchiveConfig,
 ) -> Result<Vec<ArchiveEntry>> {
     let mut builder = tar::Builder::new(f);
     let mut errs = vec![];
     let mut entries = vec![];
-    for t in super::walk_targets(targets, config, &mut errs) {
+    for t in targets {
         entries.push(ArchiveEntry::from(&t.path));
         if t.path.is_file() {
             if let Err(e) = process_file(&mut builder, &t.path, &t.dest_path) {

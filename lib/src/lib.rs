@@ -456,10 +456,13 @@ pub fn archive<P: AsRef<Path>>(
     config: &ArchiveConfig,
 ) -> Result<ArchiveEntries> {
     let dest_file = config.dest_file()?;
-    log::info!("{:?}: {}", dest_file, dest_file.exists());
     let archiver = archiver::create(&dest_file)?;
-    extractor::create_parent_dir_all(&dest_file)?;
     let targets = prepare_targets(archive_targets);
+    // Walk and name every entry before touching the destination, so that a
+    // target outside base_dir leaves an existing archive as it was.
+    let targets = archiver::walk_targets(&targets, config)?;
+    log::info!("{:?}: {}", dest_file, dest_file.exists());
+    extractor::create_parent_dir_all(&dest_file)?;
     let file = std::fs::File::create(&dest_file)?;
     let mut writer = BufWriter::new(file);
     let entries = archiver.perform(&mut writer, &targets, config)?;

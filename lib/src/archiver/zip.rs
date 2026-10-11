@@ -1,7 +1,7 @@
-use crate::archiver::os;
+use crate::archiver::{Target, os};
 use std::fs::File;
 use std::io::{BufReader, BufWriter};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use zip::ZipWriter;
 
 use crate::archiver::{ArchiveEntry, ToteArchiver};
@@ -17,7 +17,7 @@ impl Archiver {
         &self,
         zw: &mut ZipWriter<&mut BufWriter<File>>,
         target: &Path,
-        dest_path: PathBuf,
+        dest_path: &Path,
         level: u8,
     ) -> Result<()> {
         let opts = os::create_file_opts(target, level as i64)?;
@@ -38,16 +38,16 @@ impl ToteArchiver for Archiver {
     fn perform(
         &self,
         file: &mut BufWriter<File>,
-        targets: &[PathBuf],
+        targets: &[Target],
         config: &crate::ArchiveConfig,
     ) -> Result<Vec<ArchiveEntry>> {
         let mut errs = vec![];
         let mut zw = ZipWriter::new(file);
         let mut entries = vec![];
-        for t in super::walk_targets(targets, config, &mut errs) {
+        for t in targets {
             entries.push(ArchiveEntry::from(&t.path));
             if t.path.is_file()
-                && let Err(e) = self.process_file(&mut zw, &t.path, t.dest_path, config.level)
+                && let Err(e) = self.process_file(&mut zw, &t.path, &t.dest_path, config.level)
             {
                 errs.push(e);
             }
