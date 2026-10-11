@@ -27,15 +27,11 @@ impl ToteArchiver for Archiver {
         // Files are registered first and written afterwards, in the same order,
         // so the list keeps only those that got a name in the archive.
         let mut list = vec![];
-        for path in super::collect_entries(targets, config) {
-            match config.path_in_archive(&path) {
-                Ok(name) if !name.as_os_str().is_empty() => {
-                    folder.add_file(name.to_string_lossy().into_owned());
-                    entries.push(ArchiveEntry::from(&path));
-                    list.push(path);
-                }
-                Ok(_) => {}
-                Err(e) => errs.push(e),
+        for t in super::walk_targets(targets, config, &mut errs) {
+            if t.path.is_file() {
+                folder.add_file(t.dest_path.to_string_lossy().into_owned());
+                entries.push(ArchiveEntry::from(&t.path));
+                list.push(t.path);
             }
         }
         let mut writer = match builder.build(file) {

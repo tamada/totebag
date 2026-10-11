@@ -21,29 +21,17 @@ impl ToteArchiver for Archiver {
         let mut builder = Builder::new(ArchiveVersion::Rar50).compression_level(Some(level));
         let mut errs = vec![];
         let mut entries = vec![];
-        for tp in targets {
-            for entry in config.iter(tp) {
-                let path = entry.into_path();
-                let dest_path = match config.path_in_archive(&path) {
-                    Ok(p) => p,
-                    Err(e) => {
-                        errs.push(e);
-                        continue;
-                    }
-                };
-                if dest_path.as_os_str().is_empty() {
-                    continue;
-                }
-                entries.push(ArchiveEntry::from(&path));
-                if path.is_file() {
-                    if let Err(e) = process_file(&mut builder, &path, &dest_path) {
-                        errs.push(e);
-                    }
-                } else if path.is_dir()
-                    && let Err(e) = process_dir(&mut builder, &path, &dest_path)
-                {
-                    errs.push(e);
-                }
+        for t in super::walk_targets(targets, config, &mut errs) {
+            entries.push(ArchiveEntry::from(&t.path));
+            let r = if t.path.is_file() {
+                process_file(&mut builder, &t.path, &t.dest_path)
+            } else if t.path.is_dir() {
+                process_dir(&mut builder, &t.path, &t.dest_path)
+            } else {
+                Ok(())
+            };
+            if let Err(e) = r {
+                errs.push(e);
             }
         }
         if let Err(e) = builder.write_to(file, &WriterResources::default(), None) {

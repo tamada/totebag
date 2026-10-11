@@ -44,23 +44,12 @@ impl ToteArchiver for Archiver {
         let mut errs = vec![];
         let mut zw = ZipWriter::new(file);
         let mut entries = vec![];
-        for tp in targets.iter() {
-            for entry in config.iter(tp) {
-                let path = entry.path().to_path_buf();
-                let dest_path = match config.path_in_archive(&path) {
-                    Ok(p) if !p.as_os_str().is_empty() => p,
-                    Ok(_) => continue,
-                    Err(e) => {
-                        errs.push(e);
-                        continue;
-                    }
-                };
-                entries.push(ArchiveEntry::from(&path));
-                if path.is_file()
-                    && let Err(e) = self.process_file(&mut zw, &path, dest_path, config.level)
-                {
-                    errs.push(e);
-                }
+        for t in super::walk_targets(targets, config, &mut errs) {
+            entries.push(ArchiveEntry::from(&t.path));
+            if t.path.is_file()
+                && let Err(e) = self.process_file(&mut zw, &t.path, t.dest_path, config.level)
+            {
+                errs.push(e);
             }
         }
         if let Err(e) = zw.finish() {

@@ -27,23 +27,12 @@ impl ToteArchiver for Archiver {
         w.set_content_methods(methods);
         let mut errs = vec![];
         let mut entries = vec![];
-        for tp in targets {
-            for t in config.iter(tp) {
-                let path = t.into_path();
-                let dest_path = match config.path_in_archive(&path) {
-                    Ok(p) if !p.as_os_str().is_empty() => p,
-                    Ok(_) => continue,
-                    Err(e) => {
-                        errs.push(e);
-                        continue;
-                    }
-                };
-                entries.push(ToteArchiveEntry::from(&path));
-                if path.is_file()
-                    && let Err(e) = process_file(&mut w, &path, &dest_path)
-                {
-                    errs.push(e);
-                }
+        for t in super::walk_targets(targets, config, &mut errs) {
+            entries.push(ToteArchiveEntry::from(&t.path));
+            if t.path.is_file()
+                && let Err(e) = process_file(&mut w, &t.path, &t.dest_path)
+            {
+                errs.push(e);
             }
         }
         if let Err(e) = w.finish() {

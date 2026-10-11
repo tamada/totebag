@@ -136,32 +136,16 @@ fn write_tar<W: Write>(
     let mut builder = tar::Builder::new(f);
     let mut errs = vec![];
     let mut entries = vec![];
-    for tp in targets {
-        for entry in config.iter(tp) {
-            let path = entry.into_path();
-            let dest_path = match config.path_in_archive(&path) {
-                Ok(p) => p,
-                Err(e) => {
-                    errs.push(e);
-                    continue;
-                }
-            };
-            // `base_dir` itself, or a directory such as `..`, normalizes away to
-            // nothing; there is no name to store it under, and its contents are
-            // archived anyway.
-            if dest_path.as_os_str().is_empty() {
-                continue;
+    for t in super::walk_targets(targets, config, &mut errs) {
+        entries.push(ArchiveEntry::from(&t.path));
+        if t.path.is_file() {
+            if let Err(e) = process_file(&mut builder, &t.path, &t.dest_path) {
+                errs.push(e);
             }
-            entries.push(ArchiveEntry::from(&path));
-            if path.is_file() {
-                if let Err(e) = process_file(&mut builder, &path, &dest_path) {
-                    errs.push(e);
-                }
-            } else if path.is_dir()
-                && let Err(e) = builder.append_dir(&dest_path, &path)
-            {
-                errs.push(Error::Archiver(e.to_string()));
-            }
+        } else if t.path.is_dir()
+            && let Err(e) = builder.append_dir(&t.dest_path, &t.path)
+        {
+            errs.push(Error::Archiver(e.to_string()));
         }
     }
     if let Err(e) = builder.finish() {

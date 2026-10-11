@@ -22,24 +22,14 @@ impl ToteArchiver for Archiver {
         let mut builder = ar::Builder::new(file);
         let mut errs = vec![];
         let mut entries = vec![];
-        for tp in targets {
-            for entry in config.iter(tp) {
-                let path = entry.into_path();
-                if !path.is_file() {
-                    continue;
-                }
-                let dest_path = match config.path_in_archive(&path) {
-                    Ok(p) if !p.as_os_str().is_empty() => p,
-                    Ok(_) => continue,
-                    Err(e) => {
-                        errs.push(e);
-                        continue;
-                    }
-                };
-                entries.push(ArchiveEntry::from(&path));
-                if let Err(e) = process_file(&mut builder, &path, &dest_path) {
-                    errs.push(e);
-                }
+        for t in super::walk_targets(targets, config, &mut errs) {
+            // ar has no directories; their files are archived on their own.
+            if !t.path.is_file() {
+                continue;
+            }
+            entries.push(ArchiveEntry::from(&t.path));
+            if let Err(e) = process_file(&mut builder, &t.path, &t.dest_path) {
+                errs.push(e);
             }
         }
         Error::error_or(entries, errs)

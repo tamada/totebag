@@ -113,16 +113,36 @@ pub trait ToteArchiver {
     fn enable(&self) -> bool;
 }
 
-pub(crate) fn collect_entries<P: AsRef<Path>>(
-    targets: &[P],
+/// A file or directory to archive: where it is on disk, and its name in the
+/// archive.
+pub(crate) struct Target {
+    pub(crate) path: PathBuf,
+    pub(crate) dest_path: PathBuf,
+}
+
+/// Walks `targets` with the ignore settings of `config`, and pairs every file
+/// and directory found with its name in the archive.
+///
+/// A path whose name cannot be built (see
+/// [`ArchiveConfig::path_in_archive`](crate::ArchiveConfig::path_in_archive))
+/// is reported in `errs` and left out. A path whose name is empty -- `base_dir`
+/// itself, or a directory such as `..` -- has no name to store it under, and
+/// its contents are archived anyway, so it is skipped.
+pub(crate) fn walk_targets(
+    targets: &[PathBuf],
     config: &crate::ArchiveConfig,
-) -> Vec<PathBuf> {
+    errs: &mut Vec<Error>,
+) -> Vec<Target> {
     let mut r = vec![];
-    for path in targets {
-        for entry in config.iter(path) {
+    for tp in targets {
+        for entry in config.iter(tp) {
             let path = entry.into_path();
-            if path.is_file() {
-                r.push(path)
+            match config.path_in_archive(&path) {
+                Ok(dest_path) if !dest_path.as_os_str().is_empty() => {
+                    r.push(Target { path, dest_path })
+                }
+                Ok(_) => {}
+                Err(e) => errs.push(e),
             }
         }
     }
