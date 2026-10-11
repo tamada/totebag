@@ -24,10 +24,19 @@ impl ToteArchiver for Archiver {
         let mut builder = CabinetBuilder::new();
         let ctype = compression_type(config.level);
         let folder = builder.add_folder(ctype);
-        let list = super::collect_entries(targets, config);
-        for path in list.iter() {
-            entries.push(ArchiveEntry::from(path));
-            folder.add_file(config.path_in_archive(path).to_string_lossy().into_owned());
+        // Files are registered first and written afterwards, in the same order,
+        // so the list keeps only those that got a name in the archive.
+        let mut list = vec![];
+        for path in super::collect_entries(targets, config) {
+            match config.path_in_archive(&path) {
+                Ok(name) if !name.as_os_str().is_empty() => {
+                    folder.add_file(name.to_string_lossy().into_owned());
+                    entries.push(ArchiveEntry::from(&path));
+                    list.push(path);
+                }
+                Ok(_) => {}
+                Err(e) => errs.push(e),
+            }
         }
         let mut writer = match builder.build(file) {
             Ok(w) => w,
@@ -38,10 +47,10 @@ impl ToteArchiver for Archiver {
                 errs.push(e);
             }
         }
-        match writer.finish() {
-            Ok(_) => Ok(entries),
-            Err(e) => Err(Error::Archiver(e.to_string())),
+        if let Err(e) = writer.finish() {
+            errs.push(Error::Archiver(e.to_string()));
         }
+        Error::error_or(entries, errs)
     }
 
     fn enable(&self) -> bool {

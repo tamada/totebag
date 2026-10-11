@@ -213,7 +213,9 @@ mod tests {
 
         assert_eq!(
             PathBuf::from("new/testdata/sample/src/archiver.rs").as_path(),
-            config.path_in_archive("testdata/sample/src/archiver.rs")
+            config
+                .path_in_archive("testdata/sample/src/archiver.rs")
+                .unwrap()
         );
     }
 
@@ -227,7 +229,9 @@ mod tests {
 
         assert_eq!(
             PathBuf::from("testdata/sample/Cargo.toml").as_path(),
-            config.path_in_archive("testdata/sample/Cargo.toml")
+            config
+                .path_in_archive("testdata/sample/Cargo.toml")
+                .unwrap()
         );
     }
 
@@ -250,7 +254,7 @@ mod tests {
             ("src/lib.rs", "src/lib.rs"),
         ] {
             assert_eq!(
-                config.path_in_archive(given),
+                config.path_in_archive(given).unwrap(),
                 PathBuf::from(expected),
                 "for {given}"
             );
@@ -266,7 +270,7 @@ mod tests {
             .rebase_dir("../root")
             .build();
         assert_eq!(
-            config.path_in_archive("../testdata/Cargo.toml"),
+            config.path_in_archive("../testdata/Cargo.toml").unwrap(),
             PathBuf::from("root/testdata/Cargo.toml")
         );
     }
@@ -280,7 +284,9 @@ mod tests {
             .build();
         assert_eq!(config.rebase_dir, None);
         assert_eq!(
-            config.path_in_archive("testdata/sample/Cargo.toml"),
+            config
+                .path_in_archive("testdata/sample/Cargo.toml")
+                .unwrap(),
             PathBuf::from("testdata/sample/Cargo.toml")
         );
     }
@@ -294,7 +300,124 @@ mod tests {
             .build();
         assert_eq!(
             PathBuf::from("new/testdata/sample/Cargo.toml").as_path(),
-            config.path_in_archive("testdata/sample/Cargo.toml")
+            config
+                .path_in_archive("testdata/sample/Cargo.toml")
+                .unwrap()
+        );
+    }
+
+    /// `base_dir` is stripped from the front of the entry name (issue #108).
+    #[test]
+    fn test_path_in_archive_strips_base_dir() {
+        let config = crate::ArchiveConfig::builder()
+            .dest("results/test.zip")
+            .base_dir("testdata/sample")
+            .build();
+        for (given, expected) in [
+            ("testdata/sample/Cargo.toml", "Cargo.toml"),
+            ("testdata/sample/src/lib.rs", "src/lib.rs"),
+            ("./testdata/sample/src/lib.rs", "src/lib.rs"),
+            ("testdata/other/../sample/Cargo.toml", "Cargo.toml"),
+            // base_dir itself has no name; the archivers skip it
+            ("testdata/sample", ""),
+        ] {
+            assert_eq!(
+                config.path_in_archive(given).unwrap(),
+                PathBuf::from(expected),
+                "for {given}"
+            );
+        }
+    }
+
+    /// Paths are compared as absolute paths, so a relative base_dir matches an
+    /// absolute target and the other way round.
+    #[test]
+    fn test_path_in_archive_base_dir_relative_and_absolute() {
+        let cwd = std::env::current_dir().unwrap();
+        let absolute_base = crate::ArchiveConfig::builder()
+            .dest("results/test.zip")
+            .base_dir(cwd.join("testdata"))
+            .build();
+        assert_eq!(
+            absolute_base
+                .path_in_archive("testdata/sample/Cargo.toml")
+                .unwrap(),
+            PathBuf::from("sample/Cargo.toml")
+        );
+        let relative_base = crate::ArchiveConfig::builder()
+            .dest("results/test.zip")
+            .base_dir("testdata")
+            .build();
+        assert_eq!(
+            relative_base
+                .path_in_archive(cwd.join("testdata/sample/Cargo.toml"))
+                .unwrap(),
+            PathBuf::from("sample/Cargo.toml")
+        );
+    }
+
+    /// A path outside base_dir is an error, including one whose *normalized*
+    /// form would look as if it were inside: `../x` is not `x`.
+    #[test]
+    fn test_path_in_archive_outside_base_dir() {
+        let config = crate::ArchiveConfig::builder()
+            .dest("results/test.zip")
+            .base_dir("../x")
+            .build();
+        for given in ["x/a.txt", "src/lib.rs", "../y/a.txt"] {
+            assert!(
+                matches!(
+                    config.path_in_archive(given),
+                    Err(crate::Error::OutsideBaseDir(_))
+                ),
+                "{given} must be rejected"
+            );
+        }
+        assert_eq!(
+            config.path_in_archive("../x/a.txt").unwrap(),
+            PathBuf::from("a.txt")
+        );
+    }
+
+    /// base_dir is stripped first, then rebase_dir is prefixed.
+    #[test]
+    fn test_path_in_archive_base_dir_and_rebase_dir() {
+        let config = crate::ArchiveConfig::builder()
+            .dest("results/test.zip")
+            .base_dir("testdata/sample")
+            .rebase_dir("root")
+            .build();
+        assert_eq!(
+            config
+                .path_in_archive("testdata/sample/Cargo.toml")
+                .unwrap(),
+            PathBuf::from("root/Cargo.toml")
+        );
+    }
+
+    /// End to end: archiving testdata/sample with base_dir set to it stores the
+    /// files at the top level of the archive.
+    #[test]
+    fn test_archive_with_base_dir() {
+        let dest = PathBuf::from("results/base_dir.tar");
+        let config = crate::ArchiveConfig::builder()
+            .dest(&dest)
+            .base_dir("../testdata/sample")
+            .overwrite(true)
+            .build();
+        crate::archive(&test_support::targets(), &config).unwrap();
+        let list_config = crate::ListConfig::new(
+            crate::OutputFormat::Default,
+            crate::format::default_format_detector(),
+        );
+        let names = crate::list(&dest, &list_config)
+            .map(|s| s.lines().map(str::to_string).collect::<Vec<_>>());
+        let _ = std::fs::remove_file(&dest);
+        let names = names.unwrap();
+        assert!(names.contains(&"Cargo.toml".to_string()), "{names:?}");
+        assert!(
+            names.iter().all(|n| !n.starts_with("testdata")),
+            "{names:?}"
         );
     }
 }

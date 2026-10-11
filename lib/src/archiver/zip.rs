@@ -47,26 +47,26 @@ impl ToteArchiver for Archiver {
         for tp in targets.iter() {
             for entry in config.iter(tp) {
                 let path = entry.path().to_path_buf();
+                let dest_path = match config.path_in_archive(&path) {
+                    Ok(p) if !p.as_os_str().is_empty() => p,
+                    Ok(_) => continue,
+                    Err(e) => {
+                        errs.push(e);
+                        continue;
+                    }
+                };
                 entries.push(ArchiveEntry::from(&path));
                 if path.is_file()
-                    && let Err(e) = self.process_file(
-                        &mut zw,
-                        &path,
-                        config.path_in_archive(&path),
-                        config.level,
-                    )
+                    && let Err(e) = self.process_file(&mut zw, &path, dest_path, config.level)
                 {
                     errs.push(e);
                 }
             }
         }
-        match zw.finish() {
-            Ok(_) => Ok(entries),
-            Err(e) => {
-                errs.push(Error::Archiver(e.to_string()));
-                Err(Error::Array(errs))
-            }
+        if let Err(e) = zw.finish() {
+            errs.push(Error::Archiver(e.to_string()));
         }
+        Error::error_or(entries, errs)
     }
 
     fn enable(&self) -> bool {

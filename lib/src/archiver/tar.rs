@@ -139,9 +139,16 @@ fn write_tar<W: Write>(
     for tp in targets {
         for entry in config.iter(tp) {
             let path = entry.into_path();
-            let dest_path = config.path_in_archive(&path);
-            // A directory such as `..` normalizes away to nothing; there is no
-            // name to store it under, and its contents are archived anyway.
+            let dest_path = match config.path_in_archive(&path) {
+                Ok(p) => p,
+                Err(e) => {
+                    errs.push(e);
+                    continue;
+                }
+            };
+            // `base_dir` itself, or a directory such as `..`, normalizes away to
+            // nothing; there is no name to store it under, and its contents are
+            // archived anyway.
             if dest_path.as_os_str().is_empty() {
                 continue;
             }

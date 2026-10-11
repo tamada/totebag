@@ -125,6 +125,17 @@ By default entries keep their own paths."#
     pub rebase_dir: Option<PathBuf>,
 
     #[clap(
+        short = 'B',
+        long = "base-dir",
+        value_name = "DIR",
+        required = false,
+        help = r#"Store entries relative to DIR (archive mode).
+For example, -B testdata/sample stores testdata/sample/src/main.rs as src/main.rs.
+DIR is stripped before -C is applied. Every target must be under DIR."#
+    )]
+    pub base_dir: Option<PathBuf>,
+
+    #[clap(
         short = 'i',
         long = "ignore-types",
         value_name = "IGNORE_TYPES",
@@ -274,6 +285,7 @@ fn to_archive_config(opts: &CliOpts, args: Vec<String>) -> Result<(Mode, Vec<Str
     let config = totebag::ArchiveConfig::builder()
         .dest(dest)
         .level(opts.archivers.level)
+        .base_dir_opt(opts.archivers.base_dir.clone())
         .rebase_dir_opt(opts.archivers.rebase_dir.clone())
         .overwrite(opts.overwrite)
         .no_recursive(opts.archivers.no_recursive)
@@ -440,7 +452,7 @@ mod tests {
             Mode::Archive(config) => {
                 assert_eq!(config.rebase_dir, None);
                 assert_eq!(
-                    config.path_in_archive("src/main.rs"),
+                    config.path_in_archive("src/main.rs").unwrap(),
                     PathBuf::from("src/main.rs")
                 );
             }
@@ -463,9 +475,33 @@ mod tests {
             let (mode, _) = cli.find_mode().unwrap();
             match mode {
                 Mode::Archive(config) => assert_eq!(
-                    config.path_in_archive("src/main.rs"),
+                    config.path_in_archive("src/main.rs").unwrap(),
                     PathBuf::from("root/src/main.rs"),
                     "for {flag}"
+                ),
+                _ => panic!("invalid mode"),
+            }
+        }
+    }
+
+    /// `-B` strips the base directory, and combines with `-C` (issue #108).
+    #[test]
+    fn test_base_dir_strips_and_combines_with_rebase_dir() {
+        for (args, expected) in [
+            (vec!["-B", "src"], "main.rs"),
+            (vec!["--base-dir", "src"], "main.rs"),
+            (vec!["-B", "src", "-C", "root"], "root/main.rs"),
+        ] {
+            let mut argv = vec!["totebag_test", "-m", "archive"];
+            argv.extend(&args);
+            argv.extend(["out.zip", "src"]);
+            let cli = CliOpts::parse_from(argv);
+            let (mode, _) = cli.find_mode().unwrap();
+            match mode {
+                Mode::Archive(config) => assert_eq!(
+                    config.path_in_archive("src/main.rs").unwrap(),
+                    PathBuf::from(expected),
+                    "for {args:?}"
                 ),
                 _ => panic!("invalid mode"),
             }

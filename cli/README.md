@@ -26,6 +26,9 @@ Options:
   -C, --rebase-dir <DIR>             Prefix every entry in the archive with DIR (archive mode).
                                      For example, -C root stores src/main.rs as root/src/main.rs.
                                      By default entries keep their own paths. [aliases: --dir]
+  -B, --base-dir <DIR>               Store entries relative to DIR (archive mode).
+                                     For example, -B testdata/sample stores testdata/sample/src/main.rs as src/main.rs.
+                                     DIR is stripped before -C is applied. Every target must be under DIR.
   -i, --ignore-types <IGNORE_TYPES>  Specify the ignore type. [possible values: default, hidden, git-ignore, git-global, git-exclude, ignore]
   -L, --level <LEVEL>                Specify the compression level. [possible values: 0-9 (none to finest)]
                                      For more details of level of each compression method, see README. [default: 5]

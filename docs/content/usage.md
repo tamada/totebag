@@ -23,6 +23,9 @@ Options:
   -C, --rebase-dir <DIR>             Prefix every entry in the archive with DIR (archive mode).
                                      For example, -C root stores src/main.rs as root/src/main.rs.
                                      By default entries keep their own paths. [aliases: --dir]
+  -B, --base-dir <DIR>               Store entries relative to DIR (archive mode).
+                                     For example, -B testdata/sample stores testdata/sample/src/main.rs as src/main.rs.
+                                     DIR is stripped before -C is applied. Every target must be under DIR.
   -i, --ignore-types <IGNORE_TYPES>  Specify the ignore type.
                                      [possible values: default, hidden, git-ignore, git-global, git-exclude, ignore]
   -L, --level <LEVEL>                Specify the compression level. [default: 5]
@@ -83,6 +86,21 @@ totebag -C myapp-1.0 myapp-1.0.tar.gz src README.md
 ```
 
 stores `myapp-1.0/src/...` and `myapp-1.0/README.md`.
+
+Use `-B/--base-dir` to store entries relative to a directory instead of under the
+paths you give, much like running `totebag` from inside that directory:
+
+| command | entry name |
+| ------- | ---------- |
+| `totebag -o a.zip build/dist` | `build/dist/app.js` |
+| `totebag -B build/dist -o a.zip build/dist` | `app.js` |
+| `totebag -B build -o a.zip build/dist` | `dist/app.js` |
+| `totebag -B build/dist -C myapp -o a.zip build/dist` | `myapp/app.js` |
+
+`-B` is stripped first and `-C` is prefixed afterwards, so they combine. Paths are
+compared as absolute paths, so `-B` and the targets may each be relative or absolute.
+Every target must be inside the base directory; one that is not is reported as an
+error and left out of the archive.
 
 ## Detecting the archive format
 
