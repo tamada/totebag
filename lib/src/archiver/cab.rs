@@ -24,8 +24,8 @@ impl ToteArchiver for Archiver {
         let mut builder = CabinetBuilder::new();
         let ctype = compression_type(config.level);
         let folder = builder.add_folder(ctype);
-        // Files are registered first and written afterwards, in the same order,
-        // so the list keeps only those that got a name in the archive.
+        // Files are registered in the folder first and their contents written
+        // afterwards, in the same order, so remember which targets are files.
         let mut list = vec![];
         for t in targets {
             if t.path.is_file() {

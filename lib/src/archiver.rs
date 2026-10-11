@@ -116,7 +116,11 @@ pub trait ToteArchiver {
 /// A file or directory to archive: where it is on disk, and its name in the
 /// archive.
 pub struct Target {
+    /// The file or directory on disk, as found by walking the targets.
     pub path: PathBuf,
+    /// Its name in the archive, from
+    /// [`ArchiveConfig::path_in_archive`](crate::ArchiveConfig::path_in_archive);
+    /// never empty.
     pub dest_path: PathBuf,
 }
 
@@ -437,5 +441,44 @@ mod tests {
             names.iter().all(|n| !n.starts_with("testdata")),
             "{names:?}"
         );
+    }
+
+    /// A target outside base_dir is an error found before the destination is
+    /// created: an existing archive keeps its contents even with `overwrite`,
+    /// and no new file is left behind.
+    #[test]
+    fn test_archive_outside_base_dir_leaves_destination_untouched() {
+        std::fs::create_dir_all("results").unwrap();
+        let targets = vec![PathBuf::from("../testdata/sample"), PathBuf::from("src")];
+
+        let existing = PathBuf::from("results/outside_base_existing.zip");
+        std::fs::write(&existing, b"precious").unwrap();
+        let config = crate::ArchiveConfig::builder()
+            .dest(&existing)
+            .base_dir("../testdata/sample")
+            .overwrite(true)
+            .build();
+        let r = crate::archive(&targets, &config);
+        let kept = std::fs::read(&existing).unwrap();
+        let _ = std::fs::remove_file(&existing);
+        match r {
+            Err(crate::Error::Array(errs)) => assert!(
+                errs.iter()
+                    .all(|e| matches!(e, crate::Error::OutsideBaseDir(_))),
+                "{errs:?}"
+            ),
+            Err(crate::Error::OutsideBaseDir(_)) => {}
+            other => panic!("unexpected result: {other:?}"),
+        }
+        assert_eq!(kept, b"precious");
+
+        let fresh = PathBuf::from("results/outside_base_fresh.zip");
+        let _ = std::fs::remove_file(&fresh);
+        let config = crate::ArchiveConfig::builder()
+            .dest(&fresh)
+            .base_dir("../testdata/sample")
+            .build();
+        assert!(crate::archive(&targets, &config).is_err());
+        assert!(!fresh.exists());
     }
 }
