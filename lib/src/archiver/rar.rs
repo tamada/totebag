@@ -24,7 +24,13 @@ impl ToteArchiver for Archiver {
         for tp in targets {
             for entry in config.iter(tp) {
                 let path = entry.into_path();
-                let dest_path = config.path_in_archive(&path);
+                let dest_path = match config.path_in_archive(&path) {
+                    Ok(p) => p,
+                    Err(e) => {
+                        errs.push(e);
+                        continue;
+                    }
+                };
                 if dest_path.as_os_str().is_empty() {
                     continue;
                 }

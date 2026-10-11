@@ -75,6 +75,9 @@ pub enum Error {
     Json(serde_json::Error),
     /// No arguments were provided when some were required
     NoArgumentsGiven,
+    /// The path is not under `ArchiveConfig::base_dir`, so its name in the
+    /// archive cannot be made relative to it.
+    OutsideBaseDir(PathBuf),
     /// A warning message that doesn't halt execution
     Warn(String),
     /// The archive format could not be determined
@@ -107,6 +110,9 @@ impl Display for Error {
             Error::IO(e) => write!(f, "IO error: {e}"),
             Error::Json(e) => write!(f, "Json error: {e}"),
             Error::NoArgumentsGiven => write!(f, "No arguments given. Use --help for usage."),
+            Error::OutsideBaseDir(path) => {
+                write!(f, "{}: not under the base directory", path.display())
+            }
             Error::Warn(s) => write!(f, "Unknown error: {s}"),
             Error::UnknownFormat(s) => write!(f, "{s}: Unknown format"),
             Error::UnsafePath(path) => {
@@ -506,6 +512,18 @@ pub struct ArchiveConfig {
     #[builder(default = None, setter(strip_option(fallback = rebase_dir_opt), into))]
     pub rebase_dir: Option<PathBuf>,
 
+    /// The directory stripped from the front of every entry name.
+    ///
+    /// With `base_dir` set to `testdata/sample`, the file
+    /// `testdata/sample/src/main.rs` is stored as `src/main.rs`. It is
+    /// stripped before `rebase_dir` is prefixed, so the two combine:
+    /// adding `rebase_dir` `root` stores it as `root/src/main.rs`. Paths are
+    /// compared as absolute paths, so `base_dir` and the targets may be given
+    /// relative or absolute. `None` (the default) strips nothing. Use
+    /// [`ArchiveConfigBuilder::base_dir_opt`] to pass an `Option` directly.
+    #[builder(default = None, setter(strip_option(fallback = base_dir_opt), into))]
+    pub base_dir: Option<PathBuf>,
+
     /// Overwrite flag for archive file. Default is false.
     #[builder(default = false)]
     pub overwrite: bool,
@@ -545,7 +563,8 @@ impl ArchiveConfig {
 
     /// Transforms the given path to its representation inside the archive.
     ///
-    /// The path is normalized first (see [`normalize_entry_path`]), then
+    /// `base_dir`, when set, is stripped from the front of the path first.
+    /// The rest is normalized (see [`normalize_entry_path`]) and then
     /// prefixed with `rebase_dir` when one is set.
     ///
     /// # Arguments
@@ -557,17 +576,36 @@ impl ArchiveConfig {
     /// The path as it should appear in the archive. It never starts at the
     /// filesystem root and never contains a `.` or `..` component.
     ///
-    /// The result is empty only when nothing survives normalization, which can
-    /// happen for a directory entry such as `..` itself. Callers skip those.
-    pub fn path_in_archive<P: AsRef<Path>>(&self, path: P) -> PathBuf {
+    /// The result is empty when nothing survives, which happens for
+    /// `base_dir` itself and for a directory entry such as `..`. Callers skip
+    /// those.
+    ///
+    /// # Errors
+    ///
+    /// * [`Error::OutsideBaseDir`] when `base_dir` is set and `path` is not
+    ///   under it.
+    /// * [`Error::IO`] when a relative path cannot be made absolute because
+    ///   the current directory is unavailable.
+    pub fn path_in_archive<P: AsRef<Path>>(&self, path: P) -> Result<PathBuf> {
         let from_path = path.as_ref();
-        let normalized = normalize_entry_path(from_path);
+        let relative = match &self.base_dir {
+            Some(base) => {
+                let base = lexical_absolute(base).map_err(Error::IO)?;
+                let abs = lexical_absolute(from_path).map_err(Error::IO)?;
+                match abs.strip_prefix(&base) {
+                    Ok(rest) => rest.to_path_buf(),
+                    Err(_) => return Err(Error::OutsideBaseDir(from_path.to_path_buf())),
+                }
+            }
+            None => from_path.to_path_buf(),
+        };
+        let normalized = normalize_entry_path(&relative);
         let to_path = match &self.rebase_dir {
             Some(rebase) => normalize_entry_path(rebase).join(&normalized),
             None => normalized,
         };
         log::debug!("dest_path({from_path:?}) -> {to_path:?}");
-        to_path
+        Ok(to_path)
     }
 
     /// Creates an iterator over directory entries for the given path.
@@ -618,6 +656,24 @@ impl ArchiveConfig {
             r.into_iter().collect()
         }
     }
+}
+
+/// `path` made absolute against the current directory, with `.` and `..`
+/// resolved lexically. Symlinks are not followed, unlike `fs::canonicalize`,
+/// so a link inside `base_dir` still counts as inside it.
+fn lexical_absolute(path: &Path) -> std::io::Result<PathBuf> {
+    use std::path::Component;
+    let mut out = PathBuf::new();
+    for component in std::path::absolute(path)?.components() {
+        match component {
+            Component::ParentDir => {
+                out.pop();
+            }
+            Component::CurDir => {}
+            other => out.push(other), // keeps the root and any drive prefix
+        }
+    }
+    Ok(out)
 }
 
 /// Rewrites a path into a name that is safe to store in an archive.

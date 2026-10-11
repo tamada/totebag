@@ -22,19 +22,25 @@ impl ToteArchiver for Archiver {
         let mut builder = cpio::Builder::new(file);
         builder.set_format(format);
         let mut errs = vec![];
+        let mut archived = vec![];
         for path in entries.iter() {
-            let path_in_archive = config.path_in_archive(path);
-            if let Err(e) = builder.append_path(path, path_in_archive) {
-                errs.push(Error::Archiver(e.to_string()));
+            let path_in_archive = match config.path_in_archive(path) {
+                Ok(p) if !p.as_os_str().is_empty() => p,
+                Ok(_) => continue,
+                Err(e) => {
+                    errs.push(e);
+                    continue;
+                }
             };
-        }
-        match builder.finish() {
-            Ok(_) => Ok(entries.into_iter().map(ArchiveEntry::from).collect()),
-            Err(e) => {
-                errs.push(Error::Archiver(e.to_string()));
-                Error::error_or_else(Vec::new, errs)
+            match builder.append_path(path, path_in_archive) {
+                Ok(_) => archived.push(ArchiveEntry::from(path)),
+                Err(e) => errs.push(Error::Archiver(e.to_string())),
             }
         }
+        if let Err(e) = builder.finish() {
+            errs.push(Error::Archiver(e.to_string()));
+        }
+        Error::error_or(archived, errs)
     }
 
     fn enable(&self) -> bool {

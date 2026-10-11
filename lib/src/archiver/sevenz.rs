@@ -30,9 +30,17 @@ impl ToteArchiver for Archiver {
         for tp in targets {
             for t in config.iter(tp) {
                 let path = t.into_path();
+                let dest_path = match config.path_in_archive(&path) {
+                    Ok(p) if !p.as_os_str().is_empty() => p,
+                    Ok(_) => continue,
+                    Err(e) => {
+                        errs.push(e);
+                        continue;
+                    }
+                };
                 entries.push(ToteArchiveEntry::from(&path));
                 if path.is_file()
-                    && let Err(e) = process_file(&mut w, &path, &config.path_in_archive(&path))
+                    && let Err(e) = process_file(&mut w, &path, &dest_path)
                 {
                     errs.push(e);
                 }

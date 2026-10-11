@@ -28,8 +28,15 @@ impl ToteArchiver for Archiver {
                 if !path.is_file() {
                     continue;
                 }
+                let dest_path = match config.path_in_archive(&path) {
+                    Ok(p) if !p.as_os_str().is_empty() => p,
+                    Ok(_) => continue,
+                    Err(e) => {
+                        errs.push(e);
+                        continue;
+                    }
+                };
                 entries.push(ArchiveEntry::from(&path));
-                let dest_path = config.path_in_archive(&path);
                 if let Err(e) = process_file(&mut builder, &path, &dest_path) {
                     errs.push(e);
                 }
