@@ -3,7 +3,7 @@ members = [ "lib", "cli" ]
 resolver = "3"
 
 [workspace.package]
-version = "0.9.0"
+version = "0.10.0"
 edition = "2024"
 # Verified with `cargo +1.95.0 check --workspace --all-features`. The floor comes
 # from the `delharc` dependency (1.95), not from this crate; edition 2024 alone
@@ -12,6 +12,6 @@ rust-version = "1.95"
 repository = "https://github.com/tamada/totebag"
 readme = "README.md"
 authors = [
-    "Haruaki Tamada <tamada_f@ke_cafebabe.jp>"
+    "Haruaki Tamada <tamada@users.noreply.github.com>"
 ]
 license = "MIT"
