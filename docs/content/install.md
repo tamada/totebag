@@ -10,6 +10,21 @@ date: 2024-06-11
 brew install tamada/tap/totebag
 ```
 
+## :crab: Cargo
+
+Install from [crates.io](https://crates.io/crates/totebag-cli) with Rust's package manager:
+
+```sh
+cargo install totebag-cli
+```
+
+Every format, RAR included, is built in, so no Cargo feature needs to be enabled.
+Building needs Rust 1.95 or later, but no C toolchain.
+
+The installed command is named `totebag-cli`, after the crate. The release
+binaries, Homebrew and the Docker image name it `totebag`; to use that name here
+too, link it, for example `ln -s ~/.cargo/bin/totebag-cli ~/.cargo/bin/totebag`.
+
 ## Download
 
 Download the suitable binary from the [release page](https://github.com/tamada/totebag/releases/latest).
