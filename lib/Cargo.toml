@@ -20,6 +20,13 @@ default = []
 # that they can be used directly as command line arguments. Only the CLI needs it.
 clap = ["dep:clap"]
 
+# Each requirement is the *lowest* version that works, not the newest: Cargo
+# still builds with the newest compatible release, but a crate depending on
+# totebag may be held back to the minimum, so the minimum must really build.
+# CI checks this with `-Z direct-minimal-versions` (the `minimal-versions` job
+# in build.yaml); raise a requirement only when that job fails, when the code
+# starts to need something newer, or to exclude a vulnerable release. Write
+# all three numbers, and pin 0.0.x crates exactly: every 0.0.x release may break.
 [dependencies]
 ar = "0.9.0"
 bzip2 = "0.6.1"                                             # pure Rust via libbz2-rs-sys
@@ -41,7 +48,7 @@ serde-xml-rs = "0.8.2"
 sevenz-rust2 = "0.21.4"
 structured-zstd = "0.0.59"
 tar = "0.4.44"
-time = "0.3.44"
+time = "0.3.47"
 typed-builder = "0.23.2"
 
 # `zstd` is deliberately excluded: it is the only default feature of `zip` that
