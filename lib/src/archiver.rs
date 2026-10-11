@@ -127,11 +127,23 @@ pub struct Target {
 /// Walks `targets` with the ignore settings of `config`, and pairs every file
 /// and directory found with its name in the archive.
 ///
-/// A path whose name cannot be built (see
-/// [`ArchiveConfig::path_in_archive`](crate::ArchiveConfig::path_in_archive))
-/// is reported in `errs` and left out. A path whose name is empty -- `base_dir`
-/// itself, or a directory such as `..` -- has no name to store it under, and
-/// its contents are archived anyway, so it is skipped.
+/// A path whose name is empty -- `base_dir` itself, or a directory such as
+/// `..` -- has no name to store it under, and its contents are archived
+/// anyway, so it is skipped.
+///
+/// # Errors
+///
+/// Every problem is collected before returning, so that all of them are
+/// reported at once:
+///
+/// * [`Error::FileNotFound`] for a target that does not exist. The walk would
+///   otherwise yield nothing for it, and the archive would silently lack it.
+/// * the errors of
+///   [`ArchiveConfig::path_in_archive`](crate::ArchiveConfig::path_in_archive),
+///   such as a path outside `base_dir`.
+///
+/// `totebag::archive` calls this before it creates the destination, so an
+/// error leaves the destination untouched.
 pub(crate) fn walk_targets(
     targets: &[PathBuf],
     config: &crate::ArchiveConfig,
@@ -139,6 +151,10 @@ pub(crate) fn walk_targets(
     let mut r = vec![];
     let mut errs = vec![];
     for tp in targets {
+        if !tp.exists() {
+            errs.push(Error::FileNotFound(tp.clone()));
+            continue;
+        }
         for entry in config.iter(tp) {
             let path = entry.into_path();
             match config.path_in_archive(&path) {
@@ -480,5 +496,54 @@ mod tests {
             .build();
         assert!(crate::archive(&targets, &config).is_err());
         assert!(!fresh.exists());
+    }
+
+    /// A target that does not exist is reported, and nothing is written
+    /// (issue #52). It used to be skipped silently, producing an empty or
+    /// incomplete archive and a successful exit.
+    #[test]
+    fn test_archive_missing_target() {
+        std::fs::create_dir_all("results").unwrap();
+        for (targets, case) in [
+            (vec![PathBuf::from("no/such/dir")], "only a missing target"),
+            (
+                vec![
+                    PathBuf::from("../testdata/sample"),
+                    PathBuf::from("no/such/file.txt"),
+                ],
+                "an existing and a missing target",
+            ),
+        ] {
+            let dest = PathBuf::from("results/missing_target.zip");
+            let _ = std::fs::remove_file(&dest);
+            let config = crate::ArchiveConfig::builder().dest(&dest).build();
+            match crate::archive(&targets, &config) {
+                Err(crate::Error::FileNotFound(p)) => {
+                    assert_eq!(p, *targets.last().unwrap(), "{case}")
+                }
+                other => panic!("{case}: unexpected result: {other:?}"),
+            }
+            assert!(!dest.exists(), "{case}: no archive must be created");
+        }
+    }
+
+    /// Every missing target is reported, not only the first one.
+    #[test]
+    fn test_archive_reports_every_missing_target() {
+        let config = crate::ArchiveConfig::builder()
+            .dest("results/missing_targets.zip")
+            .build();
+        let targets = vec![PathBuf::from("no/such/a"), PathBuf::from("no/such/b")];
+        match crate::archive(&targets, &config) {
+            Err(crate::Error::Array(errs)) => {
+                assert_eq!(errs.len(), 2);
+                assert!(
+                    errs.iter()
+                        .all(|e| matches!(e, crate::Error::FileNotFound(_)))
+                );
+            }
+            other => panic!("unexpected result: {other:?}"),
+        }
+        assert!(!PathBuf::from("results/missing_targets.zip").exists());
     }
 }
