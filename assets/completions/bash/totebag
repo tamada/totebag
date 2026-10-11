@@ -23,18 +23,30 @@ _totebag() {
 
     case "${cmd}" in
         totebag)
-            opts="-C -i -L -n -f -m -F -o -h -V --to-archive-name-dir --dir --ignore-types --level --no-recursive --output-format --log --mode --from --generate-completion --output --overwrite --help --version [ARGUMENTS]..."
+            opts="-C -B -i -L -n -f -m -F -o -h -V --to-archive-name-dir --dir --rebase-dir --base-dir --ignore-types --level --no-recursive --output-format --log --mode --from --output --overwrite --help --version [ARGUMENTS]..."
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
+                --rebase-dir)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 --dir)
-                    COMPREPLY=($(compgen -d "${cur}"))
+                    COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
                 -C)
-                    COMPREPLY=($(compgen -d "${cur}"))
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --base-dir)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                -B)
+                    COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
                 --ignore-types)
@@ -66,19 +78,19 @@ _totebag() {
                     return 0
                     ;;
                 --mode)
-                    COMPREPLY=($(compgen -W "archive extract list" -- "${cur}"))
+                    COMPREPLY=($(compgen -W "auto archive extract list" -- "${cur}"))
                     return 0
                     ;;
                 -m)
-                    COMPREPLY=($(compgen -W "archive extract list" -- "${cur}"))
+                    COMPREPLY=($(compgen -W "auto archive extract list" -- "${cur}"))
                     return 0
                     ;;
                 --from)
-                    COMPREPLY=($(compgen -W "auto parse cab lha lzh seven-z rar tar tar-gz tar-bz2 tar-xz tar-zstd zip tgz tbz2 txz tzst tzstd jar war ear" -- "${cur}"))
+                    COMPREPLY=($(compgen -W "auto parse ar cab cpio lha lzh seven-z rar tar tar-gz tar-bz2 tar-xz tar-zstd zip tgz tbz2 txz tzst tzstd jar war ear" -- "${cur}"))
                     return 0
                     ;;
                 -F)
-                    COMPREPLY=($(compgen -W "auto parse cab lha lzh seven-z rar tar tar-gz tar-bz2 tar-xz tar-zstd zip tgz tbz2 txz tzst tzstd jar war ear" -- "${cur}"))
+                    COMPREPLY=($(compgen -W "auto parse ar cab cpio lha lzh seven-z rar tar tar-gz tar-bz2 tar-xz tar-zstd zip tgz tbz2 txz tzst tzstd jar war ear" -- "${cur}"))
                     return 0
                     ;;
                 --output)
@@ -90,7 +102,7 @@ _totebag() {
                     return 0
                     ;;
                 *)
-                    COMPREPLY=($(compgen -f "${cur}"))
+                    COMPREPLY=()
                     ;;
             esac
             COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )

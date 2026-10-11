@@ -18,12 +18,15 @@ set edit:completion:arg-completer[totebag] = {|@words|
     }
     var completions = [
         &'totebag'= {
-            cand -C 'Specify the base directory for archiving or extracting.'
-            cand --dir 'Specify the base directory for archiving or extracting.'
+            cand -C 'Prefix every entry in the archive with DIR (archive mode). For example, -C root stores src/main.rs as root/src/main.rs. By default entries keep their own paths.'
+            cand --rebase-dir 'Prefix every entry in the archive with DIR (archive mode). For example, -C root stores src/main.rs as root/src/main.rs. By default entries keep their own paths.'
+            cand --dir 'Prefix every entry in the archive with DIR (archive mode). For example, -C root stores src/main.rs as root/src/main.rs. By default entries keep their own paths.'
+            cand -B 'Store entries relative to DIR (archive mode). For example, -B testdata/sample stores testdata/sample/src/main.rs as src/main.rs. DIR is stripped before -C is applied. Every target must be under DIR.'
+            cand --base-dir 'Store entries relative to DIR (archive mode). For example, -B testdata/sample stores testdata/sample/src/main.rs as src/main.rs. DIR is stripped before -C is applied. Every target must be under DIR.'
             cand -i 'Specify the ignore type.'
             cand --ignore-types 'Specify the ignore type.'
-            cand -L 'Specify the compression level. [default: 5] [possible values: 0-9 (none to finest)] For more details of level of each compression method, see README.'
-            cand --level 'Specify the compression level. [default: 5] [possible values: 0-9 (none to finest)] For more details of level of each compression method, see README.'
+            cand -L 'Specify the compression level. [possible values: 0-9 (none to finest)] For more details of level of each compression method, see README.'
+            cand --level 'Specify the compression level. [possible values: 0-9 (none to finest)] For more details of level of each compression method, see README.'
             cand -f 'Specify the format for listing entries in the archive file.'
             cand --output-format 'Specify the format for listing entries in the archive file.'
             cand --log 'Specify the log level'
@@ -36,7 +39,6 @@ set edit:completion:arg-completer[totebag] = {|@words|
             cand --to-archive-name-dir 'extract files to DEST/ARCHIVE_NAME directory (extract mode).'
             cand -n 'No recursive directory (archive mode).'
             cand --no-recursive 'No recursive directory (archive mode).'
-            cand --generate-completion 'Generate the completion files'
             cand --overwrite 'Overwrite existing files.'
             cand -h 'Print help (see more with ''--help'')'
             cand --help 'Print help (see more with ''--help'')'

@@ -15,8 +15,11 @@ _totebag() {
 
     local context curcontext="$curcontext" state line
     _arguments "${_arguments_options[@]}" : \
-'-C+[Specify the base directory for archiving or extracting.]:DIR:_files' \
-'--dir=[Specify the base directory for archiving or extracting.]:DIR:_files' \
+'-C+[Prefix every entry in the archive with DIR (archive mode). For example, -C root stores src/main.rs as root/src/main.rs. By default entries keep their own paths.]:DIR:_files' \
+'--rebase-dir=[Prefix every entry in the archive with DIR (archive mode). For example, -C root stores src/main.rs as root/src/main.rs. By default entries keep their own paths.]:DIR:_files' \
+'--dir=[Prefix every entry in the archive with DIR (archive mode). For example, -C root stores src/main.rs as root/src/main.rs. By default entries keep their own paths.]:DIR:_files' \
+'-B+[Store entries relative to DIR (archive mode). For example, -B testdata/sample stores testdata/sample/src/main.rs as src/main.rs. DIR is stripped before -C is applied. Every target must be under DIR.]:DIR:_files' \
+'--base-dir=[Store entries relative to DIR (archive mode). For example, -B testdata/sample stores testdata/sample/src/main.rs as src/main.rs. DIR is stripped before -C is applied. Every target must be under DIR.]:DIR:_files' \
 '*-i+[Specify the ignore type.]:IGNORE_TYPES:((default\:"use \`git-ignore\`, \`.gitglobal\`, \`.gitexclude\`, and \`.ignore\`"
 hidden\:"ignore hidden files and directories"
 git-ignore\:"ignore files and directories that are listed in \`.gitignore\`"
@@ -29,8 +32,8 @@ git-ignore\:"ignore files and directories that are listed in \`.gitignore\`"
 git-global\:"ignore files and directories that are listed in \`.gitglobal\`"
 git-exclude\:"ignore files and directories that are listed in \`.gitexclude\`"
 ignore\:"ignore files and directories that are listed in \`.ignore\`"))' \
-'-L+[Specify the compression level. \[default\: 5\] \[possible values\: 0-9 (none to finest)\] For more details of level of each compression method, see README.]:LEVEL:_default' \
-'--level=[Specify the compression level. \[default\: 5\] \[possible values\: 0-9 (none to finest)\] For more details of level of each compression method, see README.]:LEVEL:_default' \
+'-L+[Specify the compression level. \[possible values\: 0-9 (none to finest)\] For more details of level of each compression method, see README.]:LEVEL:_default' \
+'--level=[Specify the compression level. \[possible values\: 0-9 (none to finest)\] For more details of level of each compression method, see README.]:LEVEL:_default' \
 '-f+[Specify the format for listing entries in the archive file.]:FORMAT:(default long json pretty-json xml)' \
 '--output-format=[Specify the format for listing entries in the archive file.]:FORMAT:(default long json pretty-json xml)' \
 '--log=[Specify the log level]:LOGLEVEL:((error\:"The error level"
@@ -42,7 +45,9 @@ trace\:"The trace level"))' \
 '--mode=[Mode of operation.]:MODE:(auto archive extract list)' \
 '-F+[Specify the archive format for listing mode (default auto). available on list and extract modes.]:ARCHIVE_FORMAT:((auto\:"Detect the format by the file extension"
 parse\:"Detect the format by the file signature (header bytes)"
+ar\:""
 cab\:""
+cpio\:""
 lha\:""
 lzh\:""
 seven-z\:""
@@ -63,7 +68,9 @@ war\:""
 ear\:""))' \
 '--from=[Specify the archive format for listing mode (default auto). available on list and extract modes.]:ARCHIVE_FORMAT:((auto\:"Detect the format by the file extension"
 parse\:"Detect the format by the file signature (header bytes)"
+ar\:""
 cab\:""
+cpio\:""
 lha\:""
 lzh\:""
 seven-z\:""
@@ -87,14 +94,13 @@ ear\:""))' \
 '--to-archive-name-dir[extract files to DEST/ARCHIVE_NAME directory (extract mode).]' \
 '-n[No recursive directory (archive mode).]' \
 '--no-recursive[No recursive directory (archive mode).]' \
-'--generate-completion[Generate the completion files]' \
 '--overwrite[Overwrite existing files.]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
 '-V[Print version]' \
 '--version[Print version]' \
 '*::args -- List of files or directories to be processed.
-'\''-'\'' reads form stdin, and '\''@<filename>'\'' reads from a file.
+'\''-'\'' reads from stdin, and '\''@<filename>'\'' reads from a file.
 In archive mode, the resultant archive file name is determined by the following rule.
     - if output option is specified, use it.
     - if the first argument is the archive file name, use it.
