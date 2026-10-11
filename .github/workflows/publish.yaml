@@ -32,10 +32,14 @@ jobs:
         id: create_release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.vars.outputs.tag }}
         run: |
-          git tag v${{ steps.vars.outputs.tag }}
-          git push origin v${{ steps.vars.outputs.tag }}
-          gh release create v${{ steps.vars.outputs.tag }} --repo $GITHUB_REPOSITORY --title "Release v${{ steps.vars.outputs.tag }}" --generate-notes --draft
+          git tag v$TAG
+          git push origin v$TAG
+          notes=.github/release-notes/v${TAG}.md
+          args=(--generate-notes --draft)
+          [ -f "$notes" ] && args+=(--notes-file "$notes")
+          gh release create "v$TAG" --repo "$GITHUB_REPOSITORY" --title "Release v$TAG" "${args[@]}"
 
   publish:
     runs-on: ubuntu-latest
@@ -86,7 +90,7 @@ jobs:
         run: |
           DIR=$(echo "${{ needs.setup.outputs.appname }}-${{ needs.setup.outputs.tag }}")
           echo "dir=$DIR" >> $GITHUB_OUTPUT
-  
+
       - name: Cache cargo registry
         uses: actions/cache@v4
         with:
