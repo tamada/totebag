@@ -26,23 +26,14 @@ Options:
   -B, --base-dir <DIR>               Store entries relative to DIR (archive mode).
                                      For example, -B testdata/sample stores testdata/sample/src/main.rs as src/main.rs.
                                      DIR is stripped before -C is applied. Every target must be under DIR.
-  -i, --ignore-types <IGNORE_TYPES>  Specify the ignore type.
-                                     [possible values: default, hidden, git-ignore, git-global, git-exclude, ignore]
-  -L, --level <LEVEL>                Specify the compression level. [default: 5]
-                                     [possible values: 0-9 (none to finest)]
-                                     For more details of level of each compression method, see README.
+  -i, --ignore-types <IGNORE_TYPES>  Specify the ignore type. [possible values: default, hidden, git-ignore, git-global, git-exclude, ignore]
+  -L, --level <LEVEL>                Specify the compression level. [possible values: 0-9 (none to finest)]
+                                     For more details of level of each compression method, see README. [default: 5]
   -n, --no-recursive                 No recursive directory (archive mode).
-  -f, --output-format <FORMAT>       Specify the format for listing entries in the archive file.
-                                     [default: default] [possible values: default, long, json, pretty-json, xml]
-      --log <LOGLEVEL>               Specify the log level [default: warn]
-                                     [possible values: error, warn, info, debug, trace]
-  -m, --mode <MODE>                  Mode of operation. [default: auto]
-                                     [possible values: auto, archive, extract, list]
-  -F, --from <ARCHIVE_FORMAT>        Specify the archive format for listing mode (default auto).
-                                     available on list and extract modes.
-                                     [possible values: auto, parse, ar, cab, cpio, lha, lzh, seven-z, rar, tar,
-                                      tar-gz, tar-bz2, tar-xz, tar-zstd, zip, tgz, tbz2, txz, tzst, tzstd, jar,
-                                      war, ear]
+  -f, --output-format <FORMAT>       Specify the format for listing entries in the archive file. [default: default] [possible values: default, long, json, pretty-json, xml]
+      --log <LOGLEVEL>               Specify the log level [default: warn] [possible values: error, warn, info, debug, trace]
+  -m, --mode <MODE>                  Mode of operation. [default: auto] [possible values: auto, archive, extract, list]
+  -F, --from <ARCHIVE_FORMAT>        Specify the archive format for listing mode (default auto). available on list and extract modes. [possible values: auto, parse, ar, cab, cpio, lha, lzh, seven-z, rar, tar, tar-gz, tar-bz2, tar-xz, tar-zstd, zip, tgz, tbz2, txz, tzst, tzstd, jar, war, ear]
   -o, --output <DEST>                Output file in archive mode, or output directory in extraction mode
       --overwrite                    Overwrite existing files.
   -h, --help                         Print help (see more with '--help')

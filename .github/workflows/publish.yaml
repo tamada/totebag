@@ -12,7 +12,8 @@ jobs:
     if: startsWith(github.head_ref, 'release/v') && github.event.pull_request.merged == true
     outputs:
       appname: totebag
-      cliname: totebag-cli
+      # the binary built by the totebag-cli package (its [[bin]] name)
+      cliname: totebag
       tag: ${{ steps.vars.outputs.tag }}
       upload_url: ${{ steps.create_release.outputs.upload_url }}
     steps:

@@ -33,6 +33,7 @@ pub(crate) enum RunMode {
 
 #[derive(Parser, Debug)]
 #[clap(
+    name = "totebag",
     bin_name = "totebag",
     version,
     author,

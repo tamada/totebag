@@ -10,6 +10,18 @@ date: 2024-06-11
 brew install tamada/tap/totebag
 ```
 
+## :crab: Cargo
+
+Install from [crates.io](https://crates.io/crates/totebag-cli) with Rust's package manager:
+
+```sh
+cargo install totebag-cli
+```
+
+This installs the `totebag` command. Every format, RAR included, is built in, so
+no Cargo feature needs to be enabled. Building needs Rust 1.95 or later, but no C
+toolchain.
+
 ## Download
 
 Download the suitable binary from the [release page](https://github.com/tamada/totebag/releases/latest).

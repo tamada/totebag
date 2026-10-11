@@ -36,7 +36,7 @@ LABEL org.opencontainers.image.authors=${AUTHOR} \
       org.opencontainers.image.licenses=${LICENSE}
 
 RUN useradd --create-home --home-dir /app --shell /usr/sbin/nologin nonroot
-COPY --from=builder /app/target/release/totebag-cli /opt/totebag/totebag
+COPY --from=builder /app/target/release/totebag /opt/totebag/totebag
 
 WORKDIR /app
 USER nonroot
