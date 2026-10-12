@@ -26,7 +26,10 @@ runs:
       uses: addnab/docker-run-action@v3
       if: inputs.target != 'x86_64-unknown-linux-musl'
       with:
-        image: ghcr.io/rust-cross/cargo-zigbuild:latest
+        # Pinned: 0.23.4 breaks linking cdylibs for Apple targets (sevenz-rust2
+        # builds one), see rust-cross/cargo-zigbuild#479, fixed by #480 but not
+        # released yet. Move to a release that contains #480, not to `latest`.
+        image: ghcr.io/rust-cross/cargo-zigbuild:0.23.3
         options: >
           -v ${{ github.workspace }}:/io
           -w /io
@@ -36,6 +39,8 @@ runs:
           rustup target add ${{ inputs.target }}
           cargo zigbuild --release --target ${{ inputs.target }}
 
-    - name: List the artifacts
+    - name: Check the binary
       shell: bash
-      run: ls target/${{ inputs.target }}/release/
+      run: |
+        ls -l target/${{ inputs.target }}/release/
+        test -f target/${{ inputs.target }}/release/totebag

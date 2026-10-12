@@ -1,24 +1,40 @@
-name: cross-compile for testing
+# Cross-compiles the release targets, the same way publish.yaml does, before a
+# release is merged. The everyday build workflow only builds natively on Linux
+# x86_64 and macOS arm64, so a problem in the cross toolchain (cargo-zigbuild,
+# musl) otherwise surfaces only after the release pull request is merged, as it
+# did for v0.10.0.
+#
+# It runs when a release branch is pushed, when the cross-compile action or
+# this workflow changes, and on demand. Check that it is green before merging
+# a release pull request.
+name: cross-compile
 on:
-    push:
-        branches:
-            - "test_workflow"
-            # - "**"
-jobs:
-    cross-compile:
-        runs-on: ubuntu-latest
-        strategy:
-            matrix:
-                include:
-                    - target: x86_64-unknown-linux-musl
-                    - target: aarch64-unknown-linux-musl
-                    - target: aarch64-apple-darwin
-                    - target: x86_64-apple-darwin
-        steps:
-            - name: Checkout the project
-              uses: actions/checkout@v4
+  push:
+    branches:
+      - "release/v*"
+  pull_request:
+    paths:
+      - ".github/actions/cross-compile/**"
+      - ".github/workflows/cross-compile.yaml"
+  workflow_dispatch:
 
-            - name: Cross compile
-              uses: ./.github/actions/cross-compile
-              with:
-                  target: ${{ matrix.target }}
+jobs:
+  cross-compile:
+    runs-on: ubuntu-latest
+    strategy:
+      # Report every target, not only the first failure.
+      fail-fast: false
+      matrix:
+        target:
+          - x86_64-unknown-linux-musl
+          - aarch64-unknown-linux-musl
+          - x86_64-apple-darwin
+          - aarch64-apple-darwin
+    steps:
+      - name: Checkout the project
+        uses: actions/checkout@v4
+
+      - name: Cross compile
+        uses: ./.github/actions/cross-compile
+        with:
+          target: ${{ matrix.target }}
